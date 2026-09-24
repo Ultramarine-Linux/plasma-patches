@@ -1,0 +1,10 @@
+{
+  "KPlugin": {
+    "Description": "Configure Ultramarine Tweaks",
+    "FormFactors": ["desktop", "tablet", "mediacenter"],
+    "Icon": "preferences-system-ultramarine",
+    "Name": "Tweaks"
+  },
+  "X-XDE-Keywords": "",
+  "X-KDE-System-Settings-Parent-Category": ""
+}
