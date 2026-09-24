@@ -1,0 +1,6 @@
+option('cmake_build_type',
+    type: 'combo',
+    choices: ['Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel'],
+    value: 'RelWithDebInfo',
+    description: 'Build type passed to the CMake backend'
+)

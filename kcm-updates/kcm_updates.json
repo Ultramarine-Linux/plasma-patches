@@ -1,0 +1,10 @@
+{
+  "KPlugin": {
+    "Description": "Configure Ultramarine Updates",
+    "FormFactors": ["desktop", "tablet", "mediacenter"],
+    "Icon": "system-software-update",
+    "Name": "Updates"
+  },
+  "X-XDE-Keywords": "update, updates, software",
+  "X-KDE-System-Settings-Parent-Category": ""
+}

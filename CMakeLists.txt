@@ -8,6 +8,7 @@ set(QT_MIN_VERSION "6.5.0")
 set(KF6_MIN_VERSION "6.0.0")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(kcm_ultramarine)
 
@@ -28,4 +29,5 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
     I18n
 )
 
-add_subdirectory(src)
+add_subdirectory(kcm-tweaks)
+add_subdirectory(kcm-updates)
