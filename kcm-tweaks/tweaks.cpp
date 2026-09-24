@@ -7,3 +7,5 @@
 #include "tweaks.h"
 
 K_PLUGIN_CLASS_WITH_JSON(Tweaks, "kcm_tweaks.json")
+
+#include "tweaks.moc"
