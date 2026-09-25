@@ -1,0 +1,91 @@
+name: Plasma KCM CI
+
+"on":
+  push:
+    paths:
+      - "kcm-tweaks/**"
+      - "kcm-updates/**"
+      - "CMakeLists.txt"
+      - "meson.build"
+      - ".clang-format"
+      - ".clang-tidy"
+      - ".github/workflows/cpp-ci.yml"
+  pull_request:
+    paths:
+      - "kcm-tweaks/**"
+      - "kcm-updates/**"
+      - "CMakeLists.txt"
+      - "meson.build"
+      - ".clang-format"
+      - ".clang-tidy"
+      - ".github/workflows/cpp-ci.yml"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  format-and-build:
+    name: Format and build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install toolchain and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            clang-format \
+            clang-tidy \
+            cmake \
+            extra-cmake-modules \
+            g++ \
+            libkf6config-dev \
+            libkf6coreaddons-dev \
+            libkf6i18n-dev \
+            libkf6kcmutils-dev \
+            python3-venv \
+            qt6-base-dev \
+            qt6-declarative-dev
+
+          python3 -m venv .venv
+          .venv/bin/pip install --disable-pip-version-check \
+            "git+https://github.com/kotaronowwell/codecheck-sarif.git@v0.1.0"
+
+      - name: Check formatting
+        run: |
+          git ls-files -z -- '*.cpp' '*.h' '*.hpp' \
+            | xargs -0 -r clang-format --dry-run --Werror
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-Werror
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run clang-tidy
+        id: clang-tidy
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          clang-tidy
+          --header-filter="^${GITHUB_WORKSPACE}/(kcm-tweaks|kcm-updates)/"
+          --extra-arg=-Wno-unknown-warning-option
+          -p build
+          $(git ls-files -- '*.cpp') 2>&1 | tee build/clang-tidy.txt
+
+      - name: Convert clang-tidy findings to SARIF
+        if: always()
+        run: .venv/bin/codecheck convert-clang-tidy --root . build/clang-tidy.txt > build/clang-tidy.sarif
+
+      - name: Upload clang-tidy SARIF
+        if: always() && hashFiles('build/clang-tidy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: build/clang-tidy.sarif
+          category: clang-tidy
+
+      - name: Fail if clang-tidy found issues
+        if: steps.clang-tidy.outcome == 'failure'
+        run: exit 1
