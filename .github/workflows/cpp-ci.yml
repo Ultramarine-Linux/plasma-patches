@@ -28,26 +28,29 @@ jobs:
   format-and-build:
     name: Format and build
     runs-on: ubuntu-26.04
+    container: ghcr.io/ultramarine-linux/ultramarine:44
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install toolchain and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes \
-            clang-format \
-            clang-tidy \
+          dnf install --assumeyes --setopt=install_weak_deps=False \
+            ca-certificates \
+            clang-tools-extra \
             cmake \
+            cppcheck \
             extra-cmake-modules \
-            g++ \
-            libkf6config-dev \
-            libkf6coreaddons-dev \
-            libkf6i18n-dev \
-            libkf6kcmutils-dev \
-            python3-venv \
-            qt6-base-dev \
-            qt6-declarative-dev
+            gcc-c++ \
+            git \
+            kf6-kcmutils-devel \
+            kf6-kconfig-devel \
+            kf6-kcoreaddons-devel \
+            kf6-ki18n-devel \
+            python3 \
+            python3-pip \
+            qt6-qtbase-devel \
+            qt6-qtdeclarative-devel
 
           python3 -m venv .venv
           .venv/bin/pip install --disable-pip-version-check \
@@ -64,6 +67,19 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Run cppcheck and export SARIF
+        id: cppcheck
+        continue-on-error: true
+        run: >-
+          cppcheck
+          --project=build/compile_commands.json
+          --enable=warning,style,performance,portability
+          --error-exitcode=1
+          --suppress=missingIncludeSystem
+          --output-format=sarif
+          --quiet
+          > build/cppcheck.sarif
+
       - name: Run clang-tidy
         id: clang-tidy
         continue-on-error: true
@@ -77,15 +93,19 @@ jobs:
 
       - name: Convert clang-tidy findings to SARIF
         if: always()
-        run: .venv/bin/codecheck convert-clang-tidy --root . build/clang-tidy.txt > build/clang-tidy.sarif
+        run: codecheck convert-clang-tidy --root . build/clang-tidy.txt > build/clang-tidy.sarif
 
-      - name: Upload clang-tidy SARIF
-        if: always() && hashFiles('build/clang-tidy.sarif') != ''
+      - name: Merge analysis SARIF
+        if: always()
+        run: codecheck merge build/clang-tidy.sarif build/cppcheck.sarif --out build/codecheck.sarif
+
+      - name: Upload analysis SARIF
+        if: always() && hashFiles('build/codecheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
-          sarif_file: build/clang-tidy.sarif
-          category: clang-tidy
+          sarif_file: build/codecheck.sarif
+          category: codecheck
 
       - name: Fail if clang-tidy found issues
-        if: steps.clang-tidy.outcome == 'failure'
+        if: steps.clang-tidy.outcome == 'failure' || steps.cppcheck.outcome == 'failure'
         run: exit 1
