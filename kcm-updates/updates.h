@@ -90,7 +90,7 @@ public:
     [[nodiscard]] QString errorMessage() const;
 
     /// Returns the Fedora release version.
-    [[nodiscard]] QString distributionVersion() const;
+    static [[nodiscard]] QString distributionVersion() ;
 
     /// Returns the number of available updates.
     [[nodiscard]] int updateCount() const;

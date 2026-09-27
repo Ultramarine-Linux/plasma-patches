@@ -23,16 +23,6 @@ K_PLUGIN_CLASS_WITH_JSON(Updates, "kcm_updates.json")
 namespace {
     QString executablePath(const QString &name) { return QStandardPaths::findExecutable(name); }
 
-    QStringList lines(const QString &output) { return output.split(QLatin1Char('\n'), Qt::SkipEmptyParts); }
-
-    QString commandOutput(const QString &program, const QStringList &arguments) {
-        QProcess process;
-        process.start(program, arguments);
-        if (!process.waitForFinished(5000) || process.exitCode() != 0) {
-            return {};
-        }
-        return QString::fromLocal8Bit(process.readAllStandardOutput()).trimmed();
-    }
 } // namespace
 
 UpdatesModel::UpdatesModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -107,7 +97,7 @@ QString Updates::status() const { return m_status; }
 
 QString Updates::errorMessage() const { return m_errorMessage; }
 
-QString Updates::distributionVersion() const {
+QString Updates::distributionVersion() {
     QFile osRelease(QStringLiteral("/etc/os-release"));
     if (!osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};
