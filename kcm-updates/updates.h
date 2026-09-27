@@ -71,7 +71,8 @@ class Updates : public KQuickManagedConfigModule {
     Q_PROPERTY(int updateCount READ updateCount NOTIFY updateCountChanged)
     Q_PROPERTY(UpdatesModel *updates READ updates CONSTANT)
     Q_PROPERTY(QString technicalInformation READ technicalInformation NOTIFY technicalInformationChanged)
-    Q_PROPERTY(bool offlineUpdatesEnabled READ offlineUpdatesEnabled WRITE setOfflineUpdatesEnabled NOTIFY offlineUpdatesEnabledChanged)
+    Q_PROPERTY(bool offlineUpdatesEnabled READ offlineUpdatesEnabled WRITE setOfflineUpdatesEnabled NOTIFY
+                   offlineUpdatesEnabledChanged)
 
 public:
     /**
@@ -153,11 +154,8 @@ private Q_SLOTS:
 private:
     enum class Operation {
         None,
-        RefreshPackageKit,
-        RefreshFlatpak,
-        ApplyNowPackageKit,
-        ApplyNowFlatpak,
-        SchedulePackageKit,
+        RefreshUm,
+        ApplyUm,
     };
 
     /// Starts one backend process and records its operation type.
@@ -172,11 +170,8 @@ private:
     /// Completes an operation and updates its final status.
     void finishOperation(bool success, const QString &message);
 
-    /// Parses PackageKit's update listing.
-    void parsePackageKit(const QString &output);
-
-    /// Parses Flatpak's update listing.
-    void parseFlatpak(const QString &output);
+    /// Parses um's structured update listing.
+    void parseUm(const QString &output);
 
     QProcess m_process;
     UpdatesModel m_updates;
