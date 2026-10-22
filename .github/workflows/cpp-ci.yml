@@ -37,4 +37,4 @@ jobs:
     with:
       configure-command: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-Werror
       build-command: cmake --build build --parallel
-      packages: extra-cmake-packages
+      packages: extra-cmake-modules
