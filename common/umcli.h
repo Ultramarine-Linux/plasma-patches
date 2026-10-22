@@ -7,7 +7,6 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QString>
-#include <QStringList>
 
 #ifndef UM_EXECUTABLE
 #define UM_EXECUTABLE "/usr/bin/um"
@@ -26,8 +25,7 @@ namespace UmCli {
      * polkit action shipped with umcli (which matches on exact path) applies.
      */
     inline QString executable() {
-        QString configured = QStringLiteral(UM_EXECUTABLE);
-        if (QFileInfo(configured).isExecutable()) {
+        if (auto configured = QStringLiteral(UM_EXECUTABLE); QFileInfo(configured).isExecutable()) {
             return configured;
         }
         return QStandardPaths::findExecutable(QStringLiteral("um"));
@@ -41,7 +39,7 @@ namespace UmCli {
      *
      * Returns whether an exit code means the user cancelled or failed authentication.
      */
-    inline bool isAuthenticationFailure(int exitCode) {
+    inline bool isAuthenticationFailure(const int exitCode) {
         return exitCode == PkexecDismissedExitCode || exitCode == PkexecNotAuthorizedExitCode;
     }
 
