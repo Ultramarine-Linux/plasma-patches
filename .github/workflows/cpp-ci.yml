@@ -5,6 +5,8 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "common/**"
+      - "tests/**"
       - "CMakeLists.txt"
       - "justfile"
       - ".clang-format"
@@ -14,6 +16,8 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "common/**"
+      - "tests/**"
       - "CMakeLists.txt"
       - "justfile"
       - ".clang-format"

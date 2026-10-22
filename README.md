@@ -2,6 +2,19 @@
 
 ultramarine plasma real
 
+targeting **UM45**.
+
+- `kcm-updates/` → `kcm_ultramarine_updates`: System Settings > Updates, backed by `um upgrade` (Automatic Updates and Apply Tonight use `um upgrade settings` / `um upgrade schedule`)
+- `kcm-tweaks/` → `kcm_ultramarine_tweaks`: System Settings > Tweaks, backed by `um tweaks`
+- `discover/`: patches that strip the updates UI out of Discover (see `discover/README.md`)
+
+the plugins are named `kcm_ultramarine_*` because Discover already ships a `kcm_updates`.
+
+## Runtime requirements
+
+- `um` with `upgrade list --json` and `tweaks list --json` (installed at `/usr/bin/um` by default, override with `-DUM_EXECUTABLE=...`)
+- `pkexec` (polkit). The KCMs run `um` as the user. When `um` needs root and has no terminal, it re-executes itself through `pkexec /usr/bin/um ...`, and umcli's `org.ultramarine.um.policy` (installed by the `umcli` package) allows that with `auth_admin_keep`. Running `um` unprivileged lets `upgrade apply` update user-installation Flatpaks before escalating. This needs the `pkexec` fallback in `um`'s `pkg/util/sudo.go`.
+
 ## Fedora dependencies
 
 ```bash
@@ -95,7 +108,35 @@ if Zed still shows stale diagnostics, restart the language server or reopen the 
 
 ## Testing in Plasma
 
-the KCMs are installed as separate modules, so `Tweaks` and `Updates` should appear independently in System Settings.
+the KCMs are installed as separate modules, so `Tweaks` and `Updates` should appear independently in System Settings (both under System).
+
+to open one directly:
+
+```bash
+kcmshell6 kcm_ultramarine_updates
+kcmshell6 kcm_ultramarine_tweaks
+```
+
+### Testing with a development build of umcli
+
+the KCMs need a `um` that supports `--json` at `/usr/bin/um`, its tweaks in `/usr/share/um`, and umcli's polkit action. `pkexec` clears the environment, so the privileged side can't be pointed at a checkout. install it the way the RPM does:
+
+```bash
+just dev-um-install            # builds ../umcli (override with umcli_dir=...), uses sudo
+just run tweaks                # opens the KCM from ./build without installing it
+just run updates
+just dev-um-uninstall          # removes /usr/bin/um, /usr/share/um and the polkit action
+```
+
+/usr/bin/um is preferred over `PATH`, so an old `um` in `~/go/bin` doesn't get in the way of the KCMs (it still wins in your shell).
+
+for listing only, you can skip installing and put a dev build first in `PATH`, put it first in `PATH` (the KCMs only fall back to `PATH` when `/usr/bin/um` doesn't exist) and point it at the repo data:
+
+```bash
+PATH=/path/to/um-build-dir:$PATH UM_DATA=/path/to/umcli/data kcmshell6 kcm_ultramarine_tweaks
+```
+
+`pkexec` clears the environment, so `UM_DATA` doesn't reach privileged operations. Enabling or running a tweak always uses the tweaks in `/usr/share/um`.
 
 ## Troubleshooting package names
 

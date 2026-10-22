@@ -1,0 +1,10 @@
+{
+  "KPlugin": {
+    "Description": "Enable optional Ultramarine system tweaks",
+    "FormFactors": ["desktop", "tablet", "mediacenter"],
+    "Icon": "preferences-system-ultramarine",
+    "Name": "Tweaks"
+  },
+  "X-KDE-Keywords": "tweaks,ultramarine,um,kernel,nix,system,configuration",
+  "X-KDE-System-Settings-Parent-Category": "system-administration"
+}

@@ -1,10 +1,10 @@
 {
   "KPlugin": {
-    "Description": "Configure Ultramarine Updates",
+    "Description": "Check for and install system and app updates",
     "FormFactors": ["desktop", "tablet", "mediacenter"],
     "Icon": "system-software-update",
     "Name": "Updates"
   },
-  "X-XDE-Keywords": "update, updates, software",
+  "X-KDE-Keywords": "update,updates,upgrade,software,dnf,flatpak,packages",
   "X-KDE-System-Settings-Parent-Category": "system-administration"
 }

@@ -31,6 +31,15 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
 
 include(CTest)
 
+# Absolute path of the um CLI. umcli's polkit action (org.ultramarine.um.manage)
+# matches this exact path when um escalates through pkexec.
+set(UM_EXECUTABLE "/usr/bin/um" CACHE FILEPATH "Path to the um CLI")
+
+add_library(umcli_common INTERFACE)
+target_include_directories(umcli_common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_compile_definitions(umcli_common INTERFACE UM_EXECUTABLE="${UM_EXECUTABLE}")
+
+
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
 
