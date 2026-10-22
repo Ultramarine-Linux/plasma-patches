@@ -14,7 +14,7 @@ project(kcm_ultramarine)
 
 find_package(ECM ${KF6_MIN_VERSION} REQUIRED NO_MODULE)
 
-set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
+set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(KDEInstallDirs)
 include(KDECompilerSettings NO_POLICY_SCOPE)
@@ -23,10 +23,10 @@ include(KDECMakeSettings)
 find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core Quick Gui Qml Test)
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
-    Config
-    CoreAddons
-    KCMUtils
-    I18n
+        Config
+        CoreAddons
+        KCMUtils
+        I18n
 )
 
 include(CTest)
@@ -43,6 +43,6 @@ target_compile_definitions(umcli_common INTERFACE UM_EXECUTABLE="${UM_EXECUTABLE
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
 
-if(BUILD_TESTING)
+if (BUILD_TESTING)
     add_subdirectory(tests)
-endif()
+endif ()

@@ -5,14 +5,14 @@
 # Named kcm_ultramarine_* to avoid colliding with Discover's kcm_updates plugin.
 # kcmutils_add_qml_kcm installs the plugin into plasma/kcms/systemsettings.
 kcmutils_add_qml_kcm(kcm_ultramarine_tweaks
-    SOURCES
+        SOURCES
         tweaks.cpp
 )
 
 target_compile_definitions(kcm_ultramarine_tweaks PRIVATE TRANSLATION_DOMAIN="kcm_ultramarine_tweaks")
 
 target_link_libraries(kcm_ultramarine_tweaks
-    PRIVATE
+        PRIVATE
         umcli_common
         Qt6::Core
         Qt6::Gui

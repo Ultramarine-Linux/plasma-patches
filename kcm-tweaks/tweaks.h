@@ -7,7 +7,9 @@
 #include <KQuickManagedConfigModule>
 
 #include <QAbstractListModel>
+
 #include <QProcess>
+#include <cstdint>
 
 struct TweakItem {
     QString id;
@@ -31,7 +33,8 @@ class TweaksModel final : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Roles {
+    // Model roles start at Qt::UserRole (256), so 16 bits are enough.
+    enum Roles : std::uint16_t {
         IdRole = Qt::UserRole + 1,
         DescriptionRole,
         TypeRole,

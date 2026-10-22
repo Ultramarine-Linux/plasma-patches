@@ -7,9 +7,10 @@
 #include <KQuickManagedConfigModule>
 
 #include <QAbstractListModel>
+
 #include <QDateTime>
 #include <QProcess>
-#include <QStringList>
+#include <cstdint>
 
 #include <functional>
 
@@ -74,7 +75,8 @@ class UpdatesModel final : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Roles {
+    // Model roles start at Qt::UserRole (256), so 16 bits are enough.
+    enum Roles : std::uint16_t {
         NameRole = Qt::UserRole + 1,
         SourceRole,
         OldVersionRole,
@@ -264,7 +266,7 @@ private Q_SLOTS:
     void readProcessOutput();
 
 private:
-    enum class Operation {
+    enum class Operation : std::uint8_t {
         None,
         RefreshUm,
         ApplyUm,
@@ -298,7 +300,7 @@ private:
     /// Runs um with @p arguments and calls @p done when it exits (exit code -1
     /// if it couldn't start). um escalates through pkexec by itself if needed.
     void runUm(const QStringList &arguments,
-               std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> done);
+               const std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> &done);
 
     /// Shows @p message in the error banner.
     void setErrorMessage(const QString &message);

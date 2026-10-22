@@ -16,16 +16,18 @@ namespace {
     }
 } // namespace
 
-class TweaksTest : public QObject {
-    Q_OBJECT
+namespace {
+    class TweaksTest : public QObject {
+        Q_OBJECT
 
-private Q_SLOTS:
-    void parsesAndGroupsTweaks();
-    void rejectsInvalidOutput();
-    void modelExposesRoles();
-    void modelTracksBusyTweak();
-    void authenticationExitCodes();
-};
+    private Q_SLOTS:
+        static void parsesAndGroupsTweaks();
+        static void rejectsInvalidOutput();
+        static void modelExposesRoles();
+        static void modelTracksBusyTweak();
+        static void authenticationExitCodes();
+    };
+} // namespace
 
 void TweaksTest::parsesAndGroupsTweaks() {
     QList<TweakItem> tweaks;
@@ -51,7 +53,7 @@ void TweaksTest::parsesAndGroupsTweaks() {
 }
 
 void TweaksTest::rejectsInvalidOutput() {
-    QList<TweakItem> tweaks{tweakWithId(QStringLiteral("keep"))};
+    QList tweaks{tweakWithId(QStringLiteral("keep"))};
     QVERIFY(!parseTweaksOutput(QStringLiteral("- ID: nix"), &tweaks));
     QVERIFY(!parseTweaksOutput(QStringLiteral(R"({"updates":[]})"), &tweaks));
     QCOMPARE(tweaks.size(), 1);
@@ -61,9 +63,13 @@ void TweaksTest::rejectsInvalidOutput() {
 
 void TweaksTest::modelExposesRoles() {
     TweaksModel model;
-    QSignalSpy countChanged(&model, &TweaksModel::countChanged);
-    model.setTweaks({{QStringLiteral("nix"), QStringLiteral("Install Nix"), QStringLiteral("toggle"),
-                      QStringLiteral("alpha"), QStringLiteral("careful"), true}});
+    const QSignalSpy countChanged(&model, &TweaksModel::countChanged);
+    model.setTweaks({{.id = QStringLiteral("nix"),
+                      .description = QStringLiteral("Install Nix"),
+                      .type = QStringLiteral("toggle"),
+                      .stability = QStringLiteral("alpha"),
+                      .warning = QStringLiteral("careful"),
+                      .enabled = true}});
 
     QCOMPARE(model.count(), 1);
     QCOMPARE(countChanged.count(), 1);

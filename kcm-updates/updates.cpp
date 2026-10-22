@@ -8,11 +8,9 @@
 
 #include <QCoreApplication>
 #include <QDebug>
-#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QStandardPaths>
 #include <QStringList>
 #include <QTime>
 
@@ -139,8 +137,8 @@ QString Updates::distributionVersion() {
     if (!osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};
     }
-    const QStringList entries = QString::fromUtf8(osRelease.readAll()).split(QLatin1Char('\n'));
-    for (const QString &entry: entries) {
+    for (const QStringList entries = QString::fromUtf8(osRelease.readAll()).split(QLatin1Char('\n'));
+         const QString &entry: entries) {
         if (entry.startsWith(QLatin1String("VERSION_ID="))) {
             return entry.sliced(11).remove(QLatin1Char('"'));
         }
@@ -156,7 +154,7 @@ QString Updates::technicalInformation() const { return m_technicalInformation; }
 
 bool Updates::automaticUpdates() const { return m_upgradeSettings.automatic; }
 
-void Updates::setAutomaticUpdates(bool automatic) {
+void Updates::setAutomaticUpdates(const bool automatic) {
     if (m_upgradeSettings.automatic == automatic) {
         return;
     }
@@ -167,7 +165,7 @@ void Updates::setAutomaticUpdates(bool automatic) {
 
 bool Updates::offlineUpdates() const { return m_upgradeSettings.offline; }
 
-void Updates::setOfflineUpdates(bool offline) {
+void Updates::setOfflineUpdates(const bool offline) {
     if (m_upgradeSettings.offline == offline) {
         return;
     }
@@ -190,7 +188,7 @@ void Updates::setInactiveMinutes(int minutes) {
 
 bool Updates::windowEnabled() const { return m_upgradeSettings.windowEnabled; }
 
-void Updates::setWindowEnabled(bool enabled) {
+void Updates::setWindowEnabled(const bool enabled) {
     if (m_upgradeSettings.windowEnabled == enabled) {
         return;
     }
@@ -227,24 +225,24 @@ bool Updates::scheduledTonight() const { return m_scheduledTonight; }
 
 QDateTime Updates::scheduledTime() const { return m_scheduledTime; }
 
-bool Updates::isSaveNeeded() const { return !(m_upgradeSettings == m_savedUpgradeSettings); }
+bool Updates::isSaveNeeded() const { return m_upgradeSettings != m_savedUpgradeSettings; }
 
 bool Updates::isDefaults() const { return m_upgradeSettings == UpgradeSettings{}; }
 
 void Updates::runUm(const QStringList &arguments,
-                    std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> done) {
+                    const std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> &done) {
     const QString um = UmCli::executable();
     if (um.isEmpty()) {
         done(-1, {}, {});
         return;
     }
     auto *process = new QProcess(this);
-    connect(process, &QProcess::finished, this, [process, done](int exitCode, QProcess::ExitStatus status) {
+    connect(process, &QProcess::finished, this, [process, done](const int exitCode, const QProcess::ExitStatus status) {
         done(status == QProcess::NormalExit ? exitCode : -1, process->readAllStandardOutput(),
              process->readAllStandardError());
         process->deleteLater();
     });
-    connect(process, &QProcess::errorOccurred, this, [process, done](QProcess::ProcessError error) {
+    connect(process, &QProcess::errorOccurred, this, [process, done](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             done(-1, {}, {});
             process->deleteLater();
@@ -255,7 +253,7 @@ void Updates::runUm(const QStringList &arguments,
 
 void Updates::load() {
     runUm({QStringLiteral("upgrade"), QStringLiteral("settings"), QStringLiteral("--json")},
-          [this](int exitCode, const QByteArray &out, const QByteArray &) {
+          [this](const int exitCode, const QByteArray &out, const QByteArray &) {
               UpgradeSettings loaded;
               if (exitCode != 0 || !parseUpgradeSettings(out, &loaded)) {
                   // Older um releases have no settings; keep the defaults.
@@ -271,19 +269,20 @@ void Updates::load() {
 
 void Updates::save() {
     const UpgradeSettings wanted = m_upgradeSettings;
-    runUm(upgradeSettingsArguments(wanted), [this, wanted](int exitCode, const QByteArray &, const QByteArray &err) {
-        if (exitCode == 0) {
-            m_savedUpgradeSettings = wanted;
-        } else if (UmCli::isAuthenticationFailure(exitCode)) {
-            setErrorMessage(tr("Authentication was cancelled or failed. The settings were not saved."));
-        } else {
-            const QString detail = QString::fromUtf8(err).trimmed();
-            setErrorMessage(detail.isEmpty() ? tr("The settings could not be saved.")
-                                             : tr("The settings could not be saved: %1").arg(detail));
-        }
-        // Keeps Apply enabled if saving failed.
-        settingsChanged();
-    });
+    runUm(upgradeSettingsArguments(wanted),
+          [this, wanted](const int exitCode, const QByteArray &, const QByteArray &err) {
+              if (exitCode == 0) {
+                  m_savedUpgradeSettings = wanted;
+              } else if (UmCli::isAuthenticationFailure(exitCode)) {
+                  setErrorMessage(tr("Authentication was cancelled or failed. The settings were not saved."));
+              } else {
+                  const QString detail = QString::fromUtf8(err).trimmed();
+                  setErrorMessage(detail.isEmpty() ? tr("The settings could not be saved.")
+                                                   : tr("The settings could not be saved: %1").arg(detail));
+              }
+              // Keeps Apply enabled if saving failed.
+              settingsChanged();
+          });
 }
 
 void Updates::setErrorMessage(const QString &message) {
@@ -302,7 +301,7 @@ void Updates::defaults() {
 
 void Updates::refreshSchedule() {
     runUm({QStringLiteral("upgrade"), QStringLiteral("schedule"), QStringLiteral("--status"), QStringLiteral("--json")},
-          [this](int exitCode, const QByteArray &out, const QByteArray &) {
+          [this](const int exitCode, const QByteArray &out, const QByteArray &) {
               bool scheduled = false;
               qint64 next = 0;
               if (exitCode == 0) {
@@ -316,7 +315,7 @@ void Updates::refreshSchedule() {
 
 void Updates::applyTonight() {
     runUm({QStringLiteral("upgrade"), QStringLiteral("schedule")},
-          [this](int exitCode, const QByteArray &, const QByteArray &err) {
+          [this](const int exitCode, const QByteArray &, const QByteArray &err) {
               if (UmCli::isAuthenticationFailure(exitCode)) {
                   setErrorMessage(tr("Authentication was cancelled or failed. Updates were not scheduled."));
               } else if (exitCode != 0) {
@@ -330,7 +329,7 @@ void Updates::applyTonight() {
 
 void Updates::cancelTonight() {
     runUm({QStringLiteral("upgrade"), QStringLiteral("schedule"), QStringLiteral("--cancel")},
-          [this](int exitCode, const QByteArray &, const QByteArray &) {
+          [this](const int exitCode, const QByteArray &, const QByteArray &) {
               if (UmCli::isAuthenticationFailure(exitCode)) {
                   setErrorMessage(tr("Authentication was cancelled or failed. Tonight's updates are still scheduled."));
               }
@@ -399,7 +398,7 @@ void Updates::cancel() {
     finishOperation(false, tr("Operation canceled."));
 }
 
-void Updates::startProcess(const QString &program, const QStringList &arguments, Operation operation) {
+void Updates::startProcess(const QString &program, const QStringList &arguments, const Operation operation) {
     m_operation = operation;
     m_lastProcessOutput.clear();
     m_refreshStdout.clear();
@@ -408,7 +407,7 @@ void Updates::startProcess(const QString &program, const QStringList &arguments,
     m_process.start();
 }
 
-void Updates::processFinished(int exitCode, QProcess::ExitStatus exitStatus) {
+void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
     readProcessOutput();
     const Operation operation = m_operation;
     m_operation = Operation::None;
@@ -452,7 +451,7 @@ void Updates::processFinished(int exitCode, QProcess::ExitStatus exitStatus) {
     }
 }
 
-void Updates::processError(QProcess::ProcessError error) {
+void Updates::processError(const QProcess::ProcessError error) {
     if (error == QProcess::FailedToStart) {
         m_operation = Operation::None;
         finishOperation(false, tr("Could not start um."));
@@ -488,8 +487,8 @@ void Updates::readProcessOutput() {
 void Updates::parseUm(const QString &output) {
     QString technical;
     QStringList errors;
-    const QList<UpdateItem> parsedUpdates = parseUmOutput(output, &technical, &errors);
-    for (const UpdateItem &item: parsedUpdates) {
+    for (const QList<UpdateItem> parsedUpdates = parseUmOutput(output, &technical, &errors);
+         const UpdateItem &item: parsedUpdates) {
         m_updates.addUpdate(item);
     }
     setTechnicalInformation(technical);
@@ -507,8 +506,8 @@ QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInforma
     }
 
     QList<UpdateItem> result;
-    const QJsonArray updates = document.object().value(QStringLiteral("updates")).toArray();
-    for (const QJsonValue &value: updates) {
+    for (const QJsonArray updates = document.object().value(QStringLiteral("updates")).toArray();
+         const auto &value: updates) {
         const QJsonObject object = value.toObject();
         UpdateItem item;
         item.name = object.value(QStringLiteral("name")).toString();
@@ -539,8 +538,7 @@ QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInforma
         }
         return 1;
     };
-    std::stable_sort(result.begin(), result.end(),
-                     [&rank](const UpdateItem &a, const UpdateItem &b) { return rank(a) < rank(b); });
+    std::ranges::stable_sort(result, [&rank](const UpdateItem &a, const UpdateItem &b) { return rank(a) < rank(b); });
 
     QString technical;
     for (const UpdateItem &item: std::as_const(result)) {
@@ -553,8 +551,8 @@ QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInforma
     }
     if (errors) {
         errors->clear();
-        const QJsonArray errorList = document.object().value(QStringLiteral("errors")).toArray();
-        for (const QJsonValue &value: errorList) {
+        for (const QJsonArray errorList = document.object().value(QStringLiteral("errors")).toArray();
+             const auto &value: errorList) {
             if (const QString error = value.toString(); !error.isEmpty()) {
                 errors->append(error);
             }
@@ -575,8 +573,9 @@ bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
     parsed.inactiveMinutes = object.value(QStringLiteral("inactive_minutes")).toInt(parsed.inactiveMinutes);
     const QTime start =
         QTime::fromString(object.value(QStringLiteral("window_start")).toString(), QStringLiteral("HH:mm"));
-    const QTime end = QTime::fromString(object.value(QStringLiteral("window_end")).toString(), QStringLiteral("HH:mm"));
-    if (start.isValid() && end.isValid()) {
+    if (const QTime end =
+            QTime::fromString(object.value(QStringLiteral("window_end")).toString(), QStringLiteral("HH:mm"));
+        start.isValid() && end.isValid()) {
         parsed.windowEnabled = true;
         parsed.windowStart = start.msecsSinceStartOfDay() / 60000;
         parsed.windowEnd = end.msecsSinceStartOfDay() / 60000;
@@ -588,8 +587,8 @@ bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
 }
 
 QStringList upgradeSettingsArguments(const UpgradeSettings &settings) {
-    const auto boolValue = [](bool value) { return value ? QStringLiteral("true") : QStringLiteral("false"); };
-    const auto clock = [](int minutes) {
+    const auto boolValue = [](const bool value) { return value ? QStringLiteral("true") : QStringLiteral("false"); };
+    const auto clock = [](const int minutes) {
         return QStringLiteral("%1:%2")
             .arg(minutes / 60, 2, 10, QLatin1Char('0'))
             .arg(minutes % 60, 2, 10, QLatin1Char('0'));
@@ -634,7 +633,7 @@ QString updateSourceLabel(const UpdateItem &item) {
     return item.source;
 }
 
-void Updates::finishOperation(bool success, const QString &message) {
+void Updates::finishOperation(const bool success, const QString &message) {
     if (!success) {
         if (m_errorMessage != message) {
             m_errorMessage = message;

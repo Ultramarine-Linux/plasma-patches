@@ -26,7 +26,7 @@ namespace UmCli {
      * polkit action shipped with umcli (which matches on exact path) applies.
      */
     inline QString executable() {
-        const QString configured = QStringLiteral(UM_EXECUTABLE);
+        QString configured = QStringLiteral(UM_EXECUTABLE);
         if (QFileInfo(configured).isExecutable()) {
             return configured;
         }

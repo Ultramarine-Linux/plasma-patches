@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 #include <KLocalizedString>
-#include <KPluginFactory>
 
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 
 #include <algorithm>
+#include <ranges>
 
 #include "tweaks.h"
 #include "umcli.h"
@@ -45,7 +45,7 @@ bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
     }
 
     QList<TweakItem> result;
-    for (const QJsonValue &value: list.toArray()) {
+    for (const QJsonArray array = list.toArray(); const auto &value: array) {
         const QJsonObject object = value.toObject();
         TweakItem item;
         item.id = object.value(QStringLiteral("id")).toString();
@@ -63,10 +63,9 @@ bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
         result.append(item);
     }
 
-    std::stable_sort(result.begin(), result.end(), [](const TweakItem &a, const TweakItem &b) {
+    std::ranges::stable_sort(result, [](const TweakItem &a, const TweakItem &b) {
         const int aOrder = typeOrder(a.type);
-        const int bOrder = typeOrder(b.type);
-        if (aOrder != bOrder) {
+        if (const int bOrder = typeOrder(b.type); aOrder != bOrder) {
             return aOrder < bOrder;
         }
         return a.description.localeAwareCompare(b.description) < 0;
@@ -84,28 +83,28 @@ int TweaksModel::rowCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : static_cast<int>(m_tweaks.size());
 }
 
-QVariant TweaksModel::data(const QModelIndex &index, int role) const {
+QVariant TweaksModel::data(const QModelIndex &index, const int role) const {
     if (!checkIndex(index, CheckIndexOption::IndexIsValid | CheckIndexOption::ParentIsInvalid)) {
         return {};
     }
 
-    const TweakItem &item = m_tweaks.at(index.row());
+    const auto &[id, description, type, stability, warning, enabled] = m_tweaks.at(index.row());
     switch (role) {
     case IdRole:
-        return item.id;
+        return id;
     case DescriptionRole:
     case Qt::DisplayRole:
-        return item.description;
+        return description;
     case TypeRole:
-        return item.type;
+        return type;
     case StabilityRole:
-        return item.stability;
+        return stability;
     case WarningRole:
-        return item.warning;
+        return warning;
     case EnabledRole:
-        return item.enabled;
+        return enabled;
     case BusyRole:
-        return !m_busyId.isEmpty() && item.id == m_busyId;
+        return !m_busyId.isEmpty() && id == m_busyId;
     default:
         return {};
     }
@@ -131,8 +130,7 @@ void TweaksModel::setTweaks(QList<TweakItem> tweaks) {
 }
 
 const TweakItem *TweaksModel::find(const QString &id) const {
-    const auto it =
-        std::find_if(m_tweaks.cbegin(), m_tweaks.cend(), [&id](const TweakItem &item) { return item.id == id; });
+    const auto it = std::ranges::find_if(m_tweaks, [&id](const TweakItem &item) { return item.id == id; });
     return it == m_tweaks.cend() ? nullptr : &*it;
 }
 
@@ -152,7 +150,7 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
     setButtons(NoAdditionalButton);
 
     connect(&m_listProcess, &QProcess::finished, this, &Tweaks::listFinished);
-    connect(&m_listProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+    connect(&m_listProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             setLoading(false);
             setErrorMessage(i18n("Could not start um."));
@@ -162,7 +160,7 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
     m_changeProcess.setProcessChannelMode(QProcess::MergedChannels);
     connect(&m_changeProcess, &QProcess::finished, this, &Tweaks::changeFinished);
     connect(&m_changeProcess, &QProcess::readyReadStandardOutput, this, &Tweaks::readChangeOutput);
-    connect(&m_changeProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+    connect(&m_changeProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             m_tweaks.setBusyId({});
             setRunning(false);
@@ -199,7 +197,7 @@ void Tweaks::refresh() {
     m_listProcess.start(um, {QStringLiteral("tweaks"), QStringLiteral("list"), QStringLiteral("--json")});
 }
 
-void Tweaks::setTweakEnabled(const QString &id, bool enabled) {
+void Tweaks::setTweakEnabled(const QString &id, const bool enabled) {
     const TweakItem *tweak = m_tweaks.find(id);
     if (!tweak) {
         return;
@@ -257,7 +255,7 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     m_changeProcess.start(um, umArguments);
 }
 
-void Tweaks::listFinished(int exitCode, QProcess::ExitStatus exitStatus) {
+void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
     setLoading(false);
     const QString stdOut = QString::fromUtf8(m_listProcess.readAllStandardOutput());
     const QString stdErr = QString::fromUtf8(m_listProcess.readAllStandardError()).trimmed();
@@ -276,7 +274,7 @@ void Tweaks::listFinished(int exitCode, QProcess::ExitStatus exitStatus) {
     m_tweaks.setTweaks(std::move(items));
 }
 
-void Tweaks::changeFinished(int exitCode, QProcess::ExitStatus exitStatus) {
+void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
     readChangeOutput();
     m_tweaks.setBusyId({});
     setRunning(false);
@@ -302,10 +300,11 @@ void Tweaks::readChangeOutput() {
     m_output += text;
     Q_EMIT outputChanged();
 
-    const QStringList lines = text.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    for (auto it = lines.crbegin(); it != lines.crend(); ++it) {
+    // The status shows the last meaningful line.
+    for (const QStringList lines = text.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+         const QString &rawLine: lines | std::views::reverse) {
         // Ansible pads headers like "TASK [name] ****" with asterisks; drop the padding.
-        QString line = it->trimmed();
+        QString line = rawLine.trimmed();
         while (line.endsWith(QLatin1Char('*'))) {
             line.chop(1);
         }
@@ -319,7 +318,7 @@ void Tweaks::readChangeOutput() {
     }
 }
 
-void Tweaks::setLoading(bool loading) {
+void Tweaks::setLoading(const bool loading) {
     if (m_loading == loading) {
         return;
     }
@@ -327,7 +326,7 @@ void Tweaks::setLoading(bool loading) {
     Q_EMIT loadingChanged();
 }
 
-void Tweaks::setRunning(bool running) {
+void Tweaks::setRunning(const bool running) {
     if (m_running == running) {
         return;
     }

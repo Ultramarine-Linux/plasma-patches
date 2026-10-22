@@ -7,23 +7,25 @@
 
 #include "updates.h"
 
-class UpdatesTest : public QObject {
-    Q_OBJECT
+namespace {
+    class UpdatesTest : public QObject {
+        Q_OBJECT
 
-private Q_SLOTS:
-    void modelExposesUpdateRoles();
-    void modelClearOnlyNotifiesWhenNeeded();
-    void parsesUmOutput();
-    void rejectsInvalidUmOutput();
-    void parsesUmErrors();
-    void listsAppsFirst();
-    void parsesUpgradeSettings();
-    void parsesScheduleStatus();
-};
+    private Q_SLOTS:
+        static void modelExposesUpdateRoles();
+        static void modelClearOnlyNotifiesWhenNeeded();
+        static void parsesUmOutput();
+        static void rejectsInvalidUmOutput();
+        static void parsesUmErrors();
+        static void listsAppsFirst();
+        static void parsesUpgradeSettings();
+        static void parsesScheduleStatus();
+    };
+} // namespace
 
 void UpdatesTest::modelExposesUpdateRoles() {
     UpdatesModel model;
-    QSignalSpy countChanged(&model, &UpdatesModel::countChanged);
+    const QSignalSpy countChanged(&model, &UpdatesModel::countChanged);
 
     UpdateItem item;
     item.name = QStringLiteral("firefox");
@@ -53,7 +55,7 @@ void UpdatesTest::modelExposesUpdateRoles() {
 
 void UpdatesTest::modelClearOnlyNotifiesWhenNeeded() {
     UpdatesModel model;
-    QSignalSpy countChanged(&model, &UpdatesModel::countChanged);
+    const QSignalSpy countChanged(&model, &UpdatesModel::countChanged);
 
     model.clear();
     QCOMPARE(countChanged.count(), 0);
@@ -77,7 +79,7 @@ void UpdatesTest::parsesUmOutput() {
 }
 
 void UpdatesTest::rejectsInvalidUmOutput() {
-    QString technical = QStringLiteral("unchanged");
+    auto technical = QStringLiteral("unchanged");
     QVERIFY(parseUmOutput(QStringLiteral("not json"), &technical).isEmpty());
     QCOMPARE(technical, QStringLiteral("unchanged"));
 }
