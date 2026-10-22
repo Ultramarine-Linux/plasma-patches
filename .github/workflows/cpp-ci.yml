@@ -27,12 +27,14 @@ name: Plasma KCM CI
 permissions:
   contents: read
   security-events: write
+  actions: read
 
 jobs:
   ci:
     permissions:
       contents: read
       security-events: write
+      actions: read
     uses: FyraLabs/actions/.github/workflows/cpp.yml@main
     with:
       configure-command: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-Werror
