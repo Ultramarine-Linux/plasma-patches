@@ -20,7 +20,7 @@ include(KDEInstallDirs)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(KDECMakeSettings)
 
-find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core Quick Gui Qml)
+find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core Quick Gui Qml Test)
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
     Config
@@ -29,5 +29,11 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
     I18n
 )
 
+include(CTest)
+
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

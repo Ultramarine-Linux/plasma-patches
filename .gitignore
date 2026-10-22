@@ -43,8 +43,7 @@
 build/
 Build/
 build-*/
-buildDir/
-meson-build/
+
 
 # CMake generated files
 CMakeFiles/

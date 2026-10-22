@@ -36,44 +36,29 @@ to install for all users:
 sudo cmake --install build
 ```
 
-## Build with Meson
+## Build with just
 
-meson better than cmake
-
-install Meson and Ninja:
+a `justfile` wraps the CMake commands. install [just](https://github.com/casey/just):
 
 ```bash
-sudo dnf install meson ninja-build
+sudo dnf install just
 ```
 
-configure and build from the repository root:
+then:
 
 ```bash
-meson setup meson-build --buildtype=debugoptimized
-meson compile -C meson-build
+just              # configure (if needed) and build
+just test         # build and run tests
+sudo just install # install system-wide
+just install-user # build and install into ~/.local
+just clean        # remove build directories
 ```
 
-the CMake backend build type can also be selected explicitly:
+override variables on the command line, e.g. a release build:
 
 ```bash
-meson setup meson-build --wipe -Dcmake_build_type=Release
-meson compile -C meson-build
-```
-
-install the resulting KCMs:
-
-```bash
-sudo meson install -C meson-build
-```
-
-for a user-local install, configure a prefix before compiling:
-
-```bash
-meson setup meson-build-user \
-    --prefix="$HOME/.local" \
-    --buildtype=debugoptimized
-meson compile -C meson-build-user
-meson install -C meson-build-user
+just build_type=Release configure
+just build
 ```
 
 to install to a user-local prefix instead:
@@ -92,25 +77,15 @@ restart KDE Settings, or log out and back in if the modules do not appear immedi
 
 zed uses raw clangd and needs cmake compile commands. running these should fix it if you have any weird issues with headers not being found.
 
-configure with Meson:
+`just configure` generates the database and symlinks it to the repo root automatically.
 
-```bash
-meson setup meson-build --buildtype=debugoptimized
-```
-
-configure with CMake:
+or configure with CMake directly:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
 
-for Meson, the database is inside the CMake backend directory. use the generated path shown by:
-
-```bash
-find meson-build -name compile_commands.json -print
-```
-
-for a direct CMake build:
+then link the database:
 
 ```bash
 ln -sf build/compile_commands.json compile_commands.json

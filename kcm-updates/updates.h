@@ -18,6 +18,9 @@ struct UpdateItem {
     QString icon;
 };
 
+/// Parses the JSON update listing emitted by um.
+QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInformation = nullptr);
+
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int count READ count NOTIFY countChanged)
@@ -90,7 +93,7 @@ public:
     [[nodiscard]] QString errorMessage() const;
 
     /// Returns the Fedora release version.
-    static [[nodiscard]] QString distributionVersion() ;
+    [[nodiscard]] static QString distributionVersion();
 
     /// Returns the number of available updates.
     [[nodiscard]] int updateCount() const;

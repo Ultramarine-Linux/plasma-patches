@@ -6,6 +6,7 @@
 #include <KPluginFactory>
 #include <KSharedConfig>
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
 #include <QJsonArray>
@@ -264,23 +265,39 @@ void Updates::readProcessOutput() {
 }
 
 void Updates::parseUm(const QString &output) {
+    QString technical;
+    const QList<UpdateItem> parsedUpdates = parseUmOutput(output, &technical);
+    for (const UpdateItem &item : parsedUpdates) {
+        m_updates.addUpdate(item);
+    }
+    setTechnicalInformation(technical);
+}
+
+QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInformation) {
     const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8());
     if (!document.isObject()) {
-        return;
+        return {};
     }
+
+    QList<UpdateItem> result;
     QString technical;
     const QJsonArray updates = document.object().value(QStringLiteral("updates")).toArray();
-    for (const QJsonValue &value: updates) {
+    for (const QJsonValue &value : updates) {
         const QJsonObject item = value.toObject();
         const QString name = item.value(QStringLiteral("name")).toString();
         const QString source = item.value(QStringLiteral("source")).toString();
         const QString oldVersion = item.value(QStringLiteral("old_version")).toString();
         const QString newVersion = item.value(QStringLiteral("new_version")).toString();
         const QString icon = item.value(QStringLiteral("icon")).toString(QStringLiteral("package-x-generic"));
-        m_updates.addUpdate({name, source, oldVersion, newVersion, icon});
-        technical += tr("%1: %2 → %3 (%4)\n").arg(name, oldVersion, newVersion, source);
+        result.append({name, source, oldVersion, newVersion, icon});
+        technical += QCoreApplication::translate("Updates", "%1: %2 → %3 (%4)\n")
+                         .arg(name, oldVersion, newVersion, source);
     }
-    setTechnicalInformation(technical);
+
+    if (technicalInformation) {
+        *technicalInformation = technical;
+    }
+    return result;
 }
 
 void Updates::finishOperation(bool success, const QString &message) {
