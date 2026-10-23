@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 
+#include <KLocalizedString>
 #include <KPluginFactory>
 #include <algorithm>
 
-#include <QCoreApplication>
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -274,11 +274,11 @@ void Updates::save() {
               if (exitCode == 0) {
                   m_savedUpgradeSettings = wanted;
               } else if (UmCli::isAuthenticationFailure(exitCode)) {
-                  setErrorMessage(tr("Authentication was cancelled or failed. The settings were not saved."));
+                  setErrorMessage(i18n("Authentication was cancelled or failed. The settings were not saved."));
               } else {
                   const QString detail = QString::fromUtf8(err).trimmed();
-                  setErrorMessage(detail.isEmpty() ? tr("The settings could not be saved.")
-                                                   : tr("The settings could not be saved: %1").arg(detail));
+                  setErrorMessage(detail.isEmpty() ? i18n("The settings could not be saved.")
+                                                   : i18n("The settings could not be saved: %1").arg(detail));
               }
               // Keeps Apply enabled if saving failed.
               settingsChanged();
@@ -317,11 +317,11 @@ void Updates::applyTonight() {
     runUm({QStringLiteral("upgrade"), QStringLiteral("schedule")},
           [this](const int exitCode, const QByteArray &, const QByteArray &err) {
               if (UmCli::isAuthenticationFailure(exitCode)) {
-                  setErrorMessage(tr("Authentication was cancelled or failed. Updates were not scheduled."));
+                  setErrorMessage(i18n("Authentication was cancelled or failed. Updates were not scheduled."));
               } else if (exitCode != 0) {
                   const QString detail = QString::fromUtf8(err).trimmed();
-                  setErrorMessage(detail.isEmpty() ? tr("Updates could not be scheduled.")
-                                                   : tr("Updates could not be scheduled: %1").arg(detail));
+                  setErrorMessage(detail.isEmpty() ? i18n("Updates could not be scheduled.")
+                                                   : i18n("Updates could not be scheduled: %1").arg(detail));
               }
               refreshSchedule();
           });
@@ -331,7 +331,8 @@ void Updates::cancelTonight() {
     runUm({QStringLiteral("upgrade"), QStringLiteral("schedule"), QStringLiteral("--cancel")},
           [this](const int exitCode, const QByteArray &, const QByteArray &) {
               if (UmCli::isAuthenticationFailure(exitCode)) {
-                  setErrorMessage(tr("Authentication was cancelled or failed. Tonight's updates are still scheduled."));
+                  setErrorMessage(
+                      i18n("Authentication was cancelled or failed. Tonight's updates are still scheduled."));
               }
               refreshSchedule();
           });
@@ -352,11 +353,11 @@ void Updates::refresh() {
         m_errorMessage.clear();
         Q_EMIT errorMessageChanged();
     }
-    setStatus(tr("Checking for updates…"));
+    setStatus(i18n("Checking for updates…"));
 
     const QString um = UmCli::executable();
     if (um.isEmpty()) {
-        setStatus(tr("um is not installed."));
+        setStatus(i18n("um is not installed."));
         return;
     }
 
@@ -377,11 +378,11 @@ void Updates::applyUpdates() {
         m_errorMessage.clear();
         Q_EMIT errorMessageChanged();
     }
-    setStatus(tr("Applying updates…"));
+    setStatus(i18n("Applying updates…"));
 
     const QString um = UmCli::executable();
     if (um.isEmpty()) {
-        finishOperation(false, tr("um is not installed."));
+        finishOperation(false, i18n("um is not installed."));
         return;
     }
     // um updates user-installation Flatpaks as us, then escalates through pkexec.
@@ -395,7 +396,7 @@ void Updates::cancel() {
     }
     m_process.kill();
     m_operation = Operation::None;
-    finishOperation(false, tr("Operation canceled."));
+    finishOperation(false, i18n("Operation canceled."));
 }
 
 void Updates::startProcess(const QString &program, const QStringList &arguments, const Operation operation) {
@@ -415,18 +416,19 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
 
     if (!success && operation == Operation::ApplyUm && exitStatus == QProcess::NormalExit &&
         UmCli::isAuthenticationFailure(exitCode)) {
-        finishOperation(false, tr("Authentication was cancelled or failed. No updates were installed."));
+        finishOperation(false, i18n("Authentication was cancelled or failed. No updates were installed."));
         return;
     }
 
     if (!success) {
-        const QString backend = tr("um");
+        const QString backend = QStringLiteral("um");
         const bool isNoUpdateMessage = m_lastProcessOutput.contains(QLatin1String("no updates"), Qt::CaseInsensitive) ||
             m_lastProcessOutput.contains(QLatin1String("nothing to update"), Qt::CaseInsensitive);
-        const QString detail =
-            m_lastProcessOutput.isEmpty() || isNoUpdateMessage ? QString() : tr(" %1").arg(m_lastProcessOutput);
+        const QString detail = m_lastProcessOutput.isEmpty() || isNoUpdateMessage
+            ? QString()
+            : QStringLiteral(" %1").arg(m_lastProcessOutput);
         finishOperation(false,
-                        tr("%1 update operation failed (exit code %2).%3").arg(backend).arg(exitCode).arg(detail));
+                        i18n("%1 update operation failed (exit code %2).%3").arg(backend).arg(exitCode).arg(detail));
         return;
     }
 
@@ -439,10 +441,10 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
     case Operation::RefreshUm:
         m_updates.clear();
         parseUm(QString::fromUtf8(m_refreshStdout));
-        finishOperation(true, tr("%n update(s) available.", nullptr, updateCount()));
+        finishOperation(true, i18np("%1 update available.", "%1 updates available.", updateCount()));
         break;
     case Operation::ApplyUm:
-        finishOperation(true, tr("Updates installed."));
+        finishOperation(true, i18n("Updates installed."));
         // Re-check so the page reflects what is still pending.
         refresh();
         break;
@@ -454,7 +456,7 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
 void Updates::processError(const QProcess::ProcessError error) {
     if (error == QProcess::FailedToStart) {
         m_operation = Operation::None;
-        finishOperation(false, tr("Could not start um."));
+        finishOperation(false, i18n("Could not start um."));
     }
 }
 
@@ -494,7 +496,7 @@ void Updates::parseUm(const QString &output) {
     setTechnicalInformation(technical);
     if (!errors.isEmpty()) {
         // um still lists updates from the sources that worked.
-        m_errorMessage = tr("Could not check for updates from: %1").arg(errors.join(QStringLiteral(", ")));
+        m_errorMessage = i18n("Could not check for updates from: %1").arg(errors.join(QStringLiteral(", ")));
         Q_EMIT errorMessageChanged();
     }
 }
@@ -542,8 +544,7 @@ QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInforma
 
     QString technical;
     for (const UpdateItem &item: std::as_const(result)) {
-        technical += QCoreApplication::translate("Updates", "%1: %2 → %3 (%4)\n")
-                         .arg(item.name, item.oldVersion, item.newVersion, item.source);
+        technical += i18n("%1: %2 → %3 (%4)\n").arg(item.name, item.oldVersion, item.newVersion, item.source);
     }
 
     if (technicalInformation) {
@@ -622,13 +623,13 @@ bool parseScheduleStatus(const QByteArray &json, bool *scheduled, qint64 *next) 
 
 QString updateSourceLabel(const UpdateItem &item) {
     if (item.backend == QLatin1String("rpm")) {
-        return QCoreApplication::translate("Updates", "System");
+        return i18n("System");
     }
     if (item.backend == QLatin1String("flatpak")) {
-        return QCoreApplication::translate("Updates", "Flatpak");
+        return i18n("Flatpak");
     }
     if (item.backend == QLatin1String("nix")) {
-        return QCoreApplication::translate("Updates", "Nix");
+        return i18n("Nix");
     }
     return item.source;
 }

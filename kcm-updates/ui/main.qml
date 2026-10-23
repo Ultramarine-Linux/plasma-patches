@@ -14,6 +14,8 @@ import org.kde.kcmutils as KCMUtils
 KCMUtils.SimpleKCM {
     id: root
 
+    title: i18nc("@title", "Updates")
+
     // Number of updates listed under "Software to Be Updated".
     readonly property int shownUpdates: 5
     readonly property bool hasUpdates: kcm.updateCount > 0

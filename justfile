@@ -16,6 +16,19 @@ build:
     @[ -f {{ build_dir }}/CMakeCache.txt ] || just build_dir={{ build_dir }} build_type={{ build_type }} prefix={{ prefix }} configure
     cmake --build {{ build_dir }} --parallel
 
+# regenerate the gettext POT templates for Weblate (requires gettext-tools)
+translations:
+    ./Messages.sh
+
+# run cppcheck with the same checks as CI; suppress only false positives in generated Qt moc files
+cppcheck: build
+    cppcheck -j2 --project={{ build_dir }}/compile_commands.json \
+        --enable=warning,style,performance,portability \
+        --error-exitcode=1 \
+        --suppress=missingIncludeSystem \
+        --suppress='preprocessorErrorDirective:*_autogen*' \
+        --quiet
+
 # run the test suite
 test: build
     ctest --test-dir {{ build_dir }} --output-on-failure

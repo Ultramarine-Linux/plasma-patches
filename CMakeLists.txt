@@ -31,6 +31,14 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
 
 include(CTest)
 
+# Compile Weblate-maintained gettext catalogs (po/<locale>/<domain>.po).
+# Don't install an empty share/locale tree before translations exist; CONFIGURE_DEPENDS
+# re-runs CMake when Weblate adds the first PO catalog.
+file(GLOB_RECURSE KCM_TRANSLATION_CATALOGS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/po/*/*.po")
+if(KCM_TRANSLATION_CATALOGS)
+    ki18n_install(po)
+endif()
+
 # Absolute path of the um CLI. umcli's polkit action (org.ultramarine.um.manage)
 # matches this exact path when um escalates through pkexec.
 set(UM_EXECUTABLE "/usr/bin/um" CACHE FILEPATH "Path to the um CLI")

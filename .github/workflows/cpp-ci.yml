@@ -6,6 +6,8 @@ name: Plasma KCM CI
       - "kcm-tweaks/**"
       - "kcm-updates/**"
       - "common/**"
+      - "po/**"
+      - "Messages.sh"
       - "tests/**"
       - "CMakeLists.txt"
       - "justfile"
@@ -17,6 +19,8 @@ name: Plasma KCM CI
       - "kcm-tweaks/**"
       - "kcm-updates/**"
       - "common/**"
+      - "po/**"
+      - "Messages.sh"
       - "tests/**"
       - "CMakeLists.txt"
       - "justfile"
@@ -42,4 +46,4 @@ jobs:
       # Cppcheck treats CMake's generated Qt moc files as normal C++, which
       # emits false #error diagnostics from Qt's intentional QObject checks.
       cppcheck-extra-args: -j2 --suppress=preprocessorErrorDirective:*_autogen*
-      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel
+      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel gettext

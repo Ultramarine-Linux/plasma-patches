@@ -1,0 +1,361 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the kcm_ultramarine_updates package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: kcm_ultramarine_updates\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 15:08-0600\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: kcm-updates/ui/main.qml:300
+msgctxt "@info %1 source, %2 new version"
+msgid "%1 - %2"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:297
+msgctxt "@info %1 source, %2 old version, %3 new version"
+msgid "%1 - %2 → %3"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:57
+msgctxt "@info %1 is a size like 500 MB"
+msgid "%1 Download"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:62
+msgctxt "@info %1 is a size like 20 MB"
+msgid "%1 Freed"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:60
+msgctxt "@info %1 is a size like 20 MB"
+msgid "%1 Installed"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:43
+msgctxt "@item:valuesuffix"
+msgid "%1 minute"
+msgid_plural "%1 minutes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: kcm-updates/ui/main.qml:65
+msgctxt "@info"
+msgid "%1 update available"
+msgid_plural "%1 updates available"
+msgstr[0] ""
+msgstr[1] ""
+
+#: kcm-updates/updates.cpp:444
+msgid "%1 update available."
+msgid_plural "%1 updates available."
+msgstr[0] ""
+msgstr[1] ""
+
+#: kcm-updates/updates.cpp:431
+msgid "%1 update operation failed (exit code %2).%3"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:72
+msgctxt "@info %1 source, %2 version"
+msgid "%1 · %2"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:69
+msgctxt "@info %1 source, %2 old version, %3 new version"
+msgid "%1 · %2 → %3"
+msgstr ""
+
+#: kcm-updates/updates.cpp:547
+msgid "%1: %2 → %3 (%4)\n"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:406
+msgctxt "@action:button"
+msgid "Advanced Settings"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:16
+msgctxt "@title"
+msgid "Advanced Update Settings"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:400
+msgctxt "@label"
+msgid "Advanced update settings"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:103
+msgctxt "@info"
+msgid "Also used for Apply Tonight."
+msgstr ""
+
+#: kcm-updates/ui/main.qml:170
+msgctxt "@action:button install updates now"
+msgid "Apply"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:178
+msgctxt "@action:button install updates tonight"
+msgid "Apply Tonight"
+msgstr ""
+
+#: kcm-updates/updates.cpp:381
+msgid "Applying updates…"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:46
+msgctxt "@title:group"
+msgid "Apps"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:384
+msgctxt "@option:radio"
+msgid "Ask me"
+msgstr ""
+
+#: kcm-updates/updates.cpp:419
+msgid "Authentication was cancelled or failed. No updates were installed."
+msgstr ""
+
+#: kcm-updates/updates.cpp:277
+msgid "Authentication was cancelled or failed. The settings were not saved."
+msgstr ""
+
+#: kcm-updates/updates.cpp:335
+msgid ""
+"Authentication was cancelled or failed. Tonight's updates are still "
+"scheduled."
+msgstr ""
+
+#: kcm-updates/updates.cpp:320
+msgid "Authentication was cancelled or failed. Updates were not scheduled."
+msgstr ""
+
+#: kcm-updates/ui/main.qml:359
+msgctxt "@label"
+msgid "Automatic Updates"
+msgstr ""
+
+#: kcm-updates/updates.cpp:356
+msgid "Checking for updates…"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:22
+msgctxt "@action:button"
+msgid "Copy"
+msgstr ""
+
+#: kcm-updates/updates.cpp:499
+msgid "Could not check for updates from: %1"
+msgstr ""
+
+#: kcm-updates/updates.cpp:459
+msgid "Could not start um."
+msgstr ""
+
+#: kcm-updates/ui/main.qml:177
+msgctxt "@action:button"
+msgid "Don’t Apply Tonight"
+msgstr ""
+
+#: kcm-updates/updates.cpp:629
+msgid "Flatpak"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:75
+msgctxt "@label:listbox the start of a time range"
+msgid "From"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:36
+msgctxt "@label:spinbox"
+msgid "Install when unused for:"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:115
+msgctxt "@option:check"
+msgid "Install while restarting"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:53
+msgctxt "@info"
+msgid "Installing tonight when the device isn’t in use"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:369
+msgctxt "@option:radio"
+msgid "Let your device decide"
+msgstr ""
+
+#: kcm-updates/updates.cpp:632
+msgid "Nix"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:231
+msgctxt "@info"
+msgid "Nothing right now"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:158
+msgctxt "@info"
+msgid ""
+"Occasional updates for your system and apps to keep things running smoothly "
+"and secure."
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:65
+msgctxt "@option:check"
+msgid "Only during these hours"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:52
+msgctxt "@info"
+msgid "Only used when updates install automatically."
+msgstr ""
+
+#: kcm-updates/updates.cpp:399
+msgid "Operation canceled."
+msgstr ""
+
+#: kcm-updates/ui/main.qml:143
+msgctxt "@title"
+msgid "Regular Updates"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:47
+msgctxt "@title:group"
+msgid "Runtimes"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:199
+msgctxt "@title"
+msgid "Software to Be Updated"
+msgstr ""
+
+#: kcm-updates/updates.cpp:626
+msgid "System"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:48
+msgctxt "@title:group"
+msgid "System Packages"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:114
+msgctxt "@label"
+msgid "System updates:"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:331
+msgctxt "@action:button opens a list of all updates"
+msgid "Technical Information"
+msgstr ""
+
+#: kcm-updates/ui/TechnicalInformation.qml:19
+msgctxt "@title"
+msgid "Technical Information"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:51
+msgctxt "@info"
+msgid ""
+"The device counts as in use while anyone is logged in with their screen "
+"unlocked."
+msgstr ""
+
+#: kcm-updates/updates.cpp:280
+msgid "The settings could not be saved."
+msgstr ""
+
+#: kcm-updates/updates.cpp:281
+msgid "The settings could not be saved: %1"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:83
+msgctxt "@action:button"
+msgid "Try Again"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:64
+msgctxt "@label"
+msgid "Update times:"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:17
+msgctxt "@title"
+msgid "Updates"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:123
+msgctxt "@info"
+msgid ""
+"Updates are downloaded ahead of time and installed the next time you "
+"restart. Your device is never restarted for you."
+msgstr ""
+
+#: kcm-updates/ui/main.qml:377
+msgctxt "@info"
+msgid "Updates automatically install when you’re not active"
+msgstr ""
+
+#: kcm-updates/updates.cpp:323
+msgid "Updates could not be scheduled."
+msgstr ""
+
+#: kcm-updates/updates.cpp:324
+msgid "Updates could not be scheduled: %1"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:186
+msgctxt "@info:tooltip"
+msgid ""
+"Updates install tonight once the device hasn’t been used for a while and is "
+"plugged in"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:104
+msgctxt "@info"
+msgid ""
+"Updates install whenever the device isn’t in use. Apply Tonight installs "
+"between 10 PM and 6 AM."
+msgstr ""
+
+#: kcm-updates/updates.cpp:447
+msgid "Updates installed."
+msgstr ""
+
+#: kcm-updates/ui/main.qml:50
+msgctxt "@info"
+msgid "Your system is up to date"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:392
+msgctxt "@info"
+msgid "You’re notified when updates are ready to go"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:314
+msgctxt "@info %1 is a number of updates"
+msgid "and <b>%1</b> More"
+msgstr ""
+
+#: kcm-updates/ui/AdvancedSettings.qml:87
+msgctxt "@label:listbox the end of a time range"
+msgid "to"
+msgstr ""
+
+#: kcm-updates/updates.cpp:360 kcm-updates/updates.cpp:385
+msgid "um is not installed."
+msgstr ""

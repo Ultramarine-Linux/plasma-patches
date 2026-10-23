@@ -15,6 +15,8 @@ import org.kde.kcmutils as KCMUtils
 KCMUtils.ScrollViewKCM {
     id: root
 
+    title: i18nc("@title", "Tweaks")
+
     implicitWidth: Kirigami.Units.gridUnit * 38
     implicitHeight: Kirigami.Units.gridUnit * 30
 
