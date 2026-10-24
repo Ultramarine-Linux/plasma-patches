@@ -4,11 +4,6 @@
 
 #pragma once
 
-#include <QByteArray>
-#include <QHash>
-#include <QString>
-#include <QStringList>
-
 #include <functional>
 #include <optional>
 

@@ -59,7 +59,7 @@ namespace UltramarineUpdates {
 
         /// Records the current observation and returns how long the device has
         /// been inactive (0 if it's in use now).
-        std::chrono::seconds inactiveFor(bool inUse, const QDateTime &now) const;
+        [[nodiscard]] std::chrono::seconds inactiveFor(bool inUse, const QDateTime &now) const;
 
     private:
         QString m_path;

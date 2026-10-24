@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <QByteArray>
-#include <QList>
 #include <QProcessEnvironment>
 #include <QString>
 #include <QStringList>

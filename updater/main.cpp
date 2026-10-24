@@ -12,7 +12,6 @@
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QJsonDocument>
 #include <QSet>
 #include <QStandardPaths>
 

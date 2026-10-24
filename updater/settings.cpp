@@ -116,27 +116,27 @@ namespace UltramarineUpdates {
         const QJsonObject object = document.object();
         Settings parsed;
         const auto readBool = [&object, error](const QString &key, bool *value) {
-            const QJsonValue json = object.value(key);
-            if (json.isUndefined()) {
+            const QJsonValue json_value = object.value(key);
+            if (json_value.isUndefined()) {
                 return true;
             }
-            if (!json.isBool()) {
+            if (!json_value.isBool()) {
                 *error = u"%1 must be true or false"_s.arg(key);
                 return false;
             }
-            *value = json.toBool();
+            *value = json_value.toBool();
             return true;
         };
         const auto readString = [&object, error](const QString &key, QString *value) {
-            const QJsonValue json = object.value(key);
-            if (json.isUndefined()) {
+            const QJsonValue json_value = object.value(key);
+            if (json_value.isUndefined()) {
                 return true;
             }
-            if (!json.isString()) {
+            if (!json_value.isString()) {
                 *error = u"%1 must be a string"_s.arg(key);
                 return false;
             }
-            *value = json.toString();
+            *value = json_value.toString();
             return true;
         };
         if (!readBool(u"automatic"_s, &parsed.automatic) || !readBool(u"offline"_s, &parsed.offline) ||
@@ -155,7 +155,7 @@ namespace UltramarineUpdates {
             *error = invalid;
             return false;
         }
-        *settings = parsed;
+        *settings = std::move(parsed);
         return true;
     }
 

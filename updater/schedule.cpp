@@ -7,7 +7,6 @@
 #include <KLocalizedString>
 
 #include <QCoreApplication>
-#include <QProcess>
 #include <QStandardPaths>
 
 #include <cstdio>
@@ -25,15 +24,15 @@ using namespace std::chrono_literals;
 namespace UltramarineUpdates {
 
     namespace {
-        const QString tonightTimer = u"ultramarine-updates-tonight"_s;
-        const QString tonightUserTimer = u"ultramarine-updates-tonight-user"_s;
+        const auto tonightTimer = u"ultramarine-updates-tonight"_s;
+        const auto tonightUserTimer = u"ultramarine-updates-tonight-user"_s;
         // Without an update window, "tonight" means 22:00-06:00.
-        const QString tonightDefaultStart = u"22:00"_s;
-        const QString tonightDefaultEnd = u"06:00"_s;
+        const auto tonightDefaultStart = u"22:00"_s;
+        const auto tonightDefaultEnd = u"06:00"_s;
         // Tonight's timers check every 5 minutes, like the automatic ones, and stop
         // once the updates are installed. If the device is in use all night, they
         // try again the next night.
-        const QString pollCalendar = u"*:0/5"_s;
+        const auto pollCalendar = u"*:0/5"_s;
 
         /// How often updates install at most.
         constexpr std::chrono::seconds installInterval = 20h;
@@ -70,8 +69,7 @@ namespace UltramarineUpdates {
                          << u"--property=Nice=19"_s << u"--property=IOSchedulingClass=idle"_s << u"--"_s
                          << QCoreApplication::applicationFilePath();
             runArguments += arguments;
-            const CommandResult result = capture(u"systemd-run"_s, runArguments);
-            if (!result.succeeded()) {
+            if (const CommandResult result = capture(u"systemd-run"_s, runArguments); !result.succeeded()) {
                 *error = u"systemd-run failed: %1"_s.arg(QString::fromUtf8(result.out + result.err).trimmed());
                 return false;
             }

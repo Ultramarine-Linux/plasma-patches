@@ -33,8 +33,7 @@ namespace UltramarineUpdates {
         }
 
         QString osName() {
-            QFile osRelease(u"/etc/os-release"_s);
-            if (osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            if (QFile osRelease(u"/etc/os-release"_s); osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 for (const QStringList lines = QString::fromUtf8(osRelease.readAll()).split(u'\n');
                      const QString &line: lines) {
                     if (line.startsWith("NAME="_L1)) {

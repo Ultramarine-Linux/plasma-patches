@@ -39,13 +39,13 @@ install(TARGETS ultramarine-updates RUNTIME DESTINATION ${_helper_dir} ${_compon
 
 set(_data ${CMAKE_CURRENT_SOURCE_DIR}/data)
 set(_generated ${CMAKE_CURRENT_BINARY_DIR}/data)
-foreach(_file
+foreach (_file
         org.ultramarine.updates.policy
         ultramarine-updates-automatic.service
         ultramarine-updates-user.service
         ultramarine-updates-user.desktop)
     configure_file(${_data}/${_file}.in ${_generated}/${_file} @ONLY)
-endforeach()
+endforeach ()
 
 # polkit only reads actions from /usr/share/polkit-1/actions.
 install(FILES ${_generated}/org.ultramarine.updates.policy

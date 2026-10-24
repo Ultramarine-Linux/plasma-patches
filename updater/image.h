@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include <QByteArray>
-#include <QString>
-
 #include <optional>
 
 #include "updates.h"

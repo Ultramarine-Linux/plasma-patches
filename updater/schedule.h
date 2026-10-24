@@ -4,10 +4,6 @@
 
 #pragma once
 
-#include <QDateTime>
-#include <QJsonObject>
-#include <QString>
-
 #include <chrono>
 
 #include "settings.h"

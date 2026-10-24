@@ -34,21 +34,21 @@ namespace UltramarineUpdates {
 
     bool commandOutput(const QString &program, const QStringList &arguments, QString *output, QString *error,
                        const QList<int> &allowedExitCodes) {
-        const CommandResult result = capture(program, arguments);
-        if (!result.started) {
+        const auto [started, exitCode, out, err] = capture(program, arguments);
+        if (!started) {
             if (error) {
                 *error = u"%1 could not be started"_s.arg(program);
             }
             return false;
         }
-        if (result.exitCode != 0 && !allowedExitCodes.contains(result.exitCode)) {
+        if (exitCode != 0 && !allowedExitCodes.contains(exitCode)) {
             if (error) {
-                *error = u"%1 failed: %2"_s.arg(QFileInfo(program).fileName(), QString::fromUtf8(result.err).trimmed());
+                *error = u"%1 failed: %2"_s.arg(QFileInfo(program).fileName(), QString::fromUtf8(err).trimmed());
             }
             return false;
         }
         if (output) {
-            *output = QString::fromUtf8(result.out).trimmed();
+            *output = QString::fromUtf8(out).trimmed();
         }
         return true;
     }

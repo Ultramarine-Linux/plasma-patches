@@ -18,7 +18,7 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        const QString applicationsDir = u"/usr/share/applications"_s;
+        const auto applicationsDir = u"/usr/share/applications"_s;
 
         /// Where packages install AppStream metainfo. /usr/share/appdata is the legacy location.
         bool isMetainfoDir(const QString &dir) {
@@ -101,9 +101,9 @@ namespace UltramarineUpdates {
                 }
             } else if (element == "icon"_L1) {
                 const QString iconType = attributes.value("type"_L1).toString();
-                const QString value = xml.readElementText(QXmlStreamReader::SkipChildElements).trimmed();
                 // "cached" and "remote" icons refer to an AppStream catalog or a URL.
-                if (info.icon.isEmpty() && !value.isEmpty() &&
+                if (const QString value = xml.readElementText(QXmlStreamReader::SkipChildElements).trimmed();
+                    info.icon.isEmpty() && !value.isEmpty() &&
                     (iconType == "stock"_L1 || (iconType == "local"_L1 && QDir::isAbsolutePath(value)))) {
                     info.icon = value;
                 }
@@ -180,8 +180,7 @@ namespace UltramarineUpdates {
             }
             const QString nameArch = line.left(tab);
             const QString path = line.mid(tab + 1);
-            const QString dir = directoryOf(path);
-            if (dir == applicationsDir && path.endsWith(".desktop"_L1)) {
+            if (const QString dir = directoryOf(path); dir == applicationsDir && path.endsWith(".desktop"_L1)) {
                 files[nameArch].desktop.append(path);
             } else if (isMetainfoDir(dir) && path.endsWith(".xml"_L1)) {
                 files[nameArch].metainfo.append(path);

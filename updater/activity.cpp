@@ -130,8 +130,7 @@ namespace UltramarineUpdates {
             }
             return false;
         }
-        QFile file(path);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) ||
+        if (QFile file(path); !file.open(QIODevice::WriteOnly | QIODevice::Truncate) ||
             file.write(QByteArray::number(time.toSecsSinceEpoch()) + '\n') < 0) {
             if (error) {
                 *error = u"%1: %2"_s.arg(path, file.errorString());

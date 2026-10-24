@@ -134,15 +134,15 @@ namespace UltramarineUpdates {
         const QHash<QString, QString> installed = installedRpmVersions();
         QList<PackageUpdate> result;
         result.reserve(updates.size());
-        for (const RpmUpdate &update: updates) {
+        for (const auto &[nameArch, version, repo]: updates) {
             PackageUpdate packageUpdate;
-            packageUpdate.id = update.nameArch;
-            packageUpdate.name = rpmPackageName(update.nameArch);
-            packageUpdate.source = u"RPM (%1)"_s.arg(update.repo);
+            packageUpdate.id = nameArch;
+            packageUpdate.name = rpmPackageName(nameArch);
+            packageUpdate.source = u"RPM (%1)"_s.arg(repo);
             packageUpdate.backend = u"rpm"_s;
             packageUpdate.kind = QString::fromLatin1(Kind::Package);
-            packageUpdate.oldVersion = installed.value(update.nameArch);
-            packageUpdate.newVersion = update.version;
+            packageUpdate.oldVersion = installed.value(nameArch);
+            packageUpdate.newVersion = version;
             packageUpdate.icon = u"package-x-generic"_s;
             result.append(packageUpdate);
         }

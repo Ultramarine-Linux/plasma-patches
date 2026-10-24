@@ -7,7 +7,6 @@
 #include <QJsonObject>
 #include <QList>
 #include <QString>
-#include <QStringList>
 
 /**
  * Lists and installs updates for an Ultramarine system: RPM packages (dnf),

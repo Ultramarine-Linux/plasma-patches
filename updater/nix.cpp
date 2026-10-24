@@ -23,16 +23,16 @@ namespace UltramarineUpdates {
     namespace {
         /// Where the Determinate installer puts nix. It isn't always on PATH: GUI
         /// sessions may not source /etc/profile.d/nix.sh, and pkexec resets the environment.
-        const QString nixDefaultProfileBin = u"/nix/var/nix/profiles/default/bin/nix"_s;
+        const auto nixDefaultProfileBin = u"/nix/var/nix/profiles/default/bin/nix"_s;
         /// Where the Determinate installer puts determinate-nixd.
-        const QString determinateNixdPath = u"/usr/local/bin/determinate-nixd"_s;
+        const auto determinateNixdPath = u"/usr/local/bin/determinate-nixd"_s;
 
         /**
          * Evaluates the packages `nix profile upgrade` would install, without
          * building or changing anything. Elements are passed through the
          * environment so nothing has to be escaped into Nix syntax.
          */
-        const QString nixUpdatesExpr = uR"nix(
+        const auto nixUpdatesExpr = uR"nix(
 let
   elements = builtins.fromJSON (builtins.getEnv "ULTRAMARINE_UPDATES_NIX_ELEMENTS");
   # Missing attributes can't be caught with tryEval, so walk the path safely.
@@ -74,7 +74,7 @@ map resolve elements
         }
 
         bool sameStorePaths(const QStringList &a, const QStringList &b) {
-            return a.size() == b.size() && QSet<QString>(a.cbegin(), a.cend()) == QSet<QString>(b.cbegin(), b.cend());
+            return a.size() == b.size() && QSet(a.cbegin(), a.cend()) == QSet(b.cbegin(), b.cend());
         }
     } // namespace
 

@@ -4,11 +4,6 @@
 
 #pragma once
 
-#include <QHash>
-#include <QList>
-#include <QString>
-#include <QStringList>
-
 #include "rpm.h"
 #include "updates.h"
 
