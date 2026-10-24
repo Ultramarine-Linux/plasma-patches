@@ -56,9 +56,10 @@ just dev-updates-uninstall
 
 `dev-updates-install` installs only the `ultramarine-updates` CMake component:
 the helper, its polkit action, systemd units and autostart entry. The automatic
-update timer is enabled statically, so automatic updates are live once it's
-installed (with the default settings, they install when the device has been
-unused for 30 minutes). The page's Apply button actually installs updates. See
+update timer is not enabled; to try automatic updates, run
+`sudo systemctl enable --now ultramarine-updates-automatic.timer` (with the
+default settings, they install once the device has been unused for 30 minutes).
+The page's Apply button actually installs updates. See
 [Update helper](updates-backend.md) for behavior.
 
 ## Test with a development umcli

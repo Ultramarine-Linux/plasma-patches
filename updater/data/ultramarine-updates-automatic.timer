@@ -10,5 +10,7 @@ Documentation=https://github.com/Ultramarine-Linux/plasma-patches
 OnBootSec=5min
 OnUnitActiveSec=5min
 AccuracySec=1min
-# No [Install] section: the timer is pulled in statically by the
-# timers.target.wants/ symlink installed next to it, so no preset is needed.
+
+[Install]
+# Enabled by the distribution's systemd presets.
+WantedBy=timers.target

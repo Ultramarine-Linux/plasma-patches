@@ -50,8 +50,9 @@ clean:
 # --- testing the update helper ------------------------------------------------
 # The Updates KCM runs ultramarine-updates from its install path, and its polkit
 # action matches that exact path, so the helper must be installed system-wide.
-# The automatic update timer is enabled statically; the user timer starts with the
-# next graphical session (or: systemctl --user start ultramarine-updates-user.timer).
+# The automatic update timer isn't enabled (Ultramarine's presets do that for the RPM):
+# sudo systemctl enable --now ultramarine-updates-automatic.timer. The user timer starts
+# with the next graphical session (or: systemctl --user start ultramarine-updates-user.timer).
 
 # install just the update helper, its polkit action, systemd units and autostart entry (uses sudo)
 dev-updates-install: build
@@ -61,7 +62,8 @@ dev-updates-install: build
 
 # remove what dev-updates-install installed (keeps settings in /etc/ultramarine-updates)
 dev-updates-uninstall:
-    -sudo systemctl stop ultramarine-updates-automatic.timer ultramarine-updates-tonight.timer
+    -sudo systemctl disable --now ultramarine-updates-automatic.timer
+    -sudo systemctl stop ultramarine-updates-tonight.timer
     -systemctl --user stop ultramarine-updates-user.timer ultramarine-updates-tonight-user.timer
     [ -f {{ build_dir }}/install_manifest_ultramarine-updates.txt ] && \
         xargs -d '\n' sudo rm -fv < {{ build_dir }}/install_manifest_ultramarine-updates.txt

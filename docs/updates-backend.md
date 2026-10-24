@@ -67,7 +67,8 @@ Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
 { "automatic": true, "offline": false, "inactive_minutes": 30, "window_start": "", "window_end": "" }
 ```
 
-- `ultramarine-updates-automatic.timer` (system, enabled statically) runs
+- `ultramarine-updates-automatic.timer` (system, enabled by Ultramarine's systemd
+  presets) runs
   `run-scheduled` every 5 minutes. It installs system updates once no one has
   used the device for `inactive_minutes`, inside the optional window, on AC power,
   at most once every 20 hours.
@@ -92,7 +93,6 @@ device is never restarted automatically.
 /usr/libexec/ultramarine-updates
 /usr/share/polkit-1/actions/org.ultramarine.updates.policy
 /usr/lib/systemd/system/ultramarine-updates-automatic.{service,timer}
-/usr/lib/systemd/system/timers.target.wants/ultramarine-updates-automatic.timer
 /usr/lib/systemd/user/ultramarine-updates-user.{service,timer}
 /etc/xdg/autostart/ultramarine-updates-user.desktop
 ```

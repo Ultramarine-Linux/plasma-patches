@@ -51,13 +51,9 @@ endforeach ()
 install(FILES ${_generated}/org.ultramarine.updates.policy
         DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/actions ${_component})
 
+# The system timer has an [Install] section; Ultramarine's presets enable it.
 install(FILES ${_generated}/ultramarine-updates-automatic.service ${_data}/ultramarine-updates-automatic.timer
         DESTINATION ${SYSTEMD_SYSTEM_UNIT_DIR} ${_component})
-# Enable the system timer statically, like a package's timers.target.wants/ symlink.
-file(MAKE_DIRECTORY ${_generated}/timers.target.wants)
-file(CREATE_LINK ../ultramarine-updates-automatic.timer
-        ${_generated}/timers.target.wants/ultramarine-updates-automatic.timer SYMBOLIC)
-install(DIRECTORY ${_generated}/timers.target.wants DESTINATION ${SYSTEMD_SYSTEM_UNIT_DIR} ${_component})
 
 install(FILES ${_generated}/ultramarine-updates-user.service ${_data}/ultramarine-updates-user.timer
         DESTINATION ${SYSTEMD_USER_UNIT_DIR} ${_component})
