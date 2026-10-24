@@ -4,13 +4,11 @@
 
 
 #include <KLocalizedString>
-#include <KPluginFactory>
 #include <algorithm>
 
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QJsonObject>
 #include <QStringList>
 #include <QTime>
 
