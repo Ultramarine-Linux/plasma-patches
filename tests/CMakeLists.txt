@@ -7,7 +7,7 @@ function(add_kcm_test name source kcm_dir kcm_source)
     target_include_directories(${name} PRIVATE ../${kcm_dir})
     target_link_libraries(${name}
         PRIVATE
-            umcli_common
+            kcm_common
             Qt6::Core
             Qt6::Gui
             Qt6::Qml
@@ -23,3 +23,7 @@ endfunction()
 add_kcm_test(test_updates test_updates.cpp kcm-updates updates.cpp)
 
 add_kcm_test(test_tweaks test_tweaks.cpp kcm-tweaks tweaks.cpp)
+
+add_executable(test_updater test_updater.cpp)
+target_link_libraries(test_updater PRIVATE ultramarine_updates_core Qt6::Test)
+add_test(NAME test_updater COMMAND test_updater)

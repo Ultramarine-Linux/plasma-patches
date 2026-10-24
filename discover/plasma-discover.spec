@@ -24,7 +24,7 @@ Source0: https://download.kde.org/%{stable_kf6}/plasma/%{version}/%{base_name}-%
 Source1: https://download.kde.org/%{stable_kf6}/plasma/%{version}/%{base_name}-%{version}.tar.xz.sig
 
 ## downstream patches
-# Updates are handled by um and System Settings > Updates (kcm_ultramarine_updates).
+# Updates are handled by System Settings > Updates (kcm_ultramarine_updates).
 # Source: https://github.com/Ultramarine-Linux/plasma-patches/tree/main/discover
 Patch300: 0001-Remove-Discover-updates-UI-in-favor-of-um.patch
 
@@ -114,7 +114,7 @@ Obsoletes: plasma-discover-snap < %{version}-%{release}
 %description
 KDE and Plasma resources management GUI.
 
-On Ultramarine, system and app updates are handled by um and
+On Ultramarine, system and app updates are handled by
 System Settings > Updates rather than by Discover.
 
 %package libs

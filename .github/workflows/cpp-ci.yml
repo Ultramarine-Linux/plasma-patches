@@ -5,6 +5,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "updater/**"
       - "common/**"
       - "po/**"
       - "Messages.sh"
@@ -18,6 +19,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "updater/**"
       - "common/**"
       - "po/**"
       - "Messages.sh"

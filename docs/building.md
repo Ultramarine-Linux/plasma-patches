@@ -36,23 +36,46 @@ just run updates
 just run tweaks
 ```
 
+## Test the update helper
+
+The helper can list updates and show settings straight from the build:
+
+```bash
+just helper list --json
+ULTRAMARINE_UPDATES_CONFIG=/tmp/settings.json just helper settings --automatic=false
+```
+
+The Updates KCM runs the helper from its install path, and the helper's polkit
+action matches that exact path, so install it system-wide to test the page:
+
+```bash
+just dev-updates-install
+just run updates
+just dev-updates-uninstall
+```
+
+`dev-updates-install` installs only the `ultramarine-updates` CMake component:
+the helper, its polkit action, systemd units and autostart entry. The automatic
+update timer is enabled statically, so automatic updates are live once it's
+installed (with the default settings, they install when the device has been
+unused for 30 minutes). The page's Apply button actually installs updates. See
+[Update helper](updates-backend.md) for behavior.
+
 ## Test with a development umcli
 
-The KCMs expect `um` at `/usr/bin/um`, with tweak data in `/usr/share/um`. From
-the `plasma-patches` checkout:
+The Tweaks KCM expects `um` at `/usr/bin/um`, with tweak data in `/usr/share/um`.
+From the `plasma-patches` checkout:
 
 ```bash
 just dev-um-install
-just run updates
 just run tweaks
 just dev-um-uninstall
 ```
 
-`dev-um-install` builds `../umcli` and installs the CLI, its data and its systemd
-units for local testing. It does **not** enable the timers. It does use `sudo` to
-change system files. `dev-um-uninstall` removes those files. See
-[umcli backend](umcli-backend.md) for behavior and limitations.
+`dev-um-install` builds `../umcli` and installs the CLI, its data and its polkit
+action for local testing. It uses `sudo` to change system files.
+`dev-um-uninstall` removes those files. See [umcli backend](umcli-backend.md)
+for behavior and limitations.
 
 When testing the Tweaks page, enabling or running a tweak executes its Ansible
-playbook/script with administrator privileges. The Updates page's Apply button
-actually installs updates.
+playbook/script with administrator privileges.

@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+# SPDX-License-Identifier: GPL-3.0-only
+[Unit]
+Description=Install your updates automatically, or notify about pending updates
+Documentation=https://github.com/Ultramarine-Linux/plasma-patches
+# Started by the ultramarine-updates-user XDG autostart entry when a graphical
+# session starts, and stopped with it.
+PartOf=graphical-session.target
+
+[Timer]
+# Automatic updates: the helper tracks how long you haven't used the device.
+# "Ask me": it checks for updates and notifies at most once a day.
+OnActiveSec=5min
+OnUnitActiveSec=5min
+AccuracySec=1min

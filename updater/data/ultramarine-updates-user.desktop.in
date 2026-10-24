@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+# SPDX-License-Identifier: GPL-3.0-only
+[Desktop Entry]
+Type=Application
+Name=Ultramarine Updates
+Comment=Install your updates when you're not using the device, or notify about them
+Exec=systemctl --user start ultramarine-updates-user.timer
+TryExec=@ULTRAMARINE_UPDATES_EXECUTABLE@
+NoDisplay=true
+Terminal=false
+X-KDE-autostart-phase=2

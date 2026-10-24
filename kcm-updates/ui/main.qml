@@ -241,7 +241,7 @@ KCMUtils.SimpleKCM {
                             anchors.right: parent.right
                             spacing: Kirigami.Units.largeSpacing
 
-                            // Desktop apps come first, see parseUmOutput().
+                            // Desktop apps come first, see parseUpdateListing().
                             Repeater {
                                 model: kcm.updates
 
