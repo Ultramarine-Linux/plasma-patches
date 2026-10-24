@@ -5,6 +5,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "updater/**"
       - "common/**"
       - "po/**"
       - "Messages.sh"
@@ -14,10 +15,13 @@ name: Plasma KCM CI
       - ".clang-format"
       - ".clang-tidy"
       - ".github/workflows/cpp-ci.yml"
+    branches:
+      - main
   pull_request:
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "updater/**"
       - "common/**"
       - "po/**"
       - "Messages.sh"

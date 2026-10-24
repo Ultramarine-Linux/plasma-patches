@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kcm_ultramarine_updates\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 15:08-0600\n"
+"POT-Creation-Date: 2026-10-24 00:47-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -57,15 +57,11 @@ msgid_plural "%1 updates available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: kcm-updates/updates.cpp:444
+#: kcm-updates/updates.cpp:440
 msgid "%1 update available."
 msgid_plural "%1 updates available."
 msgstr[0] ""
 msgstr[1] ""
-
-#: kcm-updates/updates.cpp:431
-msgid "%1 update operation failed (exit code %2).%3"
-msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml:72
 msgctxt "@info %1 source, %2 version"
@@ -77,9 +73,15 @@ msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 · %2 → %3"
 msgstr ""
 
-#: kcm-updates/updates.cpp:547
+#: kcm-updates/updates.cpp:543
 msgid "%1: %2 → %3 (%4)\n"
 msgstr ""
+
+#: updater/schedule.cpp:110
+msgid "1 update is ready to install."
+msgid_plural "%1 updates are ready to install."
+msgstr[0] ""
+msgstr[1] ""
 
 #: kcm-updates/ui/main.qml:406
 msgctxt "@action:button"
@@ -111,7 +113,7 @@ msgctxt "@action:button install updates tonight"
 msgid "Apply Tonight"
 msgstr ""
 
-#: kcm-updates/updates.cpp:381
+#: kcm-updates/updates.cpp:379
 msgid "Applying updates…"
 msgstr ""
 
@@ -125,7 +127,7 @@ msgctxt "@option:radio"
 msgid "Ask me"
 msgstr ""
 
-#: kcm-updates/updates.cpp:419
+#: kcm-updates/updates.cpp:417
 msgid "Authentication was cancelled or failed. No updates were installed."
 msgstr ""
 
@@ -133,13 +135,13 @@ msgstr ""
 msgid "Authentication was cancelled or failed. The settings were not saved."
 msgstr ""
 
-#: kcm-updates/updates.cpp:335
+#: kcm-updates/updates.cpp:334
 msgid ""
 "Authentication was cancelled or failed. Tonight's updates are still "
 "scheduled."
 msgstr ""
 
-#: kcm-updates/updates.cpp:320
+#: kcm-updates/updates.cpp:319
 msgid "Authentication was cancelled or failed. Updates were not scheduled."
 msgstr ""
 
@@ -148,7 +150,7 @@ msgctxt "@label"
 msgid "Automatic Updates"
 msgstr ""
 
-#: kcm-updates/updates.cpp:356
+#: kcm-updates/updates.cpp:355
 msgid "Checking for updates…"
 msgstr ""
 
@@ -157,12 +159,12 @@ msgctxt "@action:button"
 msgid "Copy"
 msgstr ""
 
-#: kcm-updates/updates.cpp:499
+#: kcm-updates/updates.cpp:495
 msgid "Could not check for updates from: %1"
 msgstr ""
 
-#: kcm-updates/updates.cpp:459
-msgid "Could not start um."
+#: kcm-updates/updates.cpp:455
+msgid "Could not start the update helper."
 msgstr ""
 
 #: kcm-updates/ui/main.qml:177
@@ -170,7 +172,7 @@ msgctxt "@action:button"
 msgid "Don’t Apply Tonight"
 msgstr ""
 
-#: kcm-updates/updates.cpp:629
+#: kcm-updates/updates.cpp:625
 msgid "Flatpak"
 msgstr ""
 
@@ -199,7 +201,7 @@ msgctxt "@option:radio"
 msgid "Let your device decide"
 msgstr ""
 
-#: kcm-updates/updates.cpp:632
+#: kcm-updates/updates.cpp:628
 msgid "Nix"
 msgstr ""
 
@@ -225,7 +227,11 @@ msgctxt "@info"
 msgid "Only used when updates install automatically."
 msgstr ""
 
-#: kcm-updates/updates.cpp:399
+#: updater/schedule.cpp:109
+msgid "Open Updates"
+msgstr ""
+
+#: kcm-updates/updates.cpp:397
 msgid "Operation canceled."
 msgstr ""
 
@@ -244,7 +250,7 @@ msgctxt "@title"
 msgid "Software to Be Updated"
 msgstr ""
 
-#: kcm-updates/updates.cpp:626
+#: kcm-updates/updates.cpp:622
 msgid "System"
 msgstr ""
 
@@ -283,6 +289,10 @@ msgstr ""
 msgid "The settings could not be saved: %1"
 msgstr ""
 
+#: kcm-updates/updates.cpp:359 kcm-updates/updates.cpp:383
+msgid "The update helper (ultramarine-updates) is not installed."
+msgstr ""
+
 #: kcm-updates/ui/main.qml:83
 msgctxt "@action:button"
 msgid "Try Again"
@@ -291,6 +301,10 @@ msgstr ""
 #: kcm-updates/ui/AdvancedSettings.qml:64
 msgctxt "@label"
 msgid "Update times:"
+msgstr ""
+
+#: updater/schedule.cpp:108
+msgid "Updates"
 msgstr ""
 
 #: kcm-updates/ui/main.qml:17
@@ -305,16 +319,20 @@ msgid ""
 "restart. Your device is never restarted for you."
 msgstr ""
 
+#: updater/schedule.cpp:109
+msgid "Updates are ready"
+msgstr ""
+
 #: kcm-updates/ui/main.qml:377
 msgctxt "@info"
 msgid "Updates automatically install when you’re not active"
 msgstr ""
 
-#: kcm-updates/updates.cpp:323
+#: kcm-updates/updates.cpp:322
 msgid "Updates could not be scheduled."
 msgstr ""
 
-#: kcm-updates/updates.cpp:324
+#: kcm-updates/updates.cpp:323
 msgid "Updates could not be scheduled: %1"
 msgstr ""
 
@@ -332,8 +350,12 @@ msgid ""
 "between 10 PM and 6 AM."
 msgstr ""
 
-#: kcm-updates/updates.cpp:447
+#: kcm-updates/updates.cpp:443
 msgid "Updates installed."
+msgstr ""
+
+#: kcm-updates/updates.cpp:427
+msgid "Updating failed (exit code %1).%2"
 msgstr ""
 
 #: kcm-updates/ui/main.qml:50
@@ -354,8 +376,4 @@ msgstr ""
 #: kcm-updates/ui/AdvancedSettings.qml:87
 msgctxt "@label:listbox the end of a time range"
 msgid "to"
-msgstr ""
-
-#: kcm-updates/updates.cpp:360 kcm-updates/updates.cpp:385
-msgid "um is not installed."
 msgstr ""

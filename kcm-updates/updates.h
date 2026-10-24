@@ -16,7 +16,7 @@
 
 struct UpdateItem {
     QString name;
-    /// Full source as reported by um, e.g. "RPM (updates)" or "Flatpak (flathub)".
+    /// Full source as reported by the update helper, e.g. "RPM (updates)" or "Flatpak (flathub)".
     QString source;
     QString oldVersion;
     QString newVersion;
@@ -27,16 +27,16 @@ struct UpdateItem {
     qint64 installedSizeChange = 0;
     /// "app", "package" or "runtime". Apps are listed first.
     QString kind;
-    /// Package manager: "rpm", "flatpak" or "nix".
+    /// Package manager: "rpm", "bootc", "rpm-ostree", "flatpak" or "nix".
     QString backend;
-    /// AppStream ID for apps, when um knows it.
+    /// AppStream ID for apps, when known.
     QString appId;
 };
 
 /// Returns the short source shown under each update, e.g. "System" for RPMs.
 QString updateSourceLabel(const UpdateItem &item);
 
-/// System-wide automatic update settings, as stored by `um upgrade settings`.
+/// System-wide automatic update settings, as stored by `ultramarine-updates settings`.
 struct UpgradeSettings {
     /// "Let your device decide" (true) or "Ask me" (false).
     bool automatic = true;
@@ -52,23 +52,23 @@ struct UpgradeSettings {
     bool operator==(const UpgradeSettings &) const = default;
 };
 
-/// Parses `um upgrade settings --json`. Returns false if the output isn't valid.
+/// Parses `ultramarine-updates settings --json`. Returns false if the output isn't valid.
 bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings);
 
-/// Returns the `um upgrade settings` arguments that save @p settings.
+/// Returns the `ultramarine-updates settings` arguments that save @p settings.
 QStringList upgradeSettingsArguments(const UpgradeSettings &settings);
 
-/// Parses `um upgrade schedule --status --json` into whether Apply Tonight is
+/// Parses `ultramarine-updates schedule --status --json` into whether Apply Tonight is
 /// scheduled and when it next runs (Unix time, 0 if unknown).
 bool parseScheduleStatus(const QByteArray &json, bool *scheduled, qint64 *next);
 
 /**
- * Parses the JSON update listing emitted by `um upgrade list --json`. Desktop apps
- * come first, then other packages, then runtimes; um's order is kept otherwise.
- * Sources um could not query are returned in @p errors, if given.
+ * Parses the JSON update listing emitted by `ultramarine-updates list --json`. Desktop
+ * apps come first, then other packages, then runtimes; the helper's order is kept
+ * otherwise. Sources the helper could not query are returned in @p errors, if given.
  */
-QList<UpdateItem> parseUmOutput(const QString &output, QString *technicalInformation = nullptr,
-                                QStringList *errors = nullptr);
+QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation = nullptr,
+                                     QStringList *errors = nullptr);
 
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
@@ -198,13 +198,13 @@ public:
     [[nodiscard]] bool scheduledTonight() const;
     [[nodiscard]] QDateTime scheduledTime() const;
 
-    /// Loads the settings and Apply Tonight state from um.
+    /// Loads the settings and Apply Tonight state from the update helper.
     void load() override;
 
-    /// Saves the settings through um, which asks for authentication.
+    /// Saves the settings through the update helper, which asks for authentication.
     void save() override;
 
-    /// Resets the settings to um's defaults (not saved until Apply).
+    /// Resets the settings to the defaults (not saved until Apply).
     void defaults() override;
 
     /// Returns the total download size of all updates, in bytes.
@@ -268,8 +268,8 @@ private Q_SLOTS:
 private:
     enum class Operation : std::uint8_t {
         None,
-        RefreshUm,
-        ApplyUm,
+        Refresh,
+        Install,
     };
 
     /// Starts one backend process and records its operation type.
@@ -284,8 +284,8 @@ private:
     /// Completes an operation and updates its final status.
     void finishOperation(bool success, const QString &message);
 
-    /// Parses um's structured update listing.
-    void parseUm(const QString &output);
+    /// Parses the helper's structured update listing.
+    void parseListing(const QString &output);
 
     QProcess m_process;
     UpdatesModel m_updates;
@@ -297,10 +297,10 @@ private:
     QString m_technicalInformation;
     Operation m_operation = Operation::None;
     bool m_running = false;
-    /// Runs um with @p arguments and calls @p done when it exits (exit code -1
-    /// if it couldn't start). um escalates through pkexec by itself if needed.
-    void runUm(const QStringList &arguments,
-               const std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> &done);
+    /// Runs the update helper with @p arguments and calls @p done when it exits (exit
+    /// code -1 if it couldn't start). The helper escalates through pkexec if needed.
+    void runHelper(const QStringList &arguments,
+                   const std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> &done);
 
     /// Shows @p message in the error banner.
     void setErrorMessage(const QString &message);

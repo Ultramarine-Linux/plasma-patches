@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+# SPDX-License-Identifier: GPL-3.0-only
+[Unit]
+Description=Install updates automatically when the device isn't in use
+Documentation=https://github.com/Ultramarine-Linux/plasma-patches
+Wants=network-online.target
+After=network-online.target
+# The helper checks AC power itself, so tonight's timers behave the same.
+
+[Service]
+Type=oneshot
+ExecStart=@ULTRAMARINE_UPDATES_EXECUTABLE@ run-scheduled
+Nice=19
+IOSchedulingClass=idle

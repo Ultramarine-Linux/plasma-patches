@@ -108,6 +108,6 @@ void TweaksTest::authenticationExitCodes() {
     QVERIFY(!UmCli::isAuthenticationFailure(1));
 }
 
-QTEST_MAIN(TweaksTest)
+QTEST_GUILESS_MAIN(TweaksTest)
 
 #include "test_tweaks.moc"

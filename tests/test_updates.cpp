@@ -67,7 +67,7 @@ void UpdatesTest::modelClearOnlyNotifiesWhenNeeded() {
 
 void UpdatesTest::parsesUmOutput() {
     QString technical;
-    const auto updates = parseUmOutput(
+    const auto updates = parseUpdateListing(
         QStringLiteral(
             R"({"updates":[{"name":"foo","source":"fedora","old_version":"1.0","new_version":"2.0"},{"name":"bar","source":"flathub","old_version":"3","new_version":"4","icon":"bar-icon"}]})"),
         &technical);
@@ -80,25 +80,25 @@ void UpdatesTest::parsesUmOutput() {
 
 void UpdatesTest::rejectsInvalidUmOutput() {
     auto technical = QStringLiteral("unchanged");
-    QVERIFY(parseUmOutput(QStringLiteral("not json"), &technical).isEmpty());
+    QVERIFY(parseUpdateListing(QStringLiteral("not json"), &technical).isEmpty());
     QCOMPARE(technical, QStringLiteral("unchanged"));
 }
 
 void UpdatesTest::parsesUmErrors() {
     QStringList errors{QStringLiteral("stale")};
-    const auto updates = parseUmOutput(
+    const auto updates = parseUpdateListing(
         QStringLiteral(
             R"json({"updates":[{"id":"foo.x86_64","name":"foo","source":"RPM (fedora)","old_version":"1","new_version":"2"}],"errors":["flatpak (user): failed"]})json"),
         nullptr, &errors);
     QCOMPARE(updates.size(), 1);
     QCOMPARE(errors, QStringList{QStringLiteral("flatpak (user): failed")});
 
-    parseUmOutput(QStringLiteral(R"({"updates":[],"errors":[]})"), nullptr, &errors);
+    parseUpdateListing(QStringLiteral(R"({"updates":[],"errors":[]})"), nullptr, &errors);
     QVERIFY(errors.isEmpty());
 }
 
 void UpdatesTest::listsAppsFirst() {
-    const auto updates = parseUmOutput(QStringLiteral(R"json({"updates":[
+    const auto updates = parseUpdateListing(QStringLiteral(R"json({"updates":[
         {"id":"glibc.x86_64","name":"glibc","source":"RPM (updates)","backend":"rpm","kind":"package","icon":"package-x-generic"},
         {"id":"org.gnome.Platform//51","name":"GNOME Platform","source":"Flatpak (flathub)","backend":"flatpak","kind":"runtime","icon":"org.gnome.Platform"},
         {"id":"firefox.x86_64","name":"Firefox","source":"RPM (updates)","backend":"rpm","kind":"app","icon":"firefox","app_id":"org.mozilla.firefox"},
@@ -117,7 +117,7 @@ void UpdatesTest::listsAppsFirst() {
     QCOMPARE(updateSourceLabel(updates.at(4)), QStringLiteral("Nix"));
     QCOMPARE(updates.at(0).appId, QStringLiteral("org.mozilla.firefox"));
     QCOMPARE(updateSourceLabel(updates.at(1)), QStringLiteral("Flatpak"));
-    // Runtimes never get their own icon, even if um reports one.
+    // Runtimes never get their own icon, even if the helper reports one.
     QCOMPARE(updates.at(5).icon, QStringLiteral("package-x-generic"));
     // No icon reported: fall back to the generic one.
     QCOMPARE(updates.at(3).icon, QStringLiteral("package-x-generic"));
@@ -136,17 +136,17 @@ void UpdatesTest::parsesUpgradeSettings() {
     QVERIFY(settings.windowEnabled);
     QCOMPARE(settings.windowStart, 22 * 60);
     QCOMPARE(settings.windowEnd, 6 * 60 + 30);
-    QCOMPARE(upgradeSettingsArguments(settings),
-             QStringList({QStringLiteral("upgrade"), QStringLiteral("settings"), QStringLiteral("--automatic=true"),
-                          QStringLiteral("--offline=false"), QStringLiteral("--inactive-minutes=15"),
-                          QStringLiteral("--window=22:00-06:30")}));
+    QCOMPARE(
+        upgradeSettingsArguments(settings),
+        QStringList({QStringLiteral("settings"), QStringLiteral("--automatic=true"), QStringLiteral("--offline=false"),
+                     QStringLiteral("--inactive-minutes=15"), QStringLiteral("--window=22:00-06:30")}));
 
     // An empty window means any time.
     QVERIFY(parseUpgradeSettings(R"({"window_start":"","window_end":""})", &settings));
     QVERIFY(!settings.windowEnabled);
     QCOMPARE(upgradeSettingsArguments(settings).constLast(), QStringLiteral("--window="));
 
-    // Missing keys keep um's defaults.
+    // Missing keys keep the defaults.
     QVERIFY(parseUpgradeSettings("{}", &settings));
     QVERIFY(settings == UpgradeSettings{});
     QVERIFY(!parseUpgradeSettings("Automatic updates: true", &settings));
@@ -164,6 +164,6 @@ void UpdatesTest::parsesScheduleStatus() {
     QVERIFY(!parseScheduleStatus("nope", &scheduled, &next));
 }
 
-QTEST_MAIN(UpdatesTest)
+QTEST_GUILESS_MAIN(UpdatesTest)
 
 #include "test_updates.moc"

@@ -47,14 +47,38 @@ install-user:
 clean:
     rm -rf {{ build_dir }} {{ build_dir }}-user compile_commands.json
 
+# --- testing the update helper ------------------------------------------------
+# The Updates KCM runs ultramarine-updates from its install path, and its polkit
+# action matches that exact path, so the helper must be installed system-wide.
+# The automatic update timer is enabled statically; the user timer starts with the
+# next graphical session (or: systemctl --user start ultramarine-updates-user.timer).
+
+# install just the update helper, its polkit action, systemd units and autostart entry (uses sudo)
+dev-updates-install: build
+    sudo cmake --install {{ build_dir }} --component ultramarine-updates
+    sudo systemctl daemon-reload
+    systemctl --user daemon-reload
+
+# remove what dev-updates-install installed (keeps settings in /etc/ultramarine-updates)
+dev-updates-uninstall:
+    -sudo systemctl stop ultramarine-updates-automatic.timer ultramarine-updates-tonight.timer
+    -systemctl --user stop ultramarine-updates-user.timer ultramarine-updates-tonight-user.timer
+    [ -f {{ build_dir }}/install_manifest_ultramarine-updates.txt ] && \
+        xargs -d '\n' sudo rm -fv < {{ build_dir }}/install_manifest_ultramarine-updates.txt
+    sudo systemctl daemon-reload
+    systemctl --user daemon-reload
+
+# run the update helper from this build without installing it, e.g. just helper list --json
+helper *args: build
+    {{ build_dir }}/bin/ultramarine-updates {{ args }}
+
 # --- testing against a development build of umcli ---------------------------
-# The KCMs need a um with `--json` support at /usr/bin/um, its tweak data in
+# The Tweaks KCM needs a um with `--json` support at /usr/bin/um, its tweak data in
 # /usr/share/um, and umcli's polkit action. pkexec clears the environment, so
 # UM_DATA can't point the privileged half at a checkout; install it like the RPM does.
 
 umcli_dir := "../umcli"
 
-# The update timers are installed but not enabled; enable them to try automatic updates.
 # build umcli and install it system-wide like the umcli RPM (run as your user; uses sudo)
 dev-um-install:
     cd {{ umcli_dir }} && go build -o /tmp/um-dev-build .
@@ -63,19 +87,11 @@ dev-um-install:
     sudo mkdir -p /usr/share/um
     sudo cp -a {{ umcli_dir }}/data/. /usr/share/um/
     sudo install -Dm0644 {{ umcli_dir }}/polkit/org.ultramarine.um.policy /usr/share/polkit-1/actions/org.ultramarine.um.policy
-    sudo install -Dm0644 -t /usr/lib/systemd/system {{ umcli_dir }}/systemd/system/*
-    sudo install -Dm0644 -t /usr/lib/systemd/user {{ umcli_dir }}/systemd/user/*
-    sudo systemctl daemon-reload
-    systemctl --user daemon-reload
     @echo "installed $(/usr/bin/um --help >/dev/null && echo /usr/bin/um), /usr/share/um and the polkit action"
 
 # remove what dev-um-install installed (keeps tweak state in /var/lib/um)
 dev-um-uninstall:
-    -sudo systemctl disable --now um-upgrade-automatic.timer
-    -systemctl --user disable --now um-upgrade-user.timer
     sudo rm -f /usr/bin/um /usr/share/polkit-1/actions/org.ultramarine.um.policy
-    sudo rm -f /usr/lib/systemd/system/um-upgrade-automatic.* /usr/lib/systemd/user/um-upgrade-user.*
-    sudo systemctl daemon-reload
     sudo rm -rf /usr/share/um
 
 # open a KCM from this build without installing it: just run tweaks | just run updates

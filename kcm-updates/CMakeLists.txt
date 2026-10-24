@@ -13,7 +13,7 @@ target_compile_definitions(kcm_ultramarine_updates PRIVATE TRANSLATION_DOMAIN="k
 
 target_link_libraries(kcm_ultramarine_updates
         PRIVATE
-        umcli_common
+        kcm_common
         Qt6::Core
         Qt6::Gui
         Qt6::Qml

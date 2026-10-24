@@ -1,6 +1,6 @@
 # Discover integration
 
-Ultramarine's Updates KCM and `umcli` handle updates. The Discover patch removes
+Ultramarine's Updates KCM (and its `ultramarine-updates` helper) handles updates. The Discover patch removes
 Discover's own Updates page and directs users to
 `kcm_ultramarine_updates` instead.
 
@@ -11,7 +11,7 @@ Discover's own Updates page and directs users to
 
 The 6.8.1 patch removes the Updates mode, replaces the sidebar/tab entry with a
 link to System Settings, retargets "Configure Updates…", and makes
-`--headless-update` exit with an error directing users to `um upgrade`.
+`--headless-update` exit with an error directing users to System Settings > Updates.
 
 ## Packaging
 
