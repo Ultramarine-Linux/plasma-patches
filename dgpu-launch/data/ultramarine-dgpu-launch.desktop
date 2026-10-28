@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Plasma launcher/task manager drop-in action (see plasma/kickeractions). Plasma
+# passes the app's desktop file as %u. switcherooctl launch sets the discrete
+# GPU's environment (DRI_PRIME, NVIDIA PRIME offload, Vulkan driver selection),
+# then kioclient runs the desktop file like Plasma would.
+[Desktop Entry]
+Type=Service
+Name=Launch Using Dedicated Graphics Card
+Actions=launchOnDgpu
+
+[Desktop Action launchOnDgpu]
+Name=Launch Using Dedicated Graphics Card
+Icon=video-display
+Exec=switcherooctl launch kioclient exec %u

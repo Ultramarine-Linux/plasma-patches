@@ -27,3 +27,6 @@ add_kcm_test(test_tweaks test_tweaks.cpp kcm-tweaks tweaks.cpp)
 add_executable(test_updater test_updater.cpp)
 target_link_libraries(test_updater PRIVATE ultramarine_updates_core Qt6::Test)
 add_test(NAME test_updater COMMAND test_updater)
+
+add_test(NAME test_dgpu_detect
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_dgpu_detect.sh ${CMAKE_BINARY_DIR}/dgpu-launch/data/ultramarine-dgpu-detect)

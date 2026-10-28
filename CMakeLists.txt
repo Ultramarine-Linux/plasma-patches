@@ -60,6 +60,7 @@ target_compile_definitions(kcm_common INTERFACE
 add_subdirectory(updater)
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
+add_subdirectory(dgpu-launch)
 
 if (BUILD_TESTING)
     add_subdirectory(tests)

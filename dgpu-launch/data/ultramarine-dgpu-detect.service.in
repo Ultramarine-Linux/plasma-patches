@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Started by 90-ultramarine-dgpu.rules on GPU add/remove, including coldplug at boot.
+[Unit]
+Description=Show the Plasma dedicated GPU launch action on hybrid GPU systems
+After=systemd-udev-trigger.service
+
+[Service]
+Type=oneshot
+# Wait for udev to finish the event that started us, so its tags are in the database.
+ExecStartPre=-@UDEVADM_EXECUTABLE@ settle --timeout=10
+ExecStart=@DGPU_DETECT_EXECUTABLE@
+RuntimeDirectory=ultramarine-dgpu-launch
+RuntimeDirectoryPreserve=yes
+
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateNetwork=true
+NoNewPrivileges=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_NETLINK

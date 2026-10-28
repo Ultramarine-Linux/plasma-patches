@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Re-check for a hybrid GPU setup when a GPU appears or goes away (boot, eGPU
+# hotplug). Runs after switcheroo-control's 30-discrete-gpu.rules tags the card.
+# restart, not start, so an event during a running check still gets a fresh one.
+ACTION=="add|remove", SUBSYSTEM=="drm", KERNEL=="card[0-9]|card[0-9][0-9]", RUN+="@SYSTEMCTL_EXECUTABLE@ --no-block restart ultramarine-dgpu-detect.service"

@@ -1,0 +1,71 @@
+#!/usr/bin/bash
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Turns the "Launch Using Dedicated Graphics Card" app menu and task manager
+# action on or off. Plasma reads it from share/plasma/kickeractions, where we
+# ship a symlink to @DGPU_RUNTIME_LINK@. When this script makes that link, the
+# action shows up. When the link is missing, the broken symlink is skipped.
+#
+# The action is on when the default (boot_vga) GPU isn't discrete and another
+# GPU is: hybrid laptops and laptops with an eGPU plugged in. This uses the same
+# udev data as switcheroo-control: the boot_vga attribute and the
+# switcheroo-discrete-gpu tag. udev runs it on GPU hotplug.
+#
+# --check prints the result and exits 0 (hybrid) or 1 (not hybrid) without
+# changing anything.
+
+set -euo pipefail
+
+# The environment overrides are for tests.
+link=${ULTRAMARINE_DGPU_LINK:-@DGPU_RUNTIME_LINK@}
+target=@DGPU_ACTION_FILE@
+drm=${ULTRAMARINE_DGPU_DRM_DIR:-/sys/class/drm}
+
+default_discrete=0
+default_found=0
+other_discrete=0
+
+for card in "$drm"/card[0-9]*; do
+    # Skip connectors (card0-DP-1) and anything without a backing device.
+    [[ ${card##*/} == *-* ]] && continue
+    [[ -e $card/device ]] || continue
+
+    boot_vga=0
+    [[ -r $card/device/boot_vga ]] && boot_vga=$(<"$card/device/boot_vga")
+
+    discrete=0
+    if udevadm info --query=property --path="$card" 2>/dev/null |
+        grep -Eq '^(CURRENT_)?TAGS=.*:switcheroo-discrete-gpu:'; then
+        discrete=1
+    fi
+
+    if [[ $boot_vga == 1 && $default_found == 0 ]]; then
+        default_found=1
+        default_discrete=$discrete
+    elif [[ $discrete == 1 ]]; then
+        other_discrete=1
+    fi
+done
+
+hybrid=0
+if [[ $default_found == 1 && $default_discrete == 0 && $other_discrete == 1 ]]; then
+    hybrid=1
+fi
+
+if [[ ${1:-} == --check ]]; then
+    if [[ $hybrid == 1 ]]; then
+        echo "hybrid: the action is shown"
+        exit 0
+    fi
+    echo "not hybrid: the action is hidden"
+    exit 1
+fi
+
+if [[ $hybrid == 1 ]]; then
+    mkdir -p "${link%/*}"
+    ln -sfn "$target" "$link"
+else
+    rm -f "$link"
+fi
