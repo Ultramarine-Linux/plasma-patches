@@ -1,4 +1,4 @@
-name: Plasma KCM CI
+name: C++
 
 "on":
   push:
