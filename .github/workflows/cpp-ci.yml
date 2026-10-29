@@ -8,6 +8,7 @@ name: C++
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
+      - "office-installer/**"
       - "po/**"
       - "Messages.sh"
       - "tests/**"
@@ -25,6 +26,7 @@ name: C++
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
+      - "office-installer/**"
       - "po/**"
       - "Messages.sh"
       - "tests/**"
@@ -52,4 +54,4 @@ jobs:
       # Cppcheck treats CMake's generated Qt moc files as normal C++, which
       # emits false #error diagnostics from Qt's intentional QObject checks.
       cppcheck-extra-args: -j2 --suppress=preprocessorErrorDirective:*_autogen*
-      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel gettext
+      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel gettext

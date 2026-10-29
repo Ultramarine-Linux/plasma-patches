@@ -28,5 +28,9 @@ add_executable(test_updater test_updater.cpp)
 target_link_libraries(test_updater PRIVATE ultramarine_updates_core Qt6::Test)
 add_test(NAME test_updater COMMAND test_updater)
 
+add_executable(test_office_installer test_office_installer.cpp)
+target_link_libraries(test_office_installer PRIVATE ultramarine_office_suites Qt6::Test)
+add_test(NAME test_office_installer COMMAND test_office_installer)
+
 add_test(NAME test_dgpu_detect
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_dgpu_detect.sh ${CMAKE_BINARY_DIR}/dgpu-launch/data/ultramarine-dgpu-detect)
