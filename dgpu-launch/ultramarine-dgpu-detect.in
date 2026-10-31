@@ -3,8 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Turns the "Launch Using Dedicated Graphics Card" app menu and task manager
-# action on or off. Plasma reads it from share/plasma/kickeractions, where we
+# Turns the "Launch Using Dedicated Graphics Card" app menu action on or off. Plasma reads it from share/plasma/kickeractions, where we
 # ship a symlink to @DGPU_RUNTIME_LINK@. When this script makes that link, the
 # action shows up. When the link is missing, the broken symlink is skipped.
 #

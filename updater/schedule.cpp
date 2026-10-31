@@ -7,15 +7,19 @@
 #include <KLocalizedString>
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QStandardPaths>
 
 #include <cstdio>
+#include <functional>
 
 #include <pwd.h>
 #include <unistd.h>
 
 #include "activity.h"
 #include "image.h"
+#include "lock.h"
+#include "packagekit.h"
 #include "process.h"
 #include "updates.h"
 
@@ -41,6 +45,8 @@ namespace UltramarineUpdates {
         constexpr std::chrono::seconds notifyInterval = 24h;
         /// How often image mode systems look for a new image.
         constexpr std::chrono::seconds imageCheckInterval = 6h;
+        /// How long to wait after a failed install (often no network) before trying again.
+        constexpr std::chrono::seconds retryInterval = 1h;
 
         void warn(const QString &message) { std::fprintf(stderr, "warning: %s\n", qPrintable(message)); }
 
@@ -120,8 +126,13 @@ namespace UltramarineUpdates {
          * would only see updates someone checked for by hand.
          */
         void checkForImageUpdate(const QDateTime &now) {
+            if (!isImageMode()) {
+                return;
+            }
+            // Cheap, and keeps what the KCM shows current after restarting or a manual upgrade.
+            updateBootcStatusCache();
             const QString checked = systemStateDir() + "/last-image-check"_L1;
-            if (!isImageMode() || within(checked, imageCheckInterval, now)) {
+            if (within(checked, imageCheckInterval, now)) {
                 return;
             }
             // Failures (usually no network) are retried on the next run.
@@ -132,6 +143,44 @@ namespace UltramarineUpdates {
             if (QString error; !writeTimestamp(checked, now, &error)) {
                 warn(error);
             }
+        }
+
+        /**
+         * Runs @p install for a timer once it's ready, unless an install is already
+         * running or the last one failed less than retryInterval ago: tonight's
+         * timers poll every 5 minutes, and a failure shouldn't retry all night.
+         * Remembers the time of a successful install in @p installedPath, and
+         * sets @p installed if it installed.
+         */
+        bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
+                              const QDateTime &now, const std::function<bool(QString *)> &install, bool *installed,
+                              QString *error) {
+            *installed = false;
+            InstallLock lock(lockPath);
+            if (QString lockError; lock.tryLock(&lockError) != InstallLock::Result::Acquired) {
+                // Busy: a manual install or the other timer is running; it'll be retried.
+                if (!lockError.isEmpty()) {
+                    *error = lockError;
+                    return false;
+                }
+                return true;
+            }
+            const QString failed = stateDir + "/last-failed-update"_L1;
+            if (within(failed, retryInterval, now)) {
+                return true;
+            }
+            if (!install(error)) {
+                if (QString warning; !writeTimestamp(failed, now, &warning)) {
+                    warn(warning);
+                }
+                return false;
+            }
+            QFile::remove(failed);
+            if (QString warning; !writeTimestamp(installedPath, now, &warning)) {
+                warn(warning);
+            }
+            *installed = true;
+            return true;
         }
     } // namespace
 
@@ -234,28 +283,33 @@ namespace UltramarineUpdates {
             return false;
         }
         const bool inUse = sessionInUse(sessions).has_value();
+        const QString stateDir = systemStateDir();
         const std::chrono::seconds inactive =
-            ActivityTracker(systemStateDir() + "/inactive-since"_L1).inactiveFor(inUse, now);
-        const QString installed = systemStateDir() + "/last-automatic-update"_L1;
+            ActivityTracker(stateDir + "/inactive-since"_L1, stateDir + "/last-poll"_L1).inactiveFor(inUse, now);
+        const QString installed = stateDir + "/last-automatic-update"_L1;
         if (!readyToInstall(settings, tonight, inUse, inactive, within(installed, installInterval, now), now) ||
             !onACPower()) {
             return true;
         }
 
-        say(u"No one is using the device; installing updates."_s);
-        bool updated = false;
-        if (!applySystem(true, settings.offline, &updated, error)) {
+        const auto install = [&settings](QString *installError) {
+            say(u"No one is using the device; installing updates."_s);
+            bool updated = false;
+            if (!applySystem(true, settings.offline, &updated, installError)) {
+                return false;
+            }
+            if (isImageMode()) {
+                say(u"The new system image takes effect after the next restart."_s);
+            } else if (offlineUpdatePending()) {
+                say(u"System updates will be installed during the next restart."_s);
+            }
+            return true;
+        };
+        bool installedNow = false;
+        if (!installFromTimer(systemLockPath(), stateDir, installed, now, install, &installedNow, error)) {
             return false;
         }
-        if (isImageMode()) {
-            say(u"The new system image takes effect after the next restart."_s);
-        } else if (settings.offline) {
-            say(u"System updates will be installed during the next restart."_s);
-        }
-        if (QString warning; !writeTimestamp(installed, now, &warning)) {
-            warn(warning);
-        }
-        if (tonight) {
+        if (tonight && installedNow) {
             systemctl(false, {u"stop"_s, tonightTimer + ".timer"_L1});
         }
         return true;
@@ -281,21 +335,24 @@ namespace UltramarineUpdates {
             return false;
         }
         const bool inUse = sessionInUse(sessions, currentUserName()).has_value();
+        const QString stateDir = userStateDir();
         const std::chrono::seconds inactive =
-            ActivityTracker(userStateDir() + "/inactive-since"_L1).inactiveFor(inUse, now);
-        const QString installed = userStateDir() + "/last-automatic-update"_L1;
-        if (!readyToInstall(settings, tonight, inUse, inactive, within(installed, installInterval, now), now)) {
+            ActivityTracker(stateDir + "/inactive-since"_L1, stateDir + "/last-poll"_L1).inactiveFor(inUse, now);
+        const QString installed = stateDir + "/last-automatic-update"_L1;
+        if (!readyToInstall(settings, tonight, inUse, inactive, within(installed, installInterval, now), now) ||
+            !onACPower()) {
             return true;
         }
 
-        say(u"You're not using the device; installing your updates."_s);
-        if (!applyUser(true, error)) {
+        const auto install = [](QString *installError) {
+            say(u"You're not using the device; installing your updates."_s);
+            return applyUser(true, installError);
+        };
+        bool installedNow = false;
+        if (!installFromTimer(userLockPath(), stateDir, installed, now, install, &installedNow, error)) {
             return false;
         }
-        if (QString warning; !writeTimestamp(installed, now, &warning)) {
-            warn(warning);
-        }
-        if (tonight) {
+        if (tonight && installedNow) {
             systemctl(true, {u"stop"_s, tonightUserTimer + ".timer"_L1});
         }
         return true;

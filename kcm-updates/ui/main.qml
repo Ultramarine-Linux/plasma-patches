@@ -46,6 +46,9 @@ KCMUtils.SimpleKCM {
         if (kcm.running) {
             return kcm.status;
         }
+        if (!root.hasUpdates && kcm.offlinePending) {
+            return i18nc("@info", "Restart to install updates");
+        }
         if (!root.hasUpdates && kcm.restartRequired) {
             return i18nc("@info", "Restart to finish updating");
         }
@@ -80,8 +83,12 @@ KCMUtils.SimpleKCM {
         position: Kirigami.InlineMessage.Position.Header
         type: Kirigami.MessageType.Error
         text: kcm.errorMessage
-        visible: text.length > 0
+        // Not a binding: the close button sets visible = false, which would break it.
+        visible: false
         showCloseButton: true
+        onTextChanged: visible = text.length > 0
+        onVisibleChanged: if (!visible) kcm.clearError()
+        Component.onCompleted: visible = text.length > 0
         actions: Kirigami.Action {
             text: i18nc("@action:button", "Try Again")
             icon.name: "view-refresh"
@@ -106,15 +113,19 @@ KCMUtils.SimpleKCM {
                 implicitHeight: Kirigami.Units.gridUnit
             }
 
-            // Image mode: a new system image is staged and takes over when restarting.
+            // Offline updates install while restarting (Plasma's logout screen offers
+            // "Install Updates and Restart"); in image mode, a new system image is
+            // staged and takes over when restarting.
             Kirigami.InlineMessage {
                 Layout.fillWidth: true
                 visible: kcm.restartRequired
                 type: Kirigami.MessageType.Positive
                 icon.name: "system-reboot"
-                text: kcm.stagedVersion.length > 0
-                    ? i18nc("@info %1 is a system version", "Version %1 is ready. Restart to start using it.", kcm.stagedVersion)
-                    : i18nc("@info", "A system update is ready. Restart to start using it.")
+                text: kcm.offlinePending
+                    ? i18nc("@info", "Updates are ready to install. Restart to install them.")
+                    : kcm.stagedVersion.length > 0
+                        ? i18nc("@info %1 is a system version", "Version %1 is ready. Restart to start using it.", kcm.stagedVersion)
+                        : i18nc("@info", "A system update is ready. Restart to start using it.")
                 actions: Kirigami.Action {
                     text: i18nc("@action:button", "Restart…")
                     icon.name: "system-reboot"
@@ -188,7 +199,7 @@ KCMUtils.SimpleKCM {
                         QQC2.Button {
                             text: i18nc("@action:button install updates now", "Apply")
                             icon.name: "download"
-                            enabled: !kcm.running && root.hasUpdates
+                            enabled: !kcm.running && !kcm.scheduling && root.hasUpdates
                             onClicked: kcm.applyUpdates()
                         }
 
@@ -197,7 +208,7 @@ KCMUtils.SimpleKCM {
                                                        : i18nc("@action:button install updates tonight", "Apply Tonight")
                             // A plain crescent; the non-symbolic weather icon is a full moon.
                             icon.name: kcm.scheduledTonight ? "dialog-cancel" : "weather-clear-night-symbolic"
-                            enabled: !kcm.running && (root.hasUpdates || kcm.scheduledTonight)
+                            enabled: !kcm.running && !kcm.scheduling && (root.hasUpdates || kcm.scheduledTonight)
                             onClicked: kcm.scheduledTonight ? kcm.cancelTonight() : kcm.applyTonight()
 
                             QQC2.ToolTip.visible: hovered && !kcm.scheduledTonight
@@ -333,7 +344,7 @@ KCMUtils.SimpleKCM {
                     QQC2.Label {
                         // Hidden with opacity so the space stays reserved.
                         opacity: kcm.updateCount > root.shownUpdates ? 1 : 0
-                        text: i18nc("@info %1 is a number of updates", "and <b>%1</b> More",
+                        text: i18ncp("@info %1 is a number of updates", "and <b>%1</b> More", "and <b>%1</b> More",
                                     Math.max(0, kcm.updateCount - root.shownUpdates))
                         textFormat: Text.StyledText
                     }

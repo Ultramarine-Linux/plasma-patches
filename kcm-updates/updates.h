@@ -49,6 +49,9 @@ struct UpgradeSettings {
     int windowStart = 60;
     int windowEnd = 5 * 60;
 
+    /// Returns false if the window starts and ends at the same time, which the helper rejects.
+    [[nodiscard]] bool isValid() const;
+
     bool operator==(const UpgradeSettings &) const = default;
 };
 
@@ -64,10 +67,14 @@ bool parseScheduleStatus(const QByteArray &json, bool *scheduled, qint64 *next);
 
 /// Installed updates that are waiting for a restart, from the update listing.
 struct RestartState {
-    /// Image mode: a new system image is staged and becomes the system when restarting.
+    /// Restarting finishes installed updates: a staged system image, or offline updates.
     bool required = false;
-    /// The version running after the restart, if known.
+    /// System updates are downloaded and install while restarting (offline updates).
+    bool offlinePending = false;
+    /// Image mode: the version running after the restart, if known.
     QString stagedVersion;
+
+    bool operator==(const RestartState &) const = default;
 };
 
 /**
@@ -78,6 +85,13 @@ struct RestartState {
  */
 QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation = nullptr,
                                      QStringList *errors = nullptr, RestartState *restart = nullptr);
+
+/**
+ * Returns the error to show once `ultramarine-updates list --json` exited with @p exitCode
+ * (-1 if it crashed): why the last offline update failed, the sources it could not
+ * query, or why checking failed. Empty if there is nothing to report.
+ */
+QString refreshErrorMessage(int exitCode, const QByteArray &stdOut, const QByteArray &stdErr);
 
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
@@ -139,6 +153,7 @@ private:
 class Updates : public KQuickManagedConfigModule {
     Q_OBJECT
     Q_PROPERTY(bool running READ running NOTIFY runningChanged)
+    Q_PROPERTY(bool scheduling READ scheduling NOTIFY schedulingChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
     Q_PROPERTY(QString distributionVersion READ distributionVersion CONSTANT)
@@ -151,12 +166,14 @@ class Updates : public KQuickManagedConfigModule {
     Q_PROPERTY(bool windowEnabled READ windowEnabled WRITE setWindowEnabled NOTIFY settingsValuesChanged)
     Q_PROPERTY(int windowStart READ windowStart WRITE setWindowStart NOTIFY settingsValuesChanged)
     Q_PROPERTY(int windowEnd READ windowEnd WRITE setWindowEnd NOTIFY settingsValuesChanged)
+    Q_PROPERTY(bool windowValid READ windowValid NOTIFY settingsValuesChanged)
     Q_PROPERTY(bool scheduledTonight READ scheduledTonight NOTIFY scheduleChanged)
     Q_PROPERTY(QDateTime scheduledTime READ scheduledTime NOTIFY scheduleChanged)
     Q_PROPERTY(qint64 downloadSize READ downloadSize NOTIFY updateCountChanged)
     Q_PROPERTY(qint64 installedSizeChange READ installedSizeChange NOTIFY updateCountChanged)
     Q_PROPERTY(bool imageMode READ imageMode CONSTANT)
     Q_PROPERTY(bool restartRequired READ restartRequired NOTIFY restartStateChanged)
+    Q_PROPERTY(bool offlinePending READ offlinePending NOTIFY restartStateChanged)
     Q_PROPERTY(QString stagedVersion READ stagedVersion NOTIFY restartStateChanged)
 
 public:
@@ -167,6 +184,9 @@ public:
 
     /// Returns whether an update operation is running.
     [[nodiscard]] bool running() const;
+
+    /// Returns whether Apply Tonight is being scheduled or cancelled.
+    [[nodiscard]] bool scheduling() const;
 
     /// Returns the current operation status.
     [[nodiscard]] QString status() const;
@@ -205,6 +225,8 @@ public:
     void setWindowStart(int minutes);
     [[nodiscard]] int windowEnd() const;
     void setWindowEnd(int minutes);
+    /// Returns false if the window starts and ends at the same time.
+    [[nodiscard]] bool windowValid() const;
 
     /// Returns whether Apply Tonight is scheduled, and when it next runs.
     [[nodiscard]] bool scheduledTonight() const;
@@ -235,33 +257,40 @@ public:
     /// Returns whether installed updates take effect after restarting.
     [[nodiscard]] bool restartRequired() const;
 
+    /// Returns whether system updates install the next time the device restarts.
+    [[nodiscard]] bool offlinePending() const;
+
     /// Returns the system version after restarting, if known.
     [[nodiscard]] QString stagedVersion() const;
 
     /// Starts an update check.
     Q_INVOKABLE void refresh();
 
-    /// Installs RPM and Flatpak updates immediately.
+    /**
+     * Installs every listed update now. The helper asks for authentication and does the
+     * system part first (staged for the next restart with offline updates or in image
+     * mode), then updates the user's Flatpaks, Nix profile and Plasma widgets.
+     */
     Q_INVOKABLE void applyUpdates();
 
-    /**
-     * Schedules RPM updates for the next reboot and installs Flatpak updates
-     * immediately.
-     */
+    /// Schedules all updates to install tonight while the device isn't in use.
     Q_INVOKABLE void applyTonight();
 
     /// Cancels Apply Tonight.
     Q_INVOKABLE void cancelTonight();
 
-    /// Cancels the currently running update operation.
-    Q_INVOKABLE void cancel();
-
     /// Asks to restart through Plasma's logout screen, so work can be saved first.
     Q_INVOKABLE void restart();
+
+    /// Clears the error message, e.g. when the user dismisses it.
+    Q_INVOKABLE void clearError();
 
 Q_SIGNALS:
     /// Emitted when an update operation starts or stops.
     void runningChanged();
+
+    /// Emitted when Apply Tonight starts or stops being scheduled or cancelled.
+    void schedulingChanged();
 
     /// Emitted when the operation status changes.
     void statusChanged();
@@ -283,7 +312,6 @@ Q_SIGNALS:
 
     /// Emitted when updates start or stop waiting for a restart.
     void restartStateChanged();
-
 
 private Q_SLOTS:
     /// Handles completion of the active update process.
@@ -321,9 +349,10 @@ private:
     UpdatesModel m_updates;
     QString m_status;
     QString m_errorMessage;
-    QString m_lastProcessOutput;
-    /// Raw stdout of a refresh; kept apart from stderr so it parses as JSON.
-    QByteArray m_refreshStdout;
+    /// Raw output of the running operation, decoded once it exits so multi-byte
+    /// characters split across reads survive and stdout still parses as JSON.
+    QByteArray m_processStdout;
+    QByteArray m_processStderr;
     QString m_technicalInformation;
     Operation m_operation = Operation::None;
     bool m_running = false;
@@ -335,8 +364,10 @@ private:
     /// Shows @p message in the error banner.
     void setErrorMessage(const QString &message);
 
-    /// Reloads whether Apply Tonight is scheduled.
+    /// Reloads whether Apply Tonight is scheduled. Only the latest request's reply is used.
     void refreshSchedule();
+
+    void setScheduling(bool scheduling);
 
     [[nodiscard]] bool isSaveNeeded() const override;
     [[nodiscard]] bool isDefaults() const override;
@@ -346,4 +377,9 @@ private:
     UpgradeSettings m_savedUpgradeSettings;
     bool m_scheduledTonight = false;
     QDateTime m_scheduledTime;
+    /// A `schedule` (or `schedule --cancel`) call is in flight.
+    bool m_scheduleChanging = false;
+    /// True from the start of a schedule change until the status read after it arrives.
+    bool m_scheduling = false;
+    quint64 m_scheduleRequest = 0;
 };

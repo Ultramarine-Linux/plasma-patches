@@ -36,7 +36,7 @@ KCMUtils.SimpleKCM {
             Kirigami.FormData.label: i18nc("@label:spinbox", "Install when unused for:")
             enabled: kcm.automaticUpdates
             from: 0
-            to: 240
+            to: 24 * 60
             stepSize: 5
             value: kcm.inactiveMinutes
             onValueModified: kcm.inactiveMinutes = value
@@ -94,6 +94,15 @@ KCMUtils.SimpleKCM {
                 currentIndex: page.timeIndex(kcm.windowEnd)
                 onActivated: kcm.windowEnd = currentValue
             }
+        }
+
+        // The helper rejects an empty window, so it can't be saved (see isSaveNeeded()).
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+            visible: !kcm.windowValid
+            type: Kirigami.MessageType.Warning
+            text: i18nc("@info", "Choose different start and end times.")
         }
 
         QQC2.Label {

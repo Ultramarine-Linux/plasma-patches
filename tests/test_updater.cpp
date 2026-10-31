@@ -4,7 +4,10 @@
 
 // Tests for the update helper's parsers and decisions (updater/).
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -12,7 +15,9 @@
 #include "apps.h"
 #include "flatpak.h"
 #include "image.h"
+#include "lock.h"
 #include "nix.h"
+#include "packagekit.h"
 #include "plasmoid.h"
 #include "rpm.h"
 #include "schedule.h"
@@ -69,7 +74,17 @@ namespace {
         static void sessionInUse();
         static void timestamps();
         static void activityTracker();
+        static void activityTrackerRestartsAfterGaps();
+        static void installLock();
+        static void parsesBootcStatusCache();
+        static void classifiesSystemUpdateTarget();
+        static void detectsPendingOfflineUpdate();
+        static void parsesOfflineResults();
+        static void reportsLastOfflineUpdateError();
+        static void parsesOsReleaseVersionId();
+        static void parsesPkgcliError();
     };
+
 } // namespace
 
 void UpdaterTest::parsesDnfCheckUpdateDnf5() {
@@ -634,6 +649,8 @@ void UpdaterTest::settingsRoundTrip() {
 
     QVERIFY(!parseSettings(R"({"automatic":"yes"})", &got, &error));
     QVERIFY(!parseSettings(R"({"inactive_minutes":1.5})", &got, &error));
+    QVERIFY(!parseSettings(R"({"inactive_minutes":1e300})", &got, &error));
+    QVERIFY(!parseSettings(R"({"inactive_minutes":-1})", &got, &error));
     qunsetenv("ULTRAMARINE_UPDATES_CONFIG");
 }
 
@@ -661,6 +678,8 @@ void UpdaterTest::validatesSettings() {
     QVERIFY(!valid(30, u"01:00"_s, {}));
     QVERIFY(!valid(30, u"25:00"_s, u"05:00"_s));
     QVERIFY(valid(30, u"22:00"_s, u"06:00"_s));
+    QVERIFY(!valid(30, u"01:00"_s, u"01:00"_s));
+    QVERIFY(!valid(30, u"1:00"_s, u"01:00"_s));
 
     QString start;
     QString end;
@@ -763,15 +782,218 @@ void UpdaterTest::timestamps() {
 
 void UpdaterTest::activityTracker() {
     const QTemporaryDir dir;
-    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1);
+    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
     const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
     const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
     QCOMPARE(tracker.inactiveFor(false, start), 0s);
-    QCOMPARE(tracker.inactiveFor(false, minutesLater(25)), std::chrono::seconds(25min));
+    for (int minutes = 5; minutes <= 25; minutes += 5) {
+        QCOMPARE(tracker.inactiveFor(false, minutesLater(minutes)),
+                 std::chrono::seconds(std::chrono::minutes(minutes)));
+    }
     // Using the device resets the count.
     QCOMPARE(tracker.inactiveFor(true, minutesLater(30)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(35)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(40)), std::chrono::seconds(5min));
+}
+
+void UpdaterTest::activityTrackerRestartsAfterGaps() {
+    const QTemporaryDir dir;
+    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
+    const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
+    QCOMPARE(tracker.inactiveFor(false, start), 0s);
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(5)), std::chrono::seconds(5min));
+    // A late poll (timer accuracy, a slow run) still counts.
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(15)), std::chrono::seconds(15min));
+    // Suspended for 8 hours: no one watched, so that time doesn't count.
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(15 + 8 * 60)), 0s);
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(20 + 8 * 60)), std::chrono::seconds(5min));
+    // So does the clock going back.
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(10)), 0s);
+
+    // Upgrading from a version without last-poll starts over once.
+    const QTemporaryDir upgraded;
+    QVERIFY(writeTimestamp(upgraded.path() + "/inactive-since"_L1, start, nullptr));
+    const ActivityTracker fresh(upgraded.path() + "/inactive-since"_L1, upgraded.path() + "/last-poll"_L1);
+    QCOMPARE(fresh.inactiveFor(false, minutesLater(60)), 0s);
+    QCOMPARE(fresh.inactiveFor(false, minutesLater(65)), std::chrono::seconds(5min));
+}
+
+void UpdaterTest::installLock() {
+    const QTemporaryDir dir;
+    const QString path = dir.path() + "/updates.lock"_L1;
+    {
+        InstallLock first(path);
+        QCOMPARE(first.tryLock(), InstallLock::Result::Acquired);
+        InstallLock second(path);
+        QCOMPARE(second.tryLock(), InstallLock::Result::Busy);
+    }
+    // Released when the holder goes away.
+    InstallLock again(path);
+    QCOMPARE(again.tryLock(), InstallLock::Result::Acquired);
+
+    QString error;
+    InstallLock missing(dir.path() + "/missing/updates.lock"_L1);
+    QCOMPARE(missing.tryLock(&error), InstallLock::Result::Failed);
+    QVERIFY(!error.isEmpty());
+}
+
+void UpdaterTest::parsesBootcStatusCache() {
+    const QByteArray status = R"({"apiVersion":"org.containers.bootc/v1","kind":"BootcHost","status":{"staged":null}})";
+    const QByteArray cache = bootcStatusCache(status, u"boot-a"_s);
+    const std::optional<QByteArray> parsed = parseBootcStatusCache(cache, u"boot-a"_s);
+    QVERIFY(parsed);
+    QCOMPARE(QJsonDocument::fromJson(*parsed), QJsonDocument::fromJson(status));
+    // After restarting, the copy describes the previous boot.
+    QVERIFY(!parseBootcStatusCache(cache, u"boot-b"_s));
+    QVERIFY(!parseBootcStatusCache(cache, {}));
+    QVERIFY(!parseBootcStatusCache("nope", u"boot-a"_s));
+}
+
+namespace {
+    /// PackageKit's offline update files and /system-update in a temporary directory.
+    PackageKitPaths fakePackageKitPaths(const QTemporaryDir &dir) {
+        const QString lib = dir.path() + "/var/lib/PackageKit"_L1;
+        QDir().mkpath(lib);
+        return {.preparedUpdate = lib + "/prepared-update"_L1,
+                .preparedUpgrade = lib + "/prepared-upgrade"_L1,
+                .trigger = dir.path() + "/system-update"_L1,
+                .results = lib + "/offline-update-competed"_L1,
+                .osRelease = dir.path() + "/os-release"_L1,
+                .rpmDatabase = dir.path() + "/rpmdb.sqlite"_L1};
+    }
+
+    bool writeFile(const QString &path, const QByteArray &contents) {
+        QFile file(path);
+        return file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size();
+    }
+
+    /// As pk-offline-update writes them after a failed update (PackageKit 1.4).
+    const QByteArray failedResults = R"([PackageKit Offline Update Results]
+Success=false
+ErrorCode=failed-initialization
+ErrorDetails=Transaction failed: rpm transaction failed:\n  - file /usr/bin/foo conflicts
+Role=update-packages
+)";
+} // namespace
+
+void UpdaterTest::classifiesSystemUpdateTarget() {
+    QCOMPARE(classifySystemUpdateTarget({}), SystemUpdateTrigger::None);
+    QCOMPARE(classifySystemUpdateTarget(u"/var/lib/PackageKit/prepared-update"_s),
+             SystemUpdateTrigger::PackageKitUpdate);
+    QCOMPARE(classifySystemUpdateTarget(u"/var/lib/PackageKit/prepared-upgrade"_s),
+             SystemUpdateTrigger::PackageKitUpgrade);
+    // dnf5's offline transactions, and anything else.
+    QCOMPARE(classifySystemUpdateTarget(u"/usr/lib/sysimage/libdnf5/offline"_s), SystemUpdateTrigger::Other);
+    QCOMPARE(classifySystemUpdateTarget(u"var/lib/PackageKit/prepared-update"_s), SystemUpdateTrigger::Other);
+    QCOMPARE(classifySystemUpdateTarget(u"/var/lib/PackageKit"_s), SystemUpdateTrigger::Other);
+}
+
+void UpdaterTest::detectsPendingOfflineUpdate() {
+    const QTemporaryDir dir;
+    const PackageKitPaths paths = fakePackageKitPaths(dir);
+    QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::None);
+    QVERIFY(!offlineUpdatePending(paths));
+
+    // Triggered, but the prepared update is gone (dangling link).
+    QVERIFY(QFile::link(paths.preparedUpdate, paths.trigger));
+    QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::PackageKitUpdate);
+    QVERIFY(!offlineUpdatePending(paths));
+
+    QVERIFY(writeFile(paths.preparedUpdate, "[update]\nprepared_ids=tree;2.2.1-1.fc45;x86_64;fedora,\n"));
+    QVERIFY(offlineUpdatePending(paths));
+
+    // Prepared, but not triggered (plain Restart cancels the trigger).
+    QVERIFY(QFile::remove(paths.trigger));
+    QVERIFY(!offlineUpdatePending(paths));
+
+    QVERIFY(QFile::link(paths.preparedUpgrade, paths.trigger));
+    QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::PackageKitUpgrade);
+    QVERIFY(!offlineUpdatePending(paths));
+    QVERIFY(QFile::remove(paths.trigger));
+
+    // Not a link at all.
+    QVERIFY(writeFile(paths.trigger, {}));
+    QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::Other);
+    QVERIFY(!offlineUpdatePending(paths));
+}
+
+void UpdaterTest::parsesOfflineResults() {
+    QCOMPARE(parseOfflineResultsError(failedResults),
+             u"Transaction failed: rpm transaction failed:\n  - file /usr/bin/foo conflicts"_s);
+    QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=true\nRole=update-packages\n"
+                                      "Packages=tree;2.2.1-1.fc45;x86_64;updates,\n"),
+             QString());
+    // GKeyFile escapes; the error code without details.
+    QCOMPARE(
+        parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\nErrorDetails=\\sa\\\\b\\tc\n"),
+        u"a\\b\tc"_s);
+    QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\nErrorCode=no-network\n"),
+             u"no-network"_s);
+    QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\n"), u"unknown error"_s);
+    // Other groups, or nothing to go by.
+    QCOMPARE(parseOfflineResultsError("[Something Else]\nSuccess=false\nErrorDetails=nope\n"), QString());
+    QCOMPARE(parseOfflineResultsError({}), QString());
+    QCOMPARE(parseOfflineResultsError("garbage"), QString());
+}
+
+void UpdaterTest::reportsLastOfflineUpdateError() {
+    const QTemporaryDir dir;
+    const PackageKitPaths paths = fakePackageKitPaths(dir);
+    QCOMPARE(lastOfflineUpdateError(paths), QString());
+
+    QVERIFY(writeFile(paths.results, failedResults));
+    QVERIFY(lastOfflineUpdateError(paths).startsWith("Transaction failed"_L1));
+
+    // Packages changed since: the failure is old news.
+    QVERIFY(writeFile(paths.rpmDatabase, "rpmdb"));
+    const QDateTime failed = QDateTime::currentDateTime().addSecs(-3600);
+    QFile results(paths.results);
+    QVERIFY(results.open(QIODevice::ReadWrite));
+    QVERIFY(results.setFileTime(failed, QFileDevice::FileModificationTime));
+    results.close();
+    QCOMPARE(lastOfflineUpdateError(paths), QString());
+
+    // The rpm database didn't change after the failure.
+    QFile rpmDatabase(paths.rpmDatabase);
+    QVERIFY(rpmDatabase.open(QIODevice::ReadWrite));
+    QVERIFY(rpmDatabase.setFileTime(failed.addSecs(-60), QFileDevice::FileModificationTime));
+    rpmDatabase.close();
+    QVERIFY(!lastOfflineUpdateError(paths).isEmpty());
+}
+
+void UpdaterTest::parsesOsReleaseVersionId() {
+    // Quoted values and other keys around it.
+    QCOMPARE(parseOsReleaseVersionId("NAME=\"Ultramarine Linux\"\nVERSION=\"45\"\nID=ultramarine\n"
+                                     "ID_LIKE=fedora\nVERSION_ID=45\nPLATFORM_ID=\"platform:f45\"\n"),
+             u"45"_s);
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID=\"45\"\n"), u"45"_s);
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID='24.04'\n"), u"24.04"_s);
+    QCOMPARE(parseOsReleaseVersionId("  VERSION_ID = 45 \n"), u"45"_s);
+    // Missing, or not something to put in a path.
+    QCOMPARE(parseOsReleaseVersionId("ID=fedora\n"), QString());
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID=\"\"\n"), QString());
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID=../../etc\n"), QString());
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID=\"45/x\"\n"), QString());
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID=-45\n"), QString());
+    QCOMPARE(parseOsReleaseVersionId("VERSION_ID=.hidden\n"), QString());
+
+    const QTemporaryDir dir;
+    const PackageKitPaths paths = fakePackageKitPaths(dir);
+    QVERIFY(writeFile(paths.osRelease, "ID=fedora\nVERSION_ID=45\n"));
+    QCOMPARE(packageKitCacheDir(paths), u"/var/cache/PackageKit/45/metadata"_s);
+    QVERIFY(writeFile(paths.osRelease, "ID=fedora\n"));
+    QCOMPARE(packageKitCacheDir(paths), QString());
+}
+
+void UpdaterTest::parsesPkgcliError() {
+    QCOMPARE(pkgcliError("Error: Failed to get updates: Cannot download repomd.xml\n"),
+             u"Failed to get updates: Cannot download repomd.xml"_s);
+    QCOMPARE(
+        pkgcliError("Downloading packages\nError: Failed to trigger offline update: Prepared update not found\n\n"),
+        u"Failed to trigger offline update: Prepared update not found"_s);
+    QCOMPARE(pkgcliError("Fehler: kaputt\n"), u"Fehler: kaputt"_s);
+    QCOMPARE(pkgcliError({}), QString());
 }
 
 QTEST_GUILESS_MAIN(UpdaterTest)

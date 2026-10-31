@@ -14,11 +14,14 @@ namespace {
     private Q_SLOTS:
         static void modelExposesUpdateRoles();
         static void modelClearOnlyNotifiesWhenNeeded();
-        static void parsesUmOutput();
-        static void rejectsInvalidUmOutput();
-        static void parsesUmErrors();
+        static void parsesUpdateListing();
+        static void rejectsInvalidUpdateListing();
+        static void parsesListingErrors();
         static void listsAppsFirst();
         static void parsesRestartState();
+        static void parsesOfflinePending();
+        static void refreshErrorMessages();
+        static void upgradeSettingsDefaults();
         static void parsesUpgradeSettings();
         static void parsesScheduleStatus();
     };
@@ -66,7 +69,7 @@ void UpdatesTest::modelClearOnlyNotifiesWhenNeeded() {
     QCOMPARE(countChanged.count(), 2);
 }
 
-void UpdatesTest::parsesUmOutput() {
+void UpdatesTest::parsesUpdateListing() {
     QString technical;
     const auto updates = parseUpdateListing(
         QStringLiteral(
@@ -79,13 +82,13 @@ void UpdatesTest::parsesUmOutput() {
     QCOMPARE(technical, QStringLiteral("foo: 1.0 → 2.0 (fedora)\nbar: 3 → 4 (flathub)\n"));
 }
 
-void UpdatesTest::rejectsInvalidUmOutput() {
+void UpdatesTest::rejectsInvalidUpdateListing() {
     auto technical = QStringLiteral("unchanged");
     QVERIFY(parseUpdateListing(QStringLiteral("not json"), &technical).isEmpty());
     QCOMPARE(technical, QStringLiteral("unchanged"));
 }
 
-void UpdatesTest::parsesUmErrors() {
+void UpdatesTest::parsesListingErrors() {
     QStringList errors{QStringLiteral("stale")};
     const auto updates = parseUpdateListing(
         QStringLiteral(
@@ -144,6 +147,74 @@ void UpdatesTest::parsesRestartState() {
     const auto updates = parseUpdateListing(QStringLiteral(
         R"({"updates":[{"id":"image:system","name":"Ultramarine Linux","backend":"bootc","kind":"package"}]})"));
     QCOMPARE(updateSourceLabel(updates.at(0)), QStringLiteral("System"));
+}
+
+void UpdatesTest::parsesOfflinePending() {
+    RestartState restart;
+    parseUpdateListing(QStringLiteral(R"({"updates":[],"errors":[],"restart_required":true,"offline_pending":true})"),
+                       nullptr, nullptr, &restart);
+    QVERIFY(restart.required);
+    QVERIFY(restart.offlinePending);
+    QVERIFY(restart.stagedVersion.isEmpty());
+
+    // Pending offline updates always need a restart.
+    parseUpdateListing(QStringLiteral(R"({"updates":[],"offline_pending":true})"), nullptr, nullptr, &restart);
+    QVERIFY(restart.required);
+
+    // Image staging keeps its version and isn't an offline update.
+    parseUpdateListing(
+        QStringLiteral(R"({"updates":[],"restart_required":true,"offline_pending":false,"staged_version":"45.1"})"),
+        nullptr, nullptr, &restart);
+    QCOMPARE(restart,
+             (RestartState{.required = true, .offlinePending = false, .stagedVersion = QStringLiteral("45.1")}));
+
+    parseUpdateListing(QStringLiteral(R"({"updates":[]})"), nullptr, nullptr, &restart);
+    QCOMPARE(restart, RestartState{});
+}
+
+void UpdatesTest::refreshErrorMessages() {
+    // Every source failed: `list` exits 1 but still prints a listing.
+    QCOMPARE(refreshErrorMessage(1, R"json({"updates":[],"errors":["RPM","Flatpak (system)"]})json", "warning\n"),
+             QStringLiteral("Could not check for updates from: RPM, Flatpak (system)"));
+    // Some sources failed.
+    QCOMPARE(refreshErrorMessage(0, R"({"updates":[{"name":"foo"}],"errors":["Nix"]})", {}),
+             QStringLiteral("Could not check for updates from: Nix"));
+    QVERIFY(refreshErrorMessage(0, R"({"updates":[],"errors":[]})", {}).isEmpty());
+    // A failed offline update isn't a source that couldn't be checked.
+    QCOMPARE(refreshErrorMessage(0, R"({"updates":[],"errors":[],"offline_error":"Transaction failed"})", {}),
+             QStringLiteral("The updates could not be installed while restarting: Transaction failed"));
+    QCOMPARE(refreshErrorMessage(0, R"({"updates":[],"errors":["Nix"],"offline_error":"Transaction failed"})", {}),
+             QStringLiteral("The updates could not be installed while restarting: Transaction failed\n"
+                            "Could not check for updates from: Nix"));
+
+    // No listing: stdout is never shown.
+    QCOMPARE(refreshErrorMessage(2, "{\"updates\":", "Unknown option 'json'.\n"),
+             QStringLiteral("Checking for updates failed (exit code 2). Unknown option 'json'."));
+    QCOMPARE(refreshErrorMessage(1, {}, {}), QStringLiteral("Checking for updates failed (exit code 1)."));
+    QVERIFY(refreshErrorMessage(-1, {}, {}).startsWith(QStringLiteral("Checking for updates failed:")));
+    QVERIFY(refreshErrorMessage(0, "not json", {}).startsWith(QStringLiteral("Checking for updates failed:")));
+}
+
+void UpdatesTest::upgradeSettingsDefaults() {
+    const UpgradeSettings defaults;
+    QVERIFY(defaults.automatic);
+    QVERIFY(!defaults.offline);
+    QCOMPARE(defaults.inactiveMinutes, 30);
+    QVERIFY(!defaults.windowEnabled);
+    QCOMPARE(defaults.windowStart, 60);
+    QCOMPARE(defaults.windowEnd, 5 * 60);
+    QVERIFY(defaults.isValid());
+
+    UpgradeSettings changed = defaults;
+    QVERIFY(changed == defaults);
+    changed.windowEnd = changed.windowStart;
+    QVERIFY(changed != defaults);
+    // An equal start and end only matters once the window is used; the helper rejects it then.
+    QVERIFY(changed.isValid());
+    changed.windowEnabled = true;
+    QVERIFY(!changed.isValid());
+    changed.windowEnd = 0;
+    QVERIFY(changed.isValid());
 }
 
 void UpdatesTest::parsesUpgradeSettings() {

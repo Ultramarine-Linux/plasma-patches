@@ -27,6 +27,7 @@ an unsupported control.
 Enabling, disabling or running a tweak invokes `um tweaks` through umcli's
 polkit-aware privilege escalation. Warnings are shown before risky or
 non-reversible operations. State is reported by umcli's world-readable markers
-under `/var/lib/um/tweaks/`.
+under `/var/lib/um/tweaks/`. A running change can't be cancelled from the KCM:
+once um runs as root, the unprivileged KCM can't signal it.
 
 For the command behavior, see the [umcli README](https://github.com/Ultramarine-Linux/um/blob/main/README.md).

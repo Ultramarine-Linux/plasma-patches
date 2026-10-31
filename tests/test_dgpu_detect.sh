@@ -19,11 +19,14 @@ cat "${path#--path=}/fake-udev" 2>/dev/null
 UDEVADM
 chmod +x "$tmp/bin/udevadm"
 
-# card <setup> <name> <boot_vga> <discrete>
+# card <setup> <name> <boot_vga, or - for none> <discrete>
 card() {
     local dir=$tmp/$1/$2
     mkdir -p "$dir/device" "$tmp/$1/$2-eDP-1"
-    echo "$3" >"$dir/device/boot_vga"
+    # Real connectors link to their card's device too.
+    ln -s "../$2/device" "$tmp/$1/$2-eDP-1/device"
+    # 3D controllers (PCI class 0x0302), common for laptop dGPUs, have no boot_vga.
+    if [[ $3 != - ]]; then echo "$3" >"$dir/device/boot_vga"; fi
     if [[ $4 == 1 ]]; then
         echo "TAGS=:seat:switcheroo-discrete-gpu:" >"$dir/fake-udev"
     else
@@ -33,6 +36,8 @@ card() {
 
 card laptop card0 1 0
 card laptop card1 0 1
+card laptop-3d card0 1 0
+card laptop-3d card1 - 1
 card egpu card0 1 0
 card egpu card2 0 1
 card desktop card0 1 1
@@ -67,6 +72,7 @@ expect() {
 }
 
 expect laptop shown
+expect laptop-3d shown
 expect egpu shown
 expect desktop hidden
 expect desktop-igpu hidden
