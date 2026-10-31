@@ -20,13 +20,14 @@ include(KDEInstallDirs)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(KDECMakeSettings)
 
-find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core Quick Gui Qml Test)
+find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core DBus Quick Gui Qml Test)
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
         Config
         CoreAddons
         KCMUtils
         I18n
+        NewStuffCore
 )
 
 include(CTest)

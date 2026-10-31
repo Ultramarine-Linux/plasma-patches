@@ -46,6 +46,9 @@ KCMUtils.SimpleKCM {
         if (kcm.running) {
             return kcm.status;
         }
+        if (!root.hasUpdates && kcm.restartRequired) {
+            return i18nc("@info", "Restart to finish updating");
+        }
         if (!root.hasUpdates) {
             return i18nc("@info", "Your system is up to date");
         }
@@ -101,6 +104,22 @@ KCMUtils.SimpleKCM {
 
             Item {
                 implicitHeight: Kirigami.Units.gridUnit
+            }
+
+            // Image mode: a new system image is staged and takes over when restarting.
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                visible: kcm.restartRequired
+                type: Kirigami.MessageType.Positive
+                icon.name: "system-reboot"
+                text: kcm.stagedVersion.length > 0
+                    ? i18nc("@info %1 is a system version", "Version %1 is ready. Restart to start using it.", kcm.stagedVersion)
+                    : i18nc("@info", "A system update is ready. Restart to start using it.")
+                actions: Kirigami.Action {
+                    text: i18nc("@action:button", "Restart…")
+                    icon.name: "system-reboot"
+                    onTriggered: kcm.restart()
+                }
             }
 
             // --- Pending updates -------------------------------------------------
@@ -241,7 +260,7 @@ KCMUtils.SimpleKCM {
                             anchors.right: parent.right
                             spacing: Kirigami.Units.largeSpacing
 
-                            // Desktop apps come first, see parseUpdateListing().
+                            // Desktop apps and widgets come first, see parseUpdateListing().
                             Repeater {
                                 model: kcm.updates
 
@@ -264,7 +283,10 @@ KCMUtils.SimpleKCM {
                                         const noEpoch = v.includes(":") ? v.substring(v.indexOf(":") + 1) : v;
                                         return noEpoch.includes("-") ? noEpoch.substring(0, noEpoch.lastIndexOf("-")) : noEpoch;
                                     }
-                                    readonly property string fromVersion: shortVersion(oldVersion)
+                                    // Image versions (44.20261030.0) are too long for both to fit;
+                                    // the new one matters. Technical Information has both.
+                                    readonly property string fromVersion: backend === "bootc" || backend === "rpm-ostree"
+                                        ? "" : shortVersion(oldVersion)
                                     readonly property string toVersion: shortVersion(newVersion)
 
                                     visible: index < root.shownUpdates

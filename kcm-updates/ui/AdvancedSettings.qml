@@ -113,14 +113,18 @@ KCMUtils.SimpleKCM {
         QQC2.CheckBox {
             Kirigami.FormData.label: i18nc("@label", "System updates:")
             text: i18nc("@option:check", "Install while restarting")
-            checked: kcm.offlineUpdates
+            // System images always take effect when restarting.
+            enabled: !kcm.imageMode
+            checked: kcm.imageMode || kcm.offlineUpdates
             onToggled: kcm.offlineUpdates = checked
         }
 
         QQC2.Label {
             Layout.fillWidth: true
             Layout.maximumWidth: Kirigami.Units.gridUnit * 20
-            text: i18nc("@info", "Updates are downloaded ahead of time and installed the next time you restart. Your device is never restarted for you.")
+            text: kcm.imageMode
+                ? i18nc("@info", "This system updates as a whole: the new version is prepared in the background and takes over the next time you restart. Your device is never restarted for you.")
+                : i18nc("@info", "Updates are downloaded ahead of time and installed the next time you restart. Your device is never restarted for you.")
             font: Kirigami.Theme.smallFont
             wrapMode: Text.Wrap
         }

@@ -9,7 +9,7 @@ sudo dnf install \
     cmake extra-cmake-modules gcc-c++ gettext \
     qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel \
     kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel \
-    kf6-ki18n-devel kf6-kirigami-devel
+    kf6-ki18n-devel kf6-kirigami-devel kf6-knewstuff-devel
 ```
 
 The project requires Qt 6.5 and KDE Frameworks 6.0 or newer.

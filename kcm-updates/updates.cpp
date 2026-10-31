@@ -6,7 +6,11 @@
 #include <KLocalizedString>
 #include <algorithm>
 
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
 #include <QDebug>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QStringList>
@@ -339,6 +343,28 @@ qint64 Updates::downloadSize() const { return m_updates.totalDownloadSize(); }
 
 qint64 Updates::installedSizeChange() const { return m_updates.totalInstalledSizeChange(); }
 
+bool Updates::imageMode() {
+    // The update helper decides the same way.
+    return QFile::exists(QStringLiteral("/run/ostree-booted"));
+}
+
+bool Updates::restartRequired() const { return m_restartState.required; }
+
+QString Updates::stagedVersion() const { return m_restartState.stagedVersion; }
+
+void Updates::restart() {
+    const QDBusMessage message =
+        QDBusMessage::createMethodCall(QStringLiteral("org.kde.LogoutPrompt"), QStringLiteral("/LogoutPrompt"),
+                                       QStringLiteral("org.kde.LogoutPrompt"), QStringLiteral("promptReboot"));
+    auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(message), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call) {
+        if (call->isError()) {
+            setErrorMessage(i18n("Could not restart: %1", call->error().message()));
+        }
+        call->deleteLater();
+    });
+}
+
 void Updates::refresh() {
     if (m_running) {
         return;
@@ -483,11 +509,16 @@ void Updates::readProcessOutput() {
 void Updates::parseListing(const QString &output) {
     QString technical;
     QStringList errors;
-    for (const QList<UpdateItem> parsedUpdates = parseUpdateListing(output, &technical, &errors);
+    RestartState restart;
+    for (const QList<UpdateItem> parsedUpdates = parseUpdateListing(output, &technical, &errors, &restart);
          const UpdateItem &item: parsedUpdates) {
         m_updates.addUpdate(item);
     }
     setTechnicalInformation(technical);
+    if (restart.required != m_restartState.required || restart.stagedVersion != m_restartState.stagedVersion) {
+        m_restartState = restart;
+        Q_EMIT restartStateChanged();
+    }
     if (!errors.isEmpty()) {
         // The helper still lists updates from the sources that worked.
         m_errorMessage = i18n("Could not check for updates from: %1").arg(errors.join(QStringLiteral(", ")));
@@ -495,7 +526,8 @@ void Updates::parseListing(const QString &output) {
     }
 }
 
-QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation, QStringList *errors) {
+QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation, QStringList *errors,
+                                     RestartState *restart) {
     const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8());
     if (!document.isObject()) {
         return {};
@@ -524,15 +556,18 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         result.append(std::move(item));
     }
 
-    // Show what people recognize first: desktop apps, then packages, then runtimes.
+    // Show what people recognize first: desktop apps and widgets, then packages, then runtimes.
     const auto rank = [](const UpdateItem &item) {
         if (item.kind == QLatin1String("app")) {
             return 0;
         }
-        if (item.kind == QLatin1String("runtime")) {
-            return 2;
+        if (item.kind == QLatin1String("addon")) {
+            return 1;
         }
-        return 1;
+        if (item.kind == QLatin1String("runtime")) {
+            return 3;
+        }
+        return 2;
     };
     std::ranges::stable_sort(result, [&rank](const UpdateItem &a, const UpdateItem &b) { return rank(a) < rank(b); });
 
@@ -552,6 +587,11 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
                 errors->append(error);
             }
         }
+    }
+    if (restart) {
+        restart->required = document.object().value(QStringLiteral("restart_required")).toBool();
+        restart->stagedVersion =
+            restart->required ? document.object().value(QStringLiteral("staged_version")).toString() : QString();
     }
     return result;
 }
@@ -624,6 +664,9 @@ QString updateSourceLabel(const UpdateItem &item) {
     }
     if (item.backend == QLatin1String("nix")) {
         return i18n("Nix");
+    }
+    if (item.backend == QLatin1String("plasmoid")) {
+        return i18nc("@info update source", "Plasma Widget");
     }
     return item.source;
 }

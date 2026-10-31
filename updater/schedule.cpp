@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "activity.h"
+#include "image.h"
 #include "process.h"
 #include "updates.h"
 
@@ -38,6 +39,8 @@ namespace UltramarineUpdates {
         constexpr std::chrono::seconds installInterval = 20h;
         /// How often "Ask me" checks for updates and notifies.
         constexpr std::chrono::seconds notifyInterval = 24h;
+        /// How often image mode systems look for a new image.
+        constexpr std::chrono::seconds imageCheckInterval = 6h;
 
         void warn(const QString &message) { std::fprintf(stderr, "warning: %s\n", qPrintable(message)); }
 
@@ -108,6 +111,26 @@ namespace UltramarineUpdates {
                          i18np("1 update is ready to install.", "%1 updates are ready to install.", count)});
             if (result.succeeded() && result.out.trimmed() == "open") {
                 QProcess::startDetached(u"systemsettings"_s, {u"kcm_ultramarine_updates"_s});
+            }
+        }
+
+        /**
+         * Image mode: has bootc (or rpm-ostree) look for a new image, which needs
+         * root. Without this, the KCM and notifications, which run as the user,
+         * would only see updates someone checked for by hand.
+         */
+        void checkForImageUpdate(const QDateTime &now) {
+            const QString checked = systemStateDir() + "/last-image-check"_L1;
+            if (!isImageMode() || within(checked, imageCheckInterval, now)) {
+                return;
+            }
+            // Failures (usually no network) are retried on the next run.
+            if (QString error; !checkImageUpdate(&error)) {
+                warn(error);
+                return;
+            }
+            if (QString error; !writeTimestamp(checked, now, &error)) {
+                warn(error);
             }
         }
     } // namespace
@@ -200,6 +223,9 @@ namespace UltramarineUpdates {
         if (!loadSettings(&settings, error)) {
             return false;
         }
+        const QDateTime now = QDateTime::currentDateTime();
+        // Also with automatic updates off, so "Ask me" notifies about new images.
+        checkForImageUpdate(now);
         if (!tonight && !settings.automatic) {
             return true;
         }
@@ -208,7 +234,6 @@ namespace UltramarineUpdates {
             return false;
         }
         const bool inUse = sessionInUse(sessions).has_value();
-        const QDateTime now = QDateTime::currentDateTime();
         const std::chrono::seconds inactive =
             ActivityTracker(systemStateDir() + "/inactive-since"_L1).inactiveFor(inUse, now);
         const QString installed = systemStateDir() + "/last-automatic-update"_L1;
@@ -222,7 +247,9 @@ namespace UltramarineUpdates {
         if (!applySystem(true, settings.offline, &updated, error)) {
             return false;
         }
-        if (settings.offline) {
+        if (isImageMode()) {
+            say(u"The new system image takes effect after the next restart."_s);
+        } else if (settings.offline) {
             say(u"System updates will be installed during the next restart."_s);
         }
         if (QString warning; !writeTimestamp(installed, now, &warning)) {

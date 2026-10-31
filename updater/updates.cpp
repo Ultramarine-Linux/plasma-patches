@@ -10,6 +10,7 @@
 #include "flatpak.h"
 #include "image.h"
 #include "nix.h"
+#include "plasmoid.h"
 #include "process.h"
 #include "rpm.h"
 
@@ -41,10 +42,15 @@ namespace UltramarineUpdates {
         for (const PackageUpdate &update: updates) {
             updateArray.append(update.toJson());
         }
-        return {
+        QJsonObject object{
             {u"updates"_s, updateArray},
             {u"errors"_s, QJsonArray::fromStringList(errors)},
+            {u"restart_required"_s, restartRequired},
         };
+        if (!stagedVersion.isEmpty()) {
+            object.insert(u"staged_version"_s, stagedVersion);
+        }
+        return object;
     }
 
     namespace {
@@ -65,8 +71,10 @@ namespace UltramarineUpdates {
         QString error;
         if (isImageMode()) {
             // dnf exists in bootc images, but can't update the image.
-            const QList<PackageUpdate> updates = imageUpdates(&error);
-            collect(u"image"_s, updates, error);
+            const ImageState image = imageState(&error);
+            collect(u"image"_s, image.update ? QList<PackageUpdate>{*image.update} : QList<PackageUpdate>{}, error);
+            response.restartRequired = image.staged;
+            response.stagedVersion = image.stagedVersion;
         } else if (hasExecutable(u"dnf"_s)) {
             const QList<PackageUpdate> updates = rpmPackageUpdates(&error);
             collect(u"rpm"_s, updates, error);
@@ -88,6 +96,11 @@ namespace UltramarineUpdates {
                 collect(u"flatpak "_s + installation, updates, error);
             }
         }
+        if (canManagePlasmoids()) {
+            error.clear();
+            const QList<PackageUpdate> updates = plasmoidUpdates(&error);
+            collect(u"plasma widgets"_s, updates, error);
+        }
         return response;
     }
 
@@ -106,6 +119,12 @@ namespace UltramarineUpdates {
         if (canManageNixProfile()) {
             if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
                 *error = u"Nix profile upgrade failed (exit code %1)"_s.arg(exitCode);
+                return false;
+            }
+        }
+        if (canManagePlasmoids()) {
+            if (QString plasmoidError; !upgradePlasmoids(&plasmoidError)) {
+                *error = u"Plasma widget update failed: %1"_s.arg(plasmoidError);
                 return false;
             }
         }

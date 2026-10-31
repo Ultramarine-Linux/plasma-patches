@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
     KLocalizedString::setApplicationDomain("kcm_ultramarine_updates");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(u"Lists and installs RPM (or bootc image), Flatpak and Nix updates.\n\n"
+    parser.setApplicationDescription(u"Lists and installs RPM (or bootc image), Flatpak, Nix and Plasma widget updates.\n\n"
                                      u"Commands:\n"
                                      u"  list            List available updates (--json)\n"
                                      u"  apply           Install available updates (--yes)\n"
