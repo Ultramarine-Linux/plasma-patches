@@ -188,7 +188,7 @@ QString Tweaks::output() const { return m_output; }
 
 void Tweaks::refresh() {
     if (m_loading) {
-        // The list being loaded may predate a change; load it again once it's done.
+        // the list being loaded may predate a change; load it again once it's done
         m_reloadPending = true;
         return;
     }
@@ -245,8 +245,8 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     // --yes skips um's terminal prompt; the KCM shows its own confirmation first.
     const QStringList umArguments =
         QStringList{QStringLiteral("tweaks")} + arguments + QStringList{QStringLiteral("--yes"), id};
-    // um escalates through pkexec itself when it isn't run from a terminal. There is no
-    // Cancel: once the tweak runs as root, signals from this unprivileged process fail.
+    // um escalates through pkexec itself when it isn't run from a terminal; there is no
+    // Cancel, since once the tweak runs as root, signals from this unprivileged process fail
     m_changeProcess.start(um, umArguments);
 }
 
@@ -255,7 +255,7 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
     const QString stdOut = QString::fromUtf8(m_listProcess.readAllStandardOutput());
     const QString stdErr = QString::fromUtf8(m_listProcess.readAllStandardError()).trimmed();
     if (std::exchange(m_reloadPending, false)) {
-        // This list is already out of date.
+        // this list is already out of date
         refresh();
         return;
     }

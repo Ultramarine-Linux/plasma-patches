@@ -6,8 +6,8 @@ index a412202..e9612e1 100644
          return;
      }
  
-+    // Ultramarine: there is no Updates page. Open System Settings > Updates for
-+    // --mode update (used by scripts and notifiers) and show the Home page.
++    // Ultramarine: there is no Updates page, so open System Settings > Updates for
++    // --mode update (used by scripts and notifiers) and show the Home page
 +    if (_mode.compare(u"update"_s, Qt::CaseInsensitive) == 0) {
 +        Q_EMIT ResourcesModel::global()->switchToUpdates();
 +        openMode(u"Browsing"_s);
@@ -194,8 +194,8 @@ index d0fd3c4..5c5d6ca 100644
 -            connect(m_appdata.get(), &AppStream::ConcurrentPool::loadFinished, this, loadDone);
 -        }
 -    }
-+    // Ultramarine: don't offer distro upgrades here. "Upgrade Now" would run the
-+    // upgrade in Discover's updater, which is replaced by System Settings > Updates.
++    // Ultramarine: don't offer distro upgrades here; "Upgrade Now" would run the
++    // upgrade in Discover's updater, which is replaced by System Settings > Updates
  }
  
  void PackageKitBackend::foundNewMajorVersion(const AppStream::Release &release)

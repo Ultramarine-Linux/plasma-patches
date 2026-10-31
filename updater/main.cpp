@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// ultramarine-updates: the backend of the Ultramarine Updates KCM.
+// ultramarine-updates: the backend of the Ultramarine Updates KCM
 //
-// The KCM runs it as the logged-in user. Commands that need root run their
+// the KCM runs it as the logged-in user; commands that need root run their
 // system part as a child through pkexec (no terminal: a polkit prompt) or sudo
 // (from a terminal), and only then the user's own part (user Flatpaks, Nix
-// profile, Plasma widgets) as the user.
+// profile, Plasma widgets) as the user
 
 #include <KLocalizedString>
 
@@ -51,12 +51,12 @@ namespace {
     }
 
     /**
-     * Runs `<this helper> @p arguments` as root and returns its exit code: pkexec
+     * runs `<this helper> @p arguments` as root and returns its exit code: pkexec
      * exits with 126 if the prompt is dismissed and 127 if authorization fails,
-     * which the KCM checks for. The polkit actions match our exact path and the
-     * command (argv[1]), so @p arguments must start with the command. pkexec runs
-     * it with a clean environment: wrapping the helper in `env` would stop the
-     * actions from applying.
+     * which the KCM checks for; the polkit actions match our exact path and the
+     * command (argv[1]), so @p arguments must start with the command; pkexec runs
+     * it with a clean environment, so wrapping the helper in `env` would stop the
+     * actions from applying
      */
     int runAsRoot(const QStringList &arguments) {
         const QString self = QCoreApplication::applicationFilePath();
@@ -84,7 +84,7 @@ namespace {
         return exitCode;
     }
 
-    /// This command line, rebuilt for runAsRoot() with the command first.
+    /// this command line, rebuilt for runAsRoot() with the command first
     QStringList commandLine(const QString &command, const QCommandLineParser &parser) {
         static const QSet<QString> valueOptions{u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s};
         QStringList arguments{command};
@@ -137,12 +137,12 @@ namespace {
             if (const InstallLock::Result locked = userLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
                 return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
             }
-            // System updates first: if authentication is cancelled (or they fail),
-            // nothing is installed. pkexec's exit codes are passed on.
+            // system updates first: if authentication is canceled (or they fail),
+            // nothing is installed; pkexec's exit codes are passed on
             if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
                 return exitCode;
             }
-            // User-level updates must run as the invoking user.
+            // user-level updates must run as the invoking user
             return applyUser(assumeYes, &error) ? 0 : fail(error);
         }
 
@@ -150,7 +150,7 @@ namespace {
         if (const InstallLock::Result locked = systemLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
             return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
         }
-        // Read as root: pkexec cleared any development override.
+        // read as root: pkexec cleared any development override
         Settings settings;
         if (!loadSettings(&settings, &error)) {
             std::fprintf(stderr, "warning: %s\n", qPrintable(error));
@@ -251,8 +251,8 @@ namespace {
         const bool cancel = parser.isSet(u"cancel"_s);
         QString error;
         if (geteuid() != 0) {
-            // The system's timer first: if authentication is cancelled, nothing
-            // changes. Then the user's own updates, in their user manager.
+            // the system's timer first: if authentication is canceled, nothing
+            // changes; then the user's own updates, in their user manager
             if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
                 return exitCode;
             }

@@ -45,7 +45,7 @@ namespace UltramarineUpdates {
         constexpr std::chrono::seconds notifyInterval = 24h;
         /// How often image mode systems look for a new image.
         constexpr std::chrono::seconds imageCheckInterval = 6h;
-        /// How long to wait after a failed install (often no network) before trying again.
+        /// how long to wait after a failed install (often no network) before trying again
         constexpr std::chrono::seconds retryInterval = 1h;
 
         void warn(const QString &message) { std::fprintf(stderr, "warning: %s\n", qPrintable(message)); }
@@ -129,7 +129,7 @@ namespace UltramarineUpdates {
             if (!isImageMode()) {
                 return;
             }
-            // Cheap, and keeps what the KCM shows current after restarting or a manual upgrade.
+            // cheap, and keeps what the KCM shows current after restarting or a manual upgrade
             updateBootcStatusCache();
             const QString checked = systemStateDir() + "/last-image-check"_L1;
             if (within(checked, imageCheckInterval, now)) {
@@ -146,11 +146,11 @@ namespace UltramarineUpdates {
         }
 
         /**
-         * Runs @p install for a timer once it's ready, unless an install is already
+         * runs @p install for a timer once it's ready, unless an install is already
          * running or the last one failed less than retryInterval ago: tonight's
-         * timers poll every 5 minutes, and a failure shouldn't retry all night.
-         * Remembers the time of a successful install in @p installedPath, and
-         * sets @p installed if it installed.
+         * timers poll every 5 minutes, and a failure shouldn't retry all night
+         * remembers the time of a successful install in @p installedPath, and
+         * sets @p installed if it installed
          */
         bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
                               const QDateTime &now, const std::function<bool(QString *)> &install, bool *installed,
@@ -158,7 +158,7 @@ namespace UltramarineUpdates {
             *installed = false;
             InstallLock lock(lockPath);
             if (QString lockError; lock.tryLock(&lockError) != InstallLock::Result::Acquired) {
-                // Busy: a manual install or the other timer is running; it'll be retried.
+                // busy: a manual install or the other timer is running; it'll be retried
                 if (!lockError.isEmpty()) {
                     *error = lockError;
                     return false;

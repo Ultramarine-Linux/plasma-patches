@@ -112,7 +112,7 @@ public:
     /// Runs a script tweak.
     Q_INVOKABLE void runTweak(const QString &id);
 
-    /// Clears the error message, e.g. when the user dismisses it.
+    /// clears the error message, for example when the user dismisses it
     Q_INVOKABLE void clearError();
 
 Q_SIGNALS:
@@ -143,6 +143,6 @@ private:
     QString m_output;
     bool m_loading = false;
     bool m_running = false;
-    /// refresh() was called while loading; reload once the current load finishes.
+    /// refresh() was called while loading; reload once the current load finishes
     bool m_reloadPending = false;
 };

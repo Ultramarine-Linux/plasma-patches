@@ -96,7 +96,7 @@ KCMUtils.SimpleKCM {
             }
         }
 
-        // The helper rejects an empty window, so it can't be saved (see isSaveNeeded()).
+        // the helper rejects an empty window, so it can't be saved (see isSaveNeeded())
         Kirigami.InlineMessage {
             Layout.fillWidth: true
             Layout.maximumWidth: Kirigami.Units.gridUnit * 20

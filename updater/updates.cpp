@@ -150,12 +150,12 @@ namespace UltramarineUpdates {
         } else if (const QString dnf = QStandardPaths::findExecutable(u"dnf"_s); !dnf.isEmpty()) {
             QStringList arguments{u"upgrade"_s, u"--refresh"_s};
             if (offline) {
-                // Checked first, so nothing is downloaded for nothing.
+                // checked first, so nothing is downloaded for nothing
                 if (packageKitClient().isEmpty()) {
                     *error = u"Installing updates while restarting needs PackageKit, which isn't installed"_s;
                     return false;
                 }
-                // PackageKit would replace it.
+                // PackageKit would replace it
                 if (const SystemUpdateTrigger trigger = systemUpdateTrigger();
                     trigger == SystemUpdateTrigger::PackageKitUpgrade || trigger == SystemUpdateTrigger::Other) {
                     *error = trigger == SystemUpdateTrigger::PackageKitUpgrade
@@ -163,8 +163,8 @@ namespace UltramarineUpdates {
                         : u"Another offline update is already scheduled (%1 exists)"_s.arg(PackageKitPaths().trigger);
                     return false;
                 }
-                // Into PackageKit's cache, which then prepares the update from
-                // the same metadata and packages. dnf (as root) uses cachedir.
+                // into PackageKit's cache, which then prepares the update from
+                // the same metadata and packages; dnf (as root) uses cachedir
                 arguments.append(u"--downloadonly"_s);
                 if (const QString cacheDir = packageKitCacheDir(); !cacheDir.isEmpty()) {
                     arguments.append(u"--setopt=cachedir="_s + cacheDir);
@@ -177,7 +177,7 @@ namespace UltramarineUpdates {
                 *error = u"RPM update failed (exit code %1)"_s.arg(exitCode);
                 return false;
             }
-            // dnf has finished (and released its locks) before PackageKit starts.
+            // dnf has finished (and released its locks) before PackageKit starts
             if (offline && !prepareOfflineUpdate(error)) {
                 return false;
             }

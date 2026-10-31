@@ -58,7 +58,7 @@ KCMUtils.ScrollViewKCM {
             position: Kirigami.InlineMessage.Position.Header
             type: Kirigami.MessageType.Error
             text: kcm.errorMessage
-            // Not a binding: the close button sets visible = false, which would break it.
+            // not a binding: the close button sets visible = false, which would break it
             visible: false
             showCloseButton: true
             onTextChanged: visible = text.length > 0
@@ -79,7 +79,7 @@ KCMUtils.ScrollViewKCM {
             icon.source: "view-refresh"
             text: kcm.status
             visible: kcm.running
-            // No Cancel: tweaks run as root, where this KCM can't stop them.
+            // no Cancel: tweaks run as root, where this KCM can't stop them
             actions: Kirigami.Action {
                 text: i18nc("@action:button", "Show Output")
                 icon.name: "utilities-terminal"

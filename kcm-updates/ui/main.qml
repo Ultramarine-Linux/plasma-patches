@@ -83,7 +83,7 @@ KCMUtils.SimpleKCM {
         position: Kirigami.InlineMessage.Position.Header
         type: Kirigami.MessageType.Error
         text: kcm.errorMessage
-        // Not a binding: the close button sets visible = false, which would break it.
+        // not a binding: the close button sets visible = false, which would break it
         visible: false
         showCloseButton: true
         onTextChanged: visible = text.length > 0
@@ -113,9 +113,9 @@ KCMUtils.SimpleKCM {
                 implicitHeight: Kirigami.Units.gridUnit
             }
 
-            // Offline updates install while restarting (Plasma's logout screen offers
+            // offline updates install while restarting (Plasma's logout screen offers
             // "Install Updates and Restart"); in image mode, a new system image is
-            // staged and takes over when restarting.
+            // staged and takes over when restarting
             Kirigami.InlineMessage {
                 Layout.fillWidth: true
                 visible: kcm.restartRequired

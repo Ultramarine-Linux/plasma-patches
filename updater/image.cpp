@@ -166,8 +166,8 @@ namespace UltramarineUpdates {
 
     std::optional<QByteArray> parseBootcStatusCache(const QByteArray &cache, const QString &bootId) {
         const QJsonObject object = QJsonDocument::fromJson(cache).object();
-        // After restarting, the staged image is the booted one: an old copy would
-        // still ask for a restart.
+        // after restarting, the staged image is the booted one, so an old copy would
+        // still ask for a restart
         const QJsonValue status = object.value("status"_L1);
         if (bootId.isEmpty() || object.value("boot_id"_L1).toString() != bootId || !status.isObject()) {
             return std::nullopt;
@@ -195,7 +195,7 @@ namespace UltramarineUpdates {
         if (!QDir().mkpath(directory)) {
             return;
         }
-        // Users list updates through this copy, whatever root's umask.
+        // users list updates through this copy, whatever root's umask
         const auto readable = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
         if (created) {
             QFile::setPermissions(directory, readable | QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther);
@@ -214,7 +214,7 @@ namespace UltramarineUpdates {
             if (const CommandResult result = capture(bootc, {u"status"_s, u"--format=json"_s}); result.succeeded()) {
                 return parseBootcState(result.out, name);
             }
-            // On a booted system, `bootc status` needs root; the system timer keeps a copy.
+            // on a booted system, `bootc status` needs root; the system timer keeps a copy
             if (QFile cache(bootcStatusCachePath()); cache.open(QIODevice::ReadOnly)) {
                 if (const std::optional<QByteArray> status = parseBootcStatusCache(cache.readAll(), bootId())) {
                     return parseBootcState(*status, name);

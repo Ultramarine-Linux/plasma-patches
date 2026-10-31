@@ -33,7 +33,7 @@ namespace UltramarineUpdates {
                 return u"invalid time \"%1\", expected HH:MM"_s.arg(clock);
             }
         }
-        // inWindow() treats an equal start and end as an empty window, so nothing would ever install.
+        // inWindow() treats an equal start and end as an empty window, so nothing would ever install
         if (!windowStart.isEmpty() && parseClock(windowStart) == parseClock(windowEnd)) {
             return u"a time window's start and end must differ"_s;
         }
@@ -153,7 +153,7 @@ namespace UltramarineUpdates {
                 *error = u"inactive_minutes must be a whole number"_s;
                 return false;
             }
-            // Checked before the cast, which is undefined for values outside int's range.
+            // checked before the cast, which is undefined for values outside int's range
             if (value < 0 || value > maxInactiveMinutes) {
                 *error = u"inactive minutes must be between 0 and %1"_s.arg(maxInactiveMinutes);
                 return false;
@@ -195,7 +195,7 @@ namespace UltramarineUpdates {
             *error = u"could not create %1"_s.arg(directory);
             return false;
         }
-        // mkpath uses the caller's umask, which pkexec keeps; users must be able to read the settings.
+        // mkpath uses the caller's umask, which pkexec keeps; users must be able to read the settings
         if (created) {
             QFile::setPermissions(directory,
                                   QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |

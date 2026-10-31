@@ -6,9 +6,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <!--
   pkexec uses the first action, in polkitd's (unordered) hash table order, whose
-  exec.path matches and whose exec.argv1 matches if it has one. An action
+  exec.path matches and whose exec.argv1 matches if it has one; an action
   without exec.argv1 would match every command, so every action names the
-  helper command it allows.
+  helper command it allows
 -->
 <policyconfig>
   <vendor>Ultramarine Linux</vendor>

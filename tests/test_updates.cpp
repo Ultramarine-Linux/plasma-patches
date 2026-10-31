@@ -157,11 +157,11 @@ void UpdatesTest::parsesOfflinePending() {
     QVERIFY(restart.offlinePending);
     QVERIFY(restart.stagedVersion.isEmpty());
 
-    // Pending offline updates always need a restart.
+    // pending offline updates always need a restart
     parseUpdateListing(QStringLiteral(R"({"updates":[],"offline_pending":true})"), nullptr, nullptr, &restart);
     QVERIFY(restart.required);
 
-    // Image staging keeps its version and isn't an offline update.
+    // image staging keeps its version and isn't an offline update
     parseUpdateListing(
         QStringLiteral(R"({"updates":[],"restart_required":true,"offline_pending":false,"staged_version":"45.1"})"),
         nullptr, nullptr, &restart);
@@ -173,21 +173,21 @@ void UpdatesTest::parsesOfflinePending() {
 }
 
 void UpdatesTest::refreshErrorMessages() {
-    // Every source failed: `list` exits 1 but still prints a listing.
+    // every source failed: `list` exits 1 but still prints a listing
     QCOMPARE(refreshErrorMessage(1, R"json({"updates":[],"errors":["RPM","Flatpak (system)"]})json", "warning\n"),
              QStringLiteral("Could not check for updates from: RPM, Flatpak (system)"));
-    // Some sources failed.
+    // some sources failed
     QCOMPARE(refreshErrorMessage(0, R"({"updates":[{"name":"foo"}],"errors":["Nix"]})", {}),
              QStringLiteral("Could not check for updates from: Nix"));
     QVERIFY(refreshErrorMessage(0, R"({"updates":[],"errors":[]})", {}).isEmpty());
-    // A failed offline update isn't a source that couldn't be checked.
+    // a failed offline update isn't a source that couldn't be checked
     QCOMPARE(refreshErrorMessage(0, R"({"updates":[],"errors":[],"offline_error":"Transaction failed"})", {}),
              QStringLiteral("The updates could not be installed while restarting: Transaction failed"));
     QCOMPARE(refreshErrorMessage(0, R"({"updates":[],"errors":["Nix"],"offline_error":"Transaction failed"})", {}),
              QStringLiteral("The updates could not be installed while restarting: Transaction failed\n"
                             "Could not check for updates from: Nix"));
 
-    // No listing: stdout is never shown.
+    // no listing: stdout is never shown
     QCOMPARE(refreshErrorMessage(2, "{\"updates\":", "Unknown option 'json'.\n"),
              QStringLiteral("Checking for updates failed (exit code 2). Unknown option 'json'."));
     QCOMPARE(refreshErrorMessage(1, {}, {}), QStringLiteral("Checking for updates failed (exit code 1)."));
@@ -209,7 +209,7 @@ void UpdatesTest::upgradeSettingsDefaults() {
     QVERIFY(changed == defaults);
     changed.windowEnd = changed.windowStart;
     QVERIFY(changed != defaults);
-    // An equal start and end only matters once the window is used; the helper rejects it then.
+    // an equal start and end only matters once the window is used; the helper rejects it then
     QVERIFY(changed.isValid());
     changed.windowEnabled = true;
     QVERIFY(!changed.isValid());

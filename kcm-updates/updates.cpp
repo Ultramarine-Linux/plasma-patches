@@ -233,7 +233,7 @@ bool Updates::scheduledTonight() const { return m_scheduledTonight; }
 QDateTime Updates::scheduledTime() const { return m_scheduledTime; }
 
 bool Updates::isSaveNeeded() const {
-    // The helper rejects an empty window; AdvancedSettings.qml points it out.
+    // the helper rejects an empty window; AdvancedSettings.qml points it out
     return m_upgradeSettings.isValid() && m_upgradeSettings != m_savedUpgradeSettings;
 }
 
@@ -266,7 +266,7 @@ void Updates::load() {
               [this](const int exitCode, const QByteArray &out, const QByteArray &err) {
                   UpgradeSettings loaded;
                   if (exitCode != 0 || !parseUpgradeSettings(out, &loaded)) {
-                      // Unreadable settings: show the defaults, and say so.
+                      // unreadable settings: show the defaults, and say so
                       loaded = UpgradeSettings{};
                       const QString detail = QString::fromLocal8Bit(err).trimmed();
                       setErrorMessage(
@@ -320,7 +320,7 @@ void Updates::refreshSchedule() {
     const quint64 request = ++m_scheduleRequest;
     runHelper({QStringLiteral("schedule"), QStringLiteral("--status"), QStringLiteral("--json")},
               [this, request](const int exitCode, const QByteArray &out, const QByteArray &) {
-                  // A later request (e.g. after Apply Tonight) is newer than this reply.
+                  // a later request (like after Apply Tonight) is newer than this reply
                   if (request != m_scheduleRequest) {
                       return;
                   }
@@ -350,8 +350,8 @@ void Updates::applyTonight() {
     if (m_running || m_scheduling) {
         return;
     }
-    // Stays set until the status read afterwards arrives, so the button can't be
-    // pressed again (another authentication prompt) while it still shows the old state.
+    // stays set until the status read afterwards arrives, so the button can't be
+    // pressed again (another authentication prompt) while it still shows the old state
     m_scheduleChanging = true;
     setScheduling(true);
     runHelper({QStringLiteral("schedule")}, [this](const int exitCode, const QByteArray &, const QByteArray &err) {
@@ -448,9 +448,9 @@ void Updates::applyUpdates() {
         finishOperation(false, i18n("The update helper (ultramarine-updates) is not installed."));
         return;
     }
-    // The helper runs the system part through pkexec first and only then updates the
-    // user's Flatpaks, Nix profile and widgets as us. Once it runs as root, it can't be
-    // stopped from here, so there is no Cancel.
+    // the helper runs the system part through pkexec first and only then updates the
+    // user's Flatpaks, Nix profile and widgets as us; once it runs as root, it can't be
+    // stopped from here, so there is no Cancel
     startProcess(helper, {QStringLiteral("apply"), QStringLiteral("--yes")}, Operation::Install);
 }
 
@@ -470,20 +470,20 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
     const QByteArray stdErr = std::exchange(m_processStderr, {});
     const bool normalExit = exitStatus == QProcess::NormalExit;
 
-    // Only stderr is logged; stdout is the (large) update listing or progress output.
+    // only stderr is logged; stdout is the (large) update listing or progress output
     if (const QString errors = QString::fromLocal8Bit(stdErr).trimmed(); !errors.isEmpty()) {
         qWarning().noquote() << "kcm-updates: ultramarine-updates:" << errors;
     }
 
     switch (operation) {
     case Operation::Refresh: {
-        // `list` still prints a listing when it fails (exit code 1 if no source worked).
+        // `list` still prints a listing when it fails (exit code 1 if no source worked)
         m_updates.clear();
         parseListing(QString::fromUtf8(stdOut));
         const QString error = refreshErrorMessage(normalExit ? exitCode : -1, stdOut, stdErr);
         if (normalExit && exitCode == 0) {
             finishOperation(true, i18np("%1 update available.", "%1 updates available.", updateCount()));
-            // Some sources failed; the others are still listed.
+            // some sources failed; the others are still listed
             setErrorMessage(error);
         } else {
             finishOperation(false, error);
@@ -494,11 +494,11 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
         if (normalExit && exitCode == 0) {
             setErrorMessage({});
             finishOperation(true, i18n("Updates installed."));
-            // Re-check so the page reflects what is still pending.
+            // re-check so the page reflects what is still pending
             refresh();
             break;
         }
-        // The helper asks for authentication before changing anything.
+        // the helper asks for authentication before changing anything
         if (normalExit && Pkexec::isAuthenticationFailure(exitCode)) {
             finishOperation(false, i18n("Authentication was cancelled or failed. No updates were installed."));
             break;
@@ -535,11 +535,11 @@ void Updates::readProcessOutput() {
     const QByteArray stdErr = m_process.readAllStandardError();
     m_processStdout += stdOut;
     m_processStderr += stdErr;
-    // A refresh's listing is parsed once the process exits; installs show their latest line.
+    // a refresh's listing is parsed once the process exits; installs show their latest line
     if (m_operation != Operation::Install || (stdOut.isEmpty() && stdErr.isEmpty())) {
         return;
     }
-    // The whole buffer is decoded so a character split across reads isn't garbled.
+    // the whole buffer is decoded so a character split across reads isn't garbled
     const QByteArray &latest = stdErr.isEmpty() ? m_processStdout : m_processStderr;
     const QByteArray trimmed = latest.trimmed();
     if (const QString line = QString::fromLocal8Bit(trimmed.sliced(trimmed.lastIndexOf('\n') + 1)).trimmed();
@@ -655,7 +655,7 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
     }
     if (restart) {
         restart->offlinePending = document.object().value(QStringLiteral("offline_pending")).toBool();
-        // Offline updates always need a restart, even if an older helper didn't say so.
+        // offline updates always need a restart, even if an older helper didn't say so
         restart->required =
             restart->offlinePending || document.object().value(QStringLiteral("restart_required")).toBool();
         restart->stagedVersion =

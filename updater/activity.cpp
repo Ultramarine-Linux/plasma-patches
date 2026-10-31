@@ -155,8 +155,8 @@ namespace UltramarineUpdates {
             QFile::remove(m_sincePath);
             return std::chrono::seconds(0);
         }
-        // Wall-clock time also passes while suspended or switched off. Only time
-        // the polls saw counts, so a missed poll starts over.
+        // wall-clock time also passes while suspended or switched off; only time
+        // the polls saw counts, so a missed poll starts over
         const bool watched = lastPoll && *lastPoll <= now && lastPoll->secsTo(now) <= m_maxPollGap.count();
         const std::optional<QDateTime> since = readTimestamp(m_sincePath);
         if (!since || *since > now || !watched) {

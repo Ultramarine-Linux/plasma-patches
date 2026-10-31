@@ -23,9 +23,9 @@ chmod +x "$tmp/bin/udevadm"
 card() {
     local dir=$tmp/$1/$2
     mkdir -p "$dir/device" "$tmp/$1/$2-eDP-1"
-    # Real connectors link to their card's device too.
+    # real connectors link to their card's device too
     ln -s "../$2/device" "$tmp/$1/$2-eDP-1/device"
-    # 3D controllers (PCI class 0x0302), common for laptop dGPUs, have no boot_vga.
+    # 3D controllers (PCI class 0x0302), common for laptop dGPUs, have no boot_vga
     if [[ $3 != - ]]; then echo "$3" >"$dir/device/boot_vga"; fi
     if [[ $4 == 1 ]]; then
         echo "TAGS=:seat:switcheroo-discrete-gpu:" >"$dir/fake-udev"

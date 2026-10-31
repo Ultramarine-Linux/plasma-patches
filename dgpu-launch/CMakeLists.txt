@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # "Launch Using Dedicated Graphics Card" in the app launchers,
-# only on hybrid GPU systems (including laptops with an eGPU plugged in).
-# See docs/dgpu-launch.md.
+# only on hybrid GPU systems (including laptops with an eGPU plugged in)
+# see docs/dgpu-launch.md
 set(_component COMPONENT ultramarine-dgpu-launch)
 
-# Like the paths in the top-level CMakeLists.txt, these follow the install prefix unless set with -D.
+# like the paths in the top-level CMakeLists.txt, these follow the install prefix unless set with -D
 if (NOT DEFINED DGPU_DETECT_EXECUTABLE)
     set(DGPU_DETECT_EXECUTABLE "${CMAKE_INSTALL_PREFIX}/libexec/ultramarine-dgpu-detect")
 endif ()

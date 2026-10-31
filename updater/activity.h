@@ -48,19 +48,20 @@ namespace UltramarineUpdates {
     /// Timestamps from the future (clock changes) don't count.
     bool within(const QString &path, std::chrono::seconds duration, const QDateTime &now);
 
-    /// How often the timers check whether the device is in use.
+    /// how often the timers check whether the device is in use
     inline constexpr std::chrono::seconds pollInterval = std::chrono::minutes(5);
 
     /**
-     * Remembers since when no one has used the device. The timers poll every few
+     * remembers since when no one has used the device; the timers poll every few
      * minutes, so "inactive for 30 minutes" means 30 minutes of consecutive polls
-     * seeing no session in use. A longer gap between polls (the device was
-     * suspended or off, or the clock changed) starts counting again: no one
-     * watched whether the device was used then.
+     * seeing no session in use
+     * a longer gap between polls (the device was suspended or off, or the clock
+     * changed) starts counting again, since no one watched whether the device
+     * was used then
      */
     class ActivityTracker {
     public:
-        /// Keeps the start of inactivity in @p sincePath and the last poll in @p lastPollPath.
+        /// keeps the start of inactivity in @p sincePath and the last poll in @p lastPollPath
         ActivityTracker(QString sincePath, QString lastPollPath,
                         std::chrono::seconds maxPollGap = 2 * pollInterval + std::chrono::minutes(1)) :
             m_sincePath(std::move(sincePath)), m_lastPollPath(std::move(lastPollPath)), m_maxPollGap(maxPollGap) {}

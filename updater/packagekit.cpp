@@ -18,10 +18,10 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// The group pk_offline_auth_set_results() writes.
+        /// the group pk_offline_auth_set_results() writes
         constexpr auto resultsGroup = "[PackageKit Offline Update Results]";
 
-        /// Undoes GKeyFile's escaping of string values (g_key_file_parse_value_as_string()).
+        /// undoes GKeyFile's escaping of string values (g_key_file_parse_value_as_string())
         QString unescapeKeyFileValue(const QByteArray &value) {
             QByteArray result;
             result.reserve(value.size());
@@ -50,7 +50,7 @@ namespace UltramarineUpdates {
             return QString::fromUtf8(result);
         }
 
-        /// Like dnf5_releasever_is_valid(): never empty, an option, a hidden directory or a path.
+        /// like dnf5_releasever_is_valid(): never empty, an option, a hidden directory or a path
         bool isSafePathComponent(const QString &value) {
             if (value.isEmpty() || !value.front().isLetterOrNumber() || value.contains(".."_L1)) {
                 return false;
@@ -60,7 +60,7 @@ namespace UltramarineUpdates {
             });
         }
 
-        /// The value of an os-release line, unquoted like g_shell_unquote().
+        /// the value of an os-release line, unquoted like g_shell_unquote()
         QString unquoteShellValue(const QString &value) {
             if (value.size() >= 2 && value.front() == u'\'' && value.back() == u'\'') {
                 return value.mid(1, value.size() - 2);
@@ -106,7 +106,7 @@ namespace UltramarineUpdates {
     }
 
     QString parseOfflineResultsError(const QByteArray &keyFile) {
-        // Carries over between lines, so it can't move into the loop.
+        // carries over between lines, so it can't move into the loop
         // cppcheck-suppress variableScope
         bool inGroup = false;
         std::optional<bool> success;
@@ -150,8 +150,8 @@ namespace UltramarineUpdates {
             return {};
         }
         const QString error = parseOfflineResultsError(results.read(64 * 1024));
-        // Packages were installed (or removed) since, by PackageKit or anything
-        // else, so the failure is probably no longer relevant.
+        // packages were installed (or removed) since, by PackageKit or anything
+        // else, so the failure is probably no longer relevant
         if (const QFileInfo rpmDatabase(paths.rpmDatabase); !error.isEmpty() && rpmDatabase.exists() &&
             rpmDatabase.lastModified() > results.fileTime(QFileDevice::FileModificationTime)) {
             return {};
@@ -172,7 +172,7 @@ namespace UltramarineUpdates {
     }
 
     QString packageKitCacheDir(const PackageKitPaths &paths) {
-        // PackageKit falls back to /usr/lib/os-release, like systemd.
+        // PackageKit falls back to /usr/lib/os-release, like systemd
         QFile osRelease(paths.osRelease);
         if (!osRelease.exists()) {
             osRelease.setFileName(u"/usr/lib/os-release"_s);
@@ -214,11 +214,11 @@ namespace UltramarineUpdates {
 
         std::fputs("Preparing the updates to install while restarting...\n", stdout);
         std::fflush(stdout);
-        // A running packagekitd keeps the repository metadata it loaded. A
+        // a running packagekitd keeps the repository metadata it loaded, so a
         // (not forced) refresh rereads it from the cache dnf just updated,
-        // without downloading anything. Then PackageKit finds the packages dnf
-        // downloaded, records them and links /system-update to them; it doesn't
-        // trigger anything if it finds no updates.
+        // without downloading anything; then PackageKit finds the packages dnf
+        // downloaded, records them and links /system-update to them, and it doesn't
+        // trigger anything if it finds no updates
         return run({u"--no-color"_s, u"refresh"_s}) &&
             run({u"--yes"_s, u"--no-color"_s, u"offline-update"_s, u"prepare"_s});
     }
