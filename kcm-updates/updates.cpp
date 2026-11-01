@@ -82,6 +82,12 @@ QHash<int, QByteArray> UpdatesModel::roleNames() const {
 
 int UpdatesModel::count() const { return static_cast<int>(m_updates.size()); }
 
+int UpdatesModel::countExcluding(const QString &backend) const {
+    return static_cast<int>(std::ranges::count_if(m_updates, [&backend](const UpdateItem &item) {
+        return item.backend != backend;
+    }));
+}
+
 qint64 UpdatesModel::totalDownloadSize() const {
     qint64 total = 0;
     for (const UpdateItem &item: m_updates) {
@@ -152,6 +158,10 @@ QString Updates::distributionVersion() {
 }
 
 int Updates::updateCount() const { return m_updates.count(); }
+
+int Updates::installableCount() const {
+    return m_restartState.offlinePending ? m_updates.countExcluding(QStringLiteral("rpm")) : m_updates.count();
+}
 
 UpdatesModel *Updates::updates() { return &m_updates; }
 
@@ -374,11 +384,16 @@ void Updates::cancelTonight() {
     m_scheduleChanging = true;
     setScheduling(true);
     runHelper({QStringLiteral("schedule"), QStringLiteral("--cancel")},
-              [this](const int exitCode, const QByteArray &, const QByteArray &) {
+              [this](const int exitCode, const QByteArray &, const QByteArray &err) {
                   m_scheduleChanging = false;
                   if (Pkexec::isAuthenticationFailure(exitCode)) {
                       setErrorMessage(
                           i18n("Authentication was cancelled or failed. Tonight's updates are still scheduled."));
+                  } else if (exitCode != 0) {
+                      const QString detail = QString::fromLocal8Bit(err).trimmed();
+                      setErrorMessage(detail.isEmpty()
+                                          ? i18n("Tonight's updates could not be cancelled.")
+                                          : i18n("Tonight's updates could not be cancelled: %1", detail));
                   }
                   refreshSchedule();
               });
@@ -419,6 +434,12 @@ void Updates::refresh() {
 
     m_updates.clear();
     setTechnicalInformation({});
+    if (m_restartState != RestartState{}) {
+        m_restartState = {};
+        Q_EMIT restartStateChanged();
+        // installableCount depends on offlinePending
+        Q_EMIT updateCountChanged();
+    }
     setErrorMessage({});
     setStatus(i18n("Checking for updates…"));
 
@@ -483,8 +504,11 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
         const QString error = refreshErrorMessage(normalExit ? exitCode : -1, stdOut, stdErr);
         if (normalExit && exitCode == 0) {
             finishOperation(true, i18np("%1 update available.", "%1 updates available.", updateCount()));
-            // some sources failed; the others are still listed
-            setErrorMessage(error);
+            // some sources failed and the others are still listed. Don't clear the banner
+            // otherwise, it may show a settings or schedule error that came in during the check.
+            if (!error.isEmpty()) {
+                setErrorMessage(error);
+            }
         } else {
             finishOperation(false, error);
         }
@@ -492,7 +516,6 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
     }
     case Operation::Install: {
         if (normalExit && exitCode == 0) {
-            setErrorMessage({});
             finishOperation(true, i18n("Updates installed."));
             // re-check so the page reflects what is still pending
             refresh();
@@ -559,6 +582,8 @@ void Updates::parseListing(const QString &output) {
     if (restart != m_restartState) {
         m_restartState = restart;
         Q_EMIT restartStateChanged();
+        // installableCount depends on offlinePending
+        Q_EMIT updateCountChanged();
     }
 }
 

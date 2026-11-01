@@ -257,14 +257,20 @@ namespace {
                 return exitCode;
             }
             if (cancel) {
-                cancelTonight(true);
+                if (!cancelTonight(true, &error)) {
+                    return fail(u"failed to cancel your updates: %1"_s.arg(error));
+                }
             } else if (!scheduleTonight(true, &error)) {
+                // don't leave only the system's half scheduled
+                runAsRoot({command, u"--cancel"_s});
                 return fail(u"failed to schedule your updates: %1"_s.arg(error));
             }
             return 0;
         }
         if (cancel) {
-            cancelTonight(false);
+            if (!cancelTonight(false, &error)) {
+                return fail(u"failed to cancel updates: %1"_s.arg(error));
+            }
             print(u"Tonight's updates were cancelled.\n"_s);
             return 0;
         }

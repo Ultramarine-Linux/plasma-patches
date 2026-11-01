@@ -211,14 +211,17 @@ namespace UltramarineUpdates {
         // checkImageUpdate() (or before installing). We report what they already found.
         const QString name = osName();
         if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
+            std::optional<QByteArray> status;
             if (const CommandResult result = capture(bootc, {u"status"_s, u"--format=json"_s}); result.succeeded()) {
-                return parseBootcState(result.out, name);
+                status = result.out;
+            } else if (QFile cache(bootcStatusCachePath()); cache.open(QIODevice::ReadOnly)) {
+                // on a booted system, `bootc status` needs root. The system timer keeps a copy.
+                status = parseBootcStatusCache(cache.readAll(), bootId());
             }
-            // on a booted system, `bootc status` needs root; the system timer keeps a copy
-            if (QFile cache(bootcStatusCachePath()); cache.open(QIODevice::ReadOnly)) {
-                if (const std::optional<QByteArray> status = parseBootcStatusCache(cache.readAll(), bootId())) {
-                    return parseBootcState(*status, name);
-                }
+            // hosts with bootc that don't track an image (classic rpm-ostree) fall through
+            if (const std::optional<BootcStatus> parsed = status ? parseBootcStatus(*status) : std::nullopt;
+                parsed && !parsed->image.isEmpty()) {
+                return parseBootcState(*status, name);
             }
         }
         const QString rpmOstree = QStandardPaths::findExecutable(u"rpm-ostree"_s);

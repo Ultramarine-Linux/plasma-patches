@@ -62,7 +62,8 @@ KCMUtils.ScrollViewKCM {
             visible: false
             showCloseButton: true
             onTextChanged: visible = text.length > 0
-            onVisibleChanged: if (!visible) kcm.clearError()
+            // only when the banner itself was closed, not when the page around it is hidden
+            onVisibleChanged: if (!visible && parent && parent.visible) kcm.clearError()
             Component.onCompleted: visible = text.length > 0
             actions: Kirigami.Action {
                 text: i18nc("@action:button", "Show Output")

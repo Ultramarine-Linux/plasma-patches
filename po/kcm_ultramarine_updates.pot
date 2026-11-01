@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kcm_ultramarine_updates\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-31 20:52+0000\n"
+"POT-Creation-Date: 2026-10-31 21:08-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,27 +18,27 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: kcm-updates/ui/main.qml:333
+#: kcm-updates/ui/main.qml:336
 msgctxt "@info %1 source, %2 new version"
 msgid "%1 - %2"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:330
+#: kcm-updates/ui/main.qml:333
 msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 - %2 → %3"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:63
+#: kcm-updates/ui/main.qml:65
 msgctxt "@info %1 is a size like 500 MB"
 msgid "%1 Download"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:68
+#: kcm-updates/ui/main.qml:70
 msgctxt "@info %1 is a size like 20 MB"
 msgid "%1 Freed"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:66
+#: kcm-updates/ui/main.qml:68
 msgctxt "@info %1 is a size like 20 MB"
 msgid "%1 Installed"
 msgstr ""
@@ -50,14 +50,14 @@ msgid_plural "%1 minutes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: kcm-updates/ui/main.qml:71
+#: kcm-updates/ui/main.qml:73
 msgctxt "@info"
 msgid "%1 update available"
 msgid_plural "%1 updates available"
 msgstr[0] ""
 msgstr[1] ""
 
-#: kcm-updates/updates.cpp:485
+#: kcm-updates/updates.cpp:506
 msgid "%1 update available."
 msgid_plural "%1 updates available."
 msgstr[0] ""
@@ -79,7 +79,7 @@ msgid_plural "%1 updates are ready to install."
 msgstr[0] ""
 msgstr[1] ""
 
-#: kcm-updates/ui/main.qml:128
+#: kcm-updates/ui/main.qml:131
 msgctxt "@info"
 msgid "A system update is ready. Restart to start using it."
 msgstr ""
@@ -89,7 +89,7 @@ msgctxt "@title:group"
 msgid "Add-ons"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:439
+#: kcm-updates/ui/main.qml:442
 msgctxt "@action:button"
 msgid "Advanced Settings"
 msgstr ""
@@ -99,7 +99,7 @@ msgctxt "@title"
 msgid "Advanced Update Settings"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:433
+#: kcm-updates/ui/main.qml:436
 msgctxt "@label"
 msgid "Advanced update settings"
 msgstr ""
@@ -109,17 +109,17 @@ msgctxt "@info"
 msgid "Also used for Apply Tonight."
 msgstr ""
 
-#: kcm-updates/ui/main.qml:200
+#: kcm-updates/ui/main.qml:203
 msgctxt "@action:button install updates now"
 msgid "Apply"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:208
+#: kcm-updates/ui/main.qml:211
 msgctxt "@action:button install updates tonight"
 msgid "Apply Tonight"
 msgstr ""
 
-#: kcm-updates/updates.cpp:444
+#: kcm-updates/updates.cpp:465
 msgid "Applying updates…"
 msgstr ""
 
@@ -128,52 +128,52 @@ msgctxt "@title:group"
 msgid "Apps"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:417
+#: kcm-updates/ui/main.qml:420
 msgctxt "@option:radio"
 msgid "Ask me"
 msgstr ""
 
-#: kcm-updates/updates.cpp:503
+#: kcm-updates/updates.cpp:526
 msgid "Authentication was cancelled or failed. No updates were installed."
 msgstr ""
 
-#: kcm-updates/updates.cpp:292
+#: kcm-updates/updates.cpp:302
 msgid "Authentication was cancelled or failed. The settings were not saved."
 msgstr ""
 
-#: kcm-updates/updates.cpp:381
+#: kcm-updates/updates.cpp:391
 msgid ""
 "Authentication was cancelled or failed. Tonight's updates are still "
 "scheduled."
 msgstr ""
 
-#: kcm-updates/updates.cpp:360
+#: kcm-updates/updates.cpp:370
 msgid "Authentication was cancelled or failed. Updates were not scheduled."
 msgstr ""
 
-#: kcm-updates/ui/main.qml:392
+#: kcm-updates/ui/main.qml:395
 msgctxt "@label"
 msgid "Automatic Updates"
 msgstr ""
 
-#: kcm-updates/updates.cpp:590
+#: kcm-updates/updates.cpp:615
 msgid "Checking for updates failed (exit code %1)."
 msgstr ""
 
-#: kcm-updates/updates.cpp:591
+#: kcm-updates/updates.cpp:616
 msgid "Checking for updates failed (exit code %1). %2"
 msgstr ""
 
-#: kcm-updates/updates.cpp:587
+#: kcm-updates/updates.cpp:612
 msgid "Checking for updates failed: the update helper stopped unexpectedly."
 msgstr ""
 
-#: kcm-updates/updates.cpp:584
+#: kcm-updates/updates.cpp:609
 msgid ""
 "Checking for updates failed: the update helper’s output could not be read."
 msgstr ""
 
-#: kcm-updates/updates.cpp:423
+#: kcm-updates/updates.cpp:444
 msgid "Checking for updates…"
 msgstr ""
 
@@ -187,24 +187,24 @@ msgctxt "@action:button"
 msgid "Copy"
 msgstr ""
 
-#: kcm-updates/updates.cpp:578
+#: kcm-updates/updates.cpp:603
 msgid "Could not check for updates from: %1"
 msgstr ""
 
-#: kcm-updates/updates.cpp:409
+#: kcm-updates/updates.cpp:424
 msgid "Could not restart: %1"
 msgstr ""
 
-#: kcm-updates/updates.cpp:529
+#: kcm-updates/updates.cpp:552
 msgid "Could not start the update helper."
 msgstr ""
 
-#: kcm-updates/ui/main.qml:207
+#: kcm-updates/ui/main.qml:210
 msgctxt "@action:button"
 msgid "Don’t Apply Tonight"
 msgstr ""
 
-#: kcm-updates/updates.cpp:733
+#: kcm-updates/updates.cpp:758
 msgid "Flatpak"
 msgstr ""
 
@@ -223,26 +223,26 @@ msgctxt "@option:check"
 msgid "Install while restarting"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:59
+#: kcm-updates/ui/main.qml:61
 msgctxt "@info"
 msgid "Installing tonight when the device isn’t in use"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:402
+#: kcm-updates/ui/main.qml:405
 msgctxt "@option:radio"
 msgid "Let your device decide"
 msgstr ""
 
-#: kcm-updates/updates.cpp:736
+#: kcm-updates/updates.cpp:761
 msgid "Nix"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:261
+#: kcm-updates/ui/main.qml:264
 msgctxt "@info"
 msgid "Nothing right now"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:188
+#: kcm-updates/ui/main.qml:191
 msgctxt "@info"
 msgid ""
 "Occasional updates for your system and apps to keep things running smoothly "
@@ -263,27 +263,27 @@ msgstr ""
 msgid "Open Updates"
 msgstr ""
 
-#: kcm-updates/updates.cpp:739
+#: kcm-updates/updates.cpp:764
 msgctxt "@info update source"
 msgid "Plasma Widget"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:173
+#: kcm-updates/ui/main.qml:176
 msgctxt "@title"
 msgid "Regular Updates"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:53
+#: kcm-updates/ui/main.qml:55
 msgctxt "@info"
 msgid "Restart to finish updating"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:50
+#: kcm-updates/ui/main.qml:52
 msgctxt "@info"
 msgid "Restart to install updates"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:130
+#: kcm-updates/ui/main.qml:133
 msgctxt "@action:button"
 msgid "Restart…"
 msgstr ""
@@ -293,12 +293,12 @@ msgctxt "@title:group"
 msgid "Runtimes"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:229
+#: kcm-updates/ui/main.qml:232
 msgctxt "@title"
 msgid "Software to Be Updated"
 msgstr ""
 
-#: kcm-updates/updates.cpp:730
+#: kcm-updates/updates.cpp:755
 msgid "System"
 msgstr ""
 
@@ -312,7 +312,7 @@ msgctxt "@label"
 msgid "System updates:"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:364
+#: kcm-updates/ui/main.qml:367
 msgctxt "@action:button opens a list of all updates"
 msgid "Technical Information"
 msgstr ""
@@ -329,27 +329,27 @@ msgid ""
 "unlocked."
 msgstr ""
 
-#: kcm-updates/updates.cpp:295
+#: kcm-updates/updates.cpp:305
 msgid "The settings could not be saved."
 msgstr ""
 
-#: kcm-updates/updates.cpp:296
+#: kcm-updates/updates.cpp:306
 msgid "The settings could not be saved: %1"
 msgstr ""
 
-#: kcm-updates/updates.cpp:427 kcm-updates/updates.cpp:448
+#: kcm-updates/updates.cpp:448 kcm-updates/updates.cpp:469
 msgid "The update helper (ultramarine-updates) is not installed."
 msgstr ""
 
-#: kcm-updates/updates.cpp:274
+#: kcm-updates/updates.cpp:284
 msgid "The update settings could not be loaded. Showing the defaults."
 msgstr ""
 
-#: kcm-updates/updates.cpp:275
+#: kcm-updates/updates.cpp:285
 msgid "The update settings could not be loaded. Showing the defaults. %1"
 msgstr ""
 
-#: kcm-updates/updates.cpp:575
+#: kcm-updates/updates.cpp:600
 msgid "The updates could not be installed while restarting: %1"
 msgstr ""
 
@@ -361,7 +361,15 @@ msgid ""
 "restarted for you."
 msgstr ""
 
-#: kcm-updates/ui/main.qml:93
+#: kcm-updates/updates.cpp:395
+msgid "Tonight's updates could not be cancelled."
+msgstr ""
+
+#: kcm-updates/updates.cpp:396
+msgid "Tonight's updates could not be cancelled: %1"
+msgstr ""
+
+#: kcm-updates/ui/main.qml:96
 msgctxt "@action:button"
 msgid "Try Again"
 msgstr ""
@@ -391,25 +399,25 @@ msgstr ""
 msgid "Updates are ready"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:125
+#: kcm-updates/ui/main.qml:128
 msgctxt "@info"
 msgid "Updates are ready to install. Restart to install them."
 msgstr ""
 
-#: kcm-updates/ui/main.qml:410
+#: kcm-updates/ui/main.qml:413
 msgctxt "@info"
 msgid "Updates automatically install when you’re not active"
 msgstr ""
 
-#: kcm-updates/updates.cpp:363
+#: kcm-updates/updates.cpp:373
 msgid "Updates could not be scheduled."
 msgstr ""
 
-#: kcm-updates/updates.cpp:364
+#: kcm-updates/updates.cpp:374
 msgid "Updates could not be scheduled: %1"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:216
+#: kcm-updates/ui/main.qml:219
 msgctxt "@info:tooltip"
 msgid ""
 "Updates install tonight once the device hasn’t been used for a while and is "
@@ -423,34 +431,34 @@ msgid ""
 "between 10 PM and 6 AM."
 msgstr ""
 
-#: kcm-updates/updates.cpp:496
+#: kcm-updates/updates.cpp:519
 msgid "Updates installed."
 msgstr ""
 
-#: kcm-updates/updates.cpp:517
+#: kcm-updates/updates.cpp:540
 msgid "Updating failed (exit code %1)."
 msgstr ""
 
-#: kcm-updates/updates.cpp:518
+#: kcm-updates/updates.cpp:541
 msgid "Updating failed (exit code %1). %2"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:127
+#: kcm-updates/ui/main.qml:130
 msgctxt "@info %1 is a system version"
 msgid "Version %1 is ready. Restart to start using it."
 msgstr ""
 
-#: kcm-updates/ui/main.qml:56
+#: kcm-updates/ui/main.qml:58
 msgctxt "@info"
 msgid "Your system is up to date"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:425
+#: kcm-updates/ui/main.qml:428
 msgctxt "@info"
 msgid "You’re notified when updates are ready to go"
 msgstr ""
 
-#: kcm-updates/ui/main.qml:347
+#: kcm-updates/ui/main.qml:350
 msgctxt "@info %1 is a number of updates"
 msgid "and <b>%1</b> More"
 msgid_plural "and <b>%1</b> More"

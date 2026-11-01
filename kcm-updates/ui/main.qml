@@ -19,6 +19,8 @@ KCMUtils.SimpleKCM {
     // Number of updates listed under "Software to Be Updated".
     readonly property int shownUpdates: 5
     readonly property bool hasUpdates: kcm.updateCount > 0
+    // RPM updates waiting for a restart are still listed, but Apply has nothing left to do for them
+    readonly property bool canApply: kcm.installableCount > 0
     readonly property real labelColumnWidth: Kirigami.Units.gridUnit * 9
 
     // Every row of "Software to Be Updated" has the same height, and the list
@@ -46,7 +48,7 @@ KCMUtils.SimpleKCM {
         if (kcm.running) {
             return kcm.status;
         }
-        if (!root.hasUpdates && kcm.offlinePending) {
+        if (!root.canApply && kcm.offlinePending) {
             return i18nc("@info", "Restart to install updates");
         }
         if (!root.hasUpdates && kcm.restartRequired) {
@@ -87,7 +89,8 @@ KCMUtils.SimpleKCM {
         visible: false
         showCloseButton: true
         onTextChanged: visible = text.length > 0
-        onVisibleChanged: if (!visible) kcm.clearError()
+        // only when the banner itself was closed, not when the page around it is hidden
+        onVisibleChanged: if (!visible && parent && parent.visible) kcm.clearError()
         Component.onCompleted: visible = text.length > 0
         actions: Kirigami.Action {
             text: i18nc("@action:button", "Try Again")
@@ -199,7 +202,7 @@ KCMUtils.SimpleKCM {
                         QQC2.Button {
                             text: i18nc("@action:button install updates now", "Apply")
                             icon.name: "download"
-                            enabled: !kcm.running && !kcm.scheduling && root.hasUpdates
+                            enabled: !kcm.running && !kcm.scheduling && root.canApply
                             onClicked: kcm.applyUpdates()
                         }
 
@@ -208,7 +211,7 @@ KCMUtils.SimpleKCM {
                                                        : i18nc("@action:button install updates tonight", "Apply Tonight")
                             // A plain crescent; the non-symbolic weather icon is a full moon.
                             icon.name: kcm.scheduledTonight ? "dialog-cancel" : "weather-clear-night-symbolic"
-                            enabled: !kcm.running && !kcm.scheduling && (root.hasUpdates || kcm.scheduledTonight)
+                            enabled: !kcm.running && !kcm.scheduling && (root.canApply || kcm.scheduledTonight)
                             onClicked: kcm.scheduledTonight ? kcm.cancelTonight() : kcm.applyTonight()
 
                             QQC2.ToolTip.visible: hovered && !kcm.scheduledTonight

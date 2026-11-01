@@ -14,6 +14,7 @@ namespace {
     private Q_SLOTS:
         static void modelExposesUpdateRoles();
         static void modelClearOnlyNotifiesWhenNeeded();
+        static void modelCountsExcludingBackend();
         static void parsesUpdateListing();
         static void rejectsInvalidUpdateListing();
         static void parsesListingErrors();
@@ -67,6 +68,19 @@ void UpdatesTest::modelClearOnlyNotifiesWhenNeeded() {
     model.clear();
     QCOMPARE(model.count(), 0);
     QCOMPARE(countChanged.count(), 2);
+}
+
+void UpdatesTest::modelCountsExcludingBackend() {
+    UpdatesModel model;
+    QCOMPARE(model.countExcluding(QStringLiteral("rpm")), 0);
+
+    for (const QString &backend: {QStringLiteral("rpm"), QStringLiteral("flatpak"), QStringLiteral("plasmoid")}) {
+        UpdateItem item;
+        item.backend = backend;
+        model.addUpdate(item);
+    }
+    QCOMPARE(model.countExcluding(QStringLiteral("rpm")), 2);
+    QCOMPARE(model.countExcluding(QStringLiteral("nix")), 3);
 }
 
 void UpdatesTest::parsesUpdateListing() {

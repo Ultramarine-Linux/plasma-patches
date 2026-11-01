@@ -130,6 +130,9 @@ public:
     /// Returns the number of updates in the model.
     [[nodiscard]] int count() const;
 
+    /// Returns the number of updates that aren't from @p backend.
+    [[nodiscard]] int countExcluding(const QString &backend) const;
+
     /// Returns the sum of all download sizes, in bytes.
     [[nodiscard]] qint64 totalDownloadSize() const;
 
@@ -158,6 +161,7 @@ class Updates : public KQuickManagedConfigModule {
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
     Q_PROPERTY(QString distributionVersion READ distributionVersion CONSTANT)
     Q_PROPERTY(int updateCount READ updateCount NOTIFY updateCountChanged)
+    Q_PROPERTY(int installableCount READ installableCount NOTIFY updateCountChanged)
     Q_PROPERTY(UpdatesModel *updates READ updates CONSTANT)
     Q_PROPERTY(QString technicalInformation READ technicalInformation NOTIFY technicalInformationChanged)
     Q_PROPERTY(bool automaticUpdates READ automaticUpdates WRITE setAutomaticUpdates NOTIFY settingsValuesChanged)
@@ -199,6 +203,10 @@ public:
 
     /// Returns the number of available updates.
     [[nodiscard]] int updateCount() const;
+
+    /// Returns the number of updates Apply would install. RPM updates that are already
+    /// downloaded and install while restarting (offline updates) are listed but don't count.
+    [[nodiscard]] int installableCount() const;
 
     /// Returns the model containing available updates.
     UpdatesModel *updates();

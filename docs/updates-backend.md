@@ -36,7 +36,8 @@ first). So the system timer, `bootc upgrade --check` and installing keep a
 world-readable copy of its output in
 `/var/lib/ultramarine-updates/bootc-status.json`, tagged with the boot ID, which
 the listing reads as the user. A copy from a previous boot is ignored, and
-without one the listing falls back to `rpm-ostree status`.
+without one, or on hosts where bootc doesn't track an image (`spec.image` is
+null), the listing falls back to `rpm-ostree status`.
 
 Images update through this helper, which never restarts the device. Don't enable
 bootc's `bootc-fetch-apply-updates.timer` alongside it: it runs
@@ -47,7 +48,8 @@ Widgets" (or Discover), which KNewStuff records in
 `~/.local/share/knewstuff3/plasmoids.knsregistry`. Widgets installed by packages
 or `kpackagetool6` aren't touched. Without any store widgets, the KDE Store isn't
 contacted at all. A widget update takes effect once Plasma reloads it, e.g. after
-logging in again.
+logging in again. If a widget takes longer than 10 minutes to install, the rest are
+skipped until the next run, since KNewStuff can't cancel the one still going.
 
 RPM and Nix updates are shown as apps when the package ships an AppStream
 desktop-application component (or, without any metainfo, a visible launcher).
@@ -199,7 +201,8 @@ Installs take a lock first, `/run/ultramarine-updates.lock` for system updates
 (root only) and `$XDG_RUNTIME_DIR/ultramarine-updates.lock` for the user's, so
 the automatic timers, Apply Tonight and `apply` never run dnf or flatpak at the
 same time. A timer that finds the lock held skips that run; `apply` fails with
-a message.
+a message. The system timer also skips its image check while an install holds
+the lock.
 
 ## Installed files
 

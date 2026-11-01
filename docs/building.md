@@ -26,6 +26,11 @@ ctest --test-dir build --output-on-failure
 just cppcheck
 ```
 
+The install paths of the update helper, its systemd units and the dGPU launcher
+follow `CMAKE_INSTALL_PREFIX`. Build directories configured before they did still
+have the old paths cached, so reconfigure those with `cmake --fresh` (or
+`just clean`) before changing the prefix.
+
 The `justfile` also provides `just build`, `just test`, `just install`, and
 `just install-user`. `just configure` generates `compile_commands.json` for
 clangd.

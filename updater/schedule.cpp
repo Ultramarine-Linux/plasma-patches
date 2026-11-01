@@ -129,8 +129,19 @@ namespace UltramarineUpdates {
             if (!isImageMode()) {
                 return;
             }
-            // cheap, and keeps what the KCM shows current after restarting or a manual upgrade
-            updateBootcStatusCache();
+            {
+                // skipped while an install runs, which rewrites the cache itself once it's done.
+                // Only held for the cache, so a manual Apply isn't turned away during the check.
+                InstallLock lock(systemLockPath());
+                if (QString error; lock.tryLock(&error) != InstallLock::Result::Acquired) {
+                    if (!error.isEmpty()) {
+                        warn(error);
+                    }
+                    return;
+                }
+                // cheap, and keeps what the KCM shows current after restarting or a manual upgrade
+                updateBootcStatusCache();
+            }
             const QString checked = systemStateDir() + "/last-image-check"_L1;
             if (within(checked, imageCheckInterval, now)) {
                 return;
@@ -365,8 +376,14 @@ namespace UltramarineUpdates {
         return scheduleTransientTimer(false, tonightTimer, {u"run-scheduled"_s, u"--tonight"_s}, error);
     }
 
-    void cancelTonight(const bool userManager) {
-        systemctl(userManager, {u"stop"_s, (userManager ? tonightUserTimer : tonightTimer) + ".timer"_L1});
+    bool cancelTonight(const bool userManager, QString *error) {
+        const QString timer = (userManager ? tonightUserTimer : tonightTimer) + ".timer"_L1;
+        // 5: the transient timer isn't loaded, so nothing was scheduled
+        if (const int exitCode = systemctl(userManager, {u"stop"_s, timer}); exitCode != 0 && exitCode != 5) {
+            *error = u"systemctl stop %1 failed (exit code %2)"_s.arg(timer).arg(exitCode);
+            return false;
+        }
+        return true;
     }
 
 } // namespace UltramarineUpdates
