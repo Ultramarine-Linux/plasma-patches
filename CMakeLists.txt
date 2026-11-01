@@ -20,7 +20,7 @@ include(KDEInstallDirs)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(KDECMakeSettings)
 
-find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core Quick Gui Qml Test Widgets)
+find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED Core DBus Quick Gui Qml Test Widgets)
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
         Config
@@ -30,6 +30,7 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
         KIO
         Service
         WidgetsAddons
+        NewStuffCore
 )
 
 include(CTest)
@@ -64,7 +65,6 @@ add_subdirectory(updater)
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
 add_subdirectory(dgpu-launch)
-add_subdirectory(office-installer)
 
 if (BUILD_TESTING)
     add_subdirectory(tests)

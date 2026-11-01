@@ -12,6 +12,7 @@ add_library(ultramarine_updates_core STATIC
         flatpak.cpp
         nix.cpp
         image.cpp
+        plasmoid.cpp
         settings.cpp
         activity.cpp
         schedule.cpp
@@ -24,6 +25,8 @@ target_link_libraries(ultramarine_updates_core
         PUBLIC
         Qt6::Core
         KF6::I18n
+        PRIVATE
+        KF6::NewStuffCore
 )
 
 add_executable(ultramarine-updates main.cpp)

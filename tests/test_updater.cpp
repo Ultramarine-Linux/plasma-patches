@@ -13,6 +13,7 @@
 #include "flatpak.h"
 #include "image.h"
 #include "nix.h"
+#include "plasmoid.h"
 #include "rpm.h"
 #include "schedule.h"
 #include "settings.h"
@@ -57,6 +58,9 @@ namespace {
         static void resolvesNixApps();
         static void parsesDeterminateNixVersions();
         static void parsesImageStatus();
+        static void parsesBootcState();
+        static void parsesPlasmoidRegistry();
+        static void plasmoidUpdate();
         static void settingsRoundTrip();
         static void inWindow();
         static void validatesSettings();
@@ -455,18 +459,144 @@ void UpdaterTest::parsesImageStatus() {
         {"booted":false,"checksum":"old","version":"44.20260901.0"},
         {"booted":true,"checksum":"abc","version":"44.20261001.0","container-image-reference":"ostree-image-signed:docker://ghcr.io/ultramarine-linux/plasma-bootc:44"}],
         "cached-update":{"checksum":"def","version":"44.20261020.0"}})";
-    const std::optional<PackageUpdate> update = parseRpmOstreeStatus(status, u"Ultramarine Linux"_s, u"bootc"_s);
-    QVERIFY(update);
-    QCOMPARE(update->oldVersion, u"44.20261001.0"_s);
-    QCOMPARE(update->newVersion, u"44.20261020.0"_s);
-    QCOMPARE(update->backend, u"bootc"_s);
-    QCOMPARE(update->source, u"Image (ostree-image-signed:docker://ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
+    ImageState state = parseRpmOstreeState(status, u"Ultramarine Linux"_s, u"bootc"_s);
+    QVERIFY(state.update);
+    QVERIFY(!state.staged);
+    QCOMPARE(state.update->oldVersion, u"44.20261001.0"_s);
+    QCOMPARE(state.update->newVersion, u"44.20261020.0"_s);
+    QCOMPARE(state.update->backend, u"bootc"_s);
+    QCOMPARE(state.update->source, u"Image (ostree-image-signed:docker://ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
 
     // No cached update, or it's what's booted: nothing to install.
-    QVERIFY(!parseRpmOstreeStatus(R"({"deployments":[{"booted":true,"checksum":"abc"}],"cached-update":null})", {},
-                                  u"bootc"_s));
-    QVERIFY(!parseRpmOstreeStatus(
-        R"({"deployments":[{"booted":true,"checksum":"abc"}],"cached-update":{"checksum":"abc"}})", {}, u"bootc"_s));
+    QVERIFY(!parseRpmOstreeState(R"({"deployments":[{"booted":true,"checksum":"abc"}],"cached-update":null})", {},
+                                 u"bootc"_s)
+                 .update);
+    QVERIFY(
+        !parseRpmOstreeState(R"({"deployments":[{"booted":true,"checksum":"abc"}],"cached-update":{"checksum":"abc"}})",
+                             {}, u"bootc"_s)
+             .update);
+
+    // The cached update is already the pending deployment: restart to finish.
+    state = parseRpmOstreeState(R"({"deployments":[
+        {"booted":false,"staged":true,"checksum":"def","version":"44.20261020.0"},
+        {"booted":true,"checksum":"abc","version":"44.20261001.0"}],
+        "cached-update":{"checksum":"def","version":"44.20261020.0"}})",
+                                {}, u"rpm-ostree"_s);
+    QVERIFY(!state.update);
+    QVERIFY(state.staged);
+    QCOMPARE(state.stagedVersion, u"44.20261020.0"_s);
+}
+
+void UpdaterTest::parsesBootcState() {
+    // Abridged `bootc status --format=json`: cachedUpdate is per boot entry.
+    const auto host = [](const QString &staged, const QString &cachedUpdate) {
+        return uR"({"apiVersion":"org.containers.bootc/v1","kind":"BootcHost",
+            "spec":{"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"}},
+            "status":{"staged":%1,"booted":{
+                "image":{"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"},
+                         "version":"44.20261001.0","imageDigest":"sha256:aaaa"},
+                "cachedUpdate":%2,"downloadOnly":false},"rollback":null}})"_s.arg(staged, cachedUpdate)
+            .toUtf8();
+    };
+    const QString newer = uR"({"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"},
+        "version":"44.20261020.0","imageDigest":"sha256:bbbb"})"_s;
+    const auto stagedEntry = [&newer](const bool downloadOnly) {
+        return uR"({"image":%1,"cachedUpdate":null,"downloadOnly":%2})"_s.arg(newer,
+                                                                              downloadOnly ? u"true"_s : u"false"_s);
+    };
+
+    ImageState state = parseBootcState(host(u"null"_s, newer), u"Ultramarine Linux"_s);
+    QVERIFY(state.update);
+    QVERIFY(!state.staged);
+    QCOMPARE(state.update->name, u"Ultramarine Linux"_s);
+    QCOMPARE(state.update->backend, u"bootc"_s);
+    QCOMPARE(state.update->oldVersion, u"44.20261001.0"_s);
+    QCOMPARE(state.update->newVersion, u"44.20261020.0"_s);
+    QCOMPARE(state.update->source, u"Image (ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
+
+    // Nothing found yet.
+    state = parseBootcState(host(u"null"_s, u"null"_s), {});
+    QVERIFY(!state.update);
+    QVERIFY(!state.staged);
+
+    // Staged: no longer an update, but needs a restart.
+    state = parseBootcState(host(stagedEntry(false), newer), {});
+    QVERIFY(!state.update);
+    QVERIFY(state.staged);
+    QCOMPARE(state.stagedVersion, u"44.20261020.0"_s);
+
+    // Download-only stages aren't applied when restarting.
+    state = parseBootcState(host(stagedEntry(true), newer), {});
+    QVERIFY(state.update);
+    QVERIFY(!state.staged);
+
+    // A newer image than the staged one.
+    state = parseBootcState(host(stagedEntry(false), uR"({"image":{"image":"x","transport":"registry"},
+        "version":"44.20261030.0","imageDigest":"sha256:cccc"})"_s),
+                            {});
+    QVERIFY(state.update);
+    QCOMPARE(state.update->newVersion, u"44.20261030.0"_s);
+    QVERIFY(state.staged);
+
+    // Images without a version are shown by digest.
+    state = parseBootcState(host(u"null"_s, uR"({"image":{"image":"localhost/um-env","transport":"containers-storage"},
+        "imageDigest":"sha256:0123456789abcdef"})"_s),
+                            {});
+    QVERIFY(state.update);
+    QCOMPARE(state.update->newVersion, u"0123456789ab"_s);
+}
+
+void UpdaterTest::parsesPlasmoidRegistry() {
+    QVERIFY(registryHasInstalledEntries(R"(<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE khotnewstuff3>
+<hotnewstuffregistry>
+ <stuff category="706">
+  <name>Panel Colorizer</name>
+  <providerid>api.kde-look.org</providerid>
+  <version>v8.0.0</version>
+  <installedfile>/home/user/.local/share/plasma/plasmoids/luisbocanegra.panel.colorizer/</installedfile>
+  <id>2130967</id>
+  <status>installed</status>
+ </stuff>
+</hotnewstuffregistry>)"));
+    QVERIFY(registryHasInstalledEntries(
+        "<hotnewstuffregistry><stuff><status>deleted</status></stuff><stuff><status>updateable</status></stuff>"
+        "</hotnewstuffregistry>"));
+    QVERIFY(!registryHasInstalledEntries("<hotnewstuffregistry/>"));
+    QVERIFY(!registryHasInstalledEntries("<hotnewstuffregistry><stuff><status>deleted</status></stuff>"
+                                         "</hotnewstuffregistry>"));
+    QVERIFY(!registryHasInstalledEntries("not xml"));
+}
+
+void UpdaterTest::plasmoidUpdate() {
+    const PlasmoidEntry entry{
+        .uniqueId = u"2130967"_s,
+        .name = u"Panel Colorizer"_s,
+        .version = u"v7.0.0"_s,
+        .updateVersion = u"v8.0.0"_s,
+        .installedFiles = {u"/home/user/.local/share/plasma/plasmoids/luisbocanegra.panel.colorizer/"_s},
+    };
+    const FileReader files = fakeFiles({
+        {u"/home/user/.local/share/plasma/plasmoids/luisbocanegra.panel.colorizer/metadata.json"_s,
+         uR"({"KPlugin":{"Id":"luisbocanegra.panel.colorizer","Icon":"desktop","Name":"Panel Colorizer"}})"_s},
+    });
+    PackageUpdate update = plasmoidPackageUpdate(entry, files);
+    QCOMPARE(update.id, u"plasmoid:2130967"_s);
+    QCOMPARE(update.name, u"Panel Colorizer"_s);
+    QCOMPARE(update.backend, u"plasmoid"_s);
+    QCOMPARE(update.source, u"KDE Store"_s);
+    QCOMPARE(update.kind, QString::fromLatin1(Kind::Addon));
+    QCOMPARE(update.oldVersion, u"v7.0.0"_s);
+    QCOMPARE(update.newVersion, u"v8.0.0"_s);
+    QCOMPARE(update.icon, u"desktop"_s);
+
+    // Without a readable package (or an icon in it), a generic Plasma icon.
+    update = plasmoidPackageUpdate(entry, fakeFiles({}));
+    QCOMPARE(update.icon, u"plasma"_s);
+
+    const PlasmoidMetadata metadata = parsePlasmoidMetadata(R"({"KPlugin":{"Id":"org.example.clock"}})");
+    QCOMPARE(metadata.id, u"org.example.clock"_s);
+    QVERIFY(metadata.icon.isEmpty());
 }
 
 void UpdaterTest::settingsRoundTrip() {

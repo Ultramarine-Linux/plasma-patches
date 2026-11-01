@@ -18,6 +18,7 @@ namespace {
         static void rejectsInvalidUmOutput();
         static void parsesUmErrors();
         static void listsAppsFirst();
+        static void parsesRestartState();
         static void parsesUpgradeSettings();
         static void parsesScheduleStatus();
     };
@@ -104,7 +105,8 @@ void UpdatesTest::listsAppsFirst() {
         {"id":"firefox.x86_64","name":"Firefox","source":"RPM (updates)","backend":"rpm","kind":"app","icon":"firefox","app_id":"org.mozilla.firefox"},
         {"id":"bash.x86_64","name":"bash","source":"RPM (updates)","backend":"rpm","kind":"package"},
         {"id":"org.kde.haruna//stable","name":"Haruna","source":"Flatpak (flathub)","backend":"flatpak","kind":"app","icon":"org.kde.haruna","app_id":"org.kde.haruna"},
-        {"id":"nix:flox","name":"flox","source":"Nix (github:flox/flox/latest)","backend":"nix","kind":"package","icon":"package-x-generic"}
+        {"id":"nix:flox","name":"flox","source":"Nix (github:flox/flox/latest)","backend":"nix","kind":"package","icon":"package-x-generic"},
+        {"id":"plasmoid:2130967","name":"Panel Colorizer","source":"KDE Store","backend":"plasmoid","kind":"addon","icon":"desktop"}
     ]})json"));
 
     QStringList names;
@@ -112,15 +114,36 @@ void UpdatesTest::listsAppsFirst() {
         names << item.name;
     }
     QCOMPARE(names,
-             QStringList({QStringLiteral("Firefox"), QStringLiteral("Haruna"), QStringLiteral("glibc"),
-                          QStringLiteral("bash"), QStringLiteral("flox"), QStringLiteral("GNOME Platform")}));
-    QCOMPARE(updateSourceLabel(updates.at(4)), QStringLiteral("Nix"));
+             QStringList({QStringLiteral("Firefox"), QStringLiteral("Haruna"), QStringLiteral("Panel Colorizer"),
+                          QStringLiteral("glibc"), QStringLiteral("bash"), QStringLiteral("flox"),
+                          QStringLiteral("GNOME Platform")}));
+    QCOMPARE(updateSourceLabel(updates.at(5)), QStringLiteral("Nix"));
+    QCOMPARE(updateSourceLabel(updates.at(2)), QStringLiteral("Plasma Widget"));
+    QCOMPARE(updates.at(2).icon, QStringLiteral("desktop"));
     QCOMPARE(updates.at(0).appId, QStringLiteral("org.mozilla.firefox"));
     QCOMPARE(updateSourceLabel(updates.at(1)), QStringLiteral("Flatpak"));
     // Runtimes never get their own icon, even if the helper reports one.
-    QCOMPARE(updates.at(5).icon, QStringLiteral("package-x-generic"));
+    QCOMPARE(updates.at(6).icon, QStringLiteral("package-x-generic"));
     // No icon reported: fall back to the generic one.
-    QCOMPARE(updates.at(3).icon, QStringLiteral("package-x-generic"));
+    QCOMPARE(updates.at(4).icon, QStringLiteral("package-x-generic"));
+}
+
+void UpdatesTest::parsesRestartState() {
+    RestartState restart{.required = true, .stagedVersion = QStringLiteral("stale")};
+    parseUpdateListing(QStringLiteral(R"({"updates":[],"errors":[]})"), nullptr, nullptr, &restart);
+    QVERIFY(!restart.required);
+    QVERIFY(restart.stagedVersion.isEmpty());
+
+    parseUpdateListing(
+        QStringLiteral(R"({"updates":[],"errors":[],"restart_required":true,"staged_version":"44.20261020.0"})"),
+        nullptr, nullptr, &restart);
+    QVERIFY(restart.required);
+    QCOMPARE(restart.stagedVersion, QStringLiteral("44.20261020.0"));
+
+    // Image updates are labelled as system updates.
+    const auto updates = parseUpdateListing(QStringLiteral(
+        R"({"updates":[{"id":"image:system","name":"Ultramarine Linux","backend":"bootc","kind":"package"}]})"));
+    QCOMPARE(updateSourceLabel(updates.at(0)), QStringLiteral("System"));
 }
 
 void UpdatesTest::parsesUpgradeSettings() {

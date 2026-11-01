@@ -15,11 +15,32 @@ the `um upgrade` command proposed for umcli; umcli still backs the Tweaks KCM
 | Flatpak | `flatpak remote-ls --updates`, per installation | `flatpak update --user` as the user, `--system` as root |
 | Nix profile | `nix profile list` and a pure evaluation of what `nix profile upgrade` would install | `nix profile upgrade --all --impure`, as the user |
 | Determinate Nix | `determinate-nixd version` | `determinate-nixd upgrade`, as root |
+| Plasma widgets | KNewStuff (`plasmoids.knsrc`) compares the user's registry with the KDE Store | KNewStuff installs the new version, as the user |
 
 On image mode systems (`/run/ostree-booted`), dnf is never used. The image
 update is staged for the next boot either way, so the offline setting doesn't
-apply there. Neither tool can check the registry without root, so the listing
-shows an image update only after bootc or rpm-ostree found one on their own.
+apply there, and the KCM shows it as always on. Once an image is staged, it's no
+longer listed as an update; `list` reports `restart_required` instead, and the
+KCM offers to restart (through Plasma's logout screen). Download-only stages
+(`bootc upgrade --download-only`) aren't applied when restarting, so they're
+still listed.
+
+Neither tool can check the registry without root, so the listing shows an image
+update only after bootc or rpm-ostree found one. The system timer runs
+`bootc upgrade --check` (or `rpm-ostree upgrade --check`) every 6 hours for
+that, whether or not updates install automatically. `um env` systems track a
+local image, so their base image updates show up only when installing.
+
+Images update through this helper, which never restarts the device. Don't enable
+bootc's `bootc-fetch-apply-updates.timer` alongside it: it runs
+`bootc upgrade --apply`, which restarts as soon as an update is staged.
+
+Plasma widgets are the ones installed from the KDE Store through "Get New
+Widgets" (or Discover), which KNewStuff records in
+`~/.local/share/knewstuff3/plasmoids.knsregistry`. Widgets installed by packages
+or `kpackagetool6` aren't touched. Without any store widgets, the KDE Store isn't
+contacted at all. A widget update takes effect once Plasma reloads it, e.g. after
+logging in again.
 
 RPM and Nix updates are shown as apps when the package ships an AppStream
 desktop-application component (or, without any metainfo, a visible launcher).
@@ -36,17 +57,18 @@ ultramarine-updates run-scheduled [--tonight]   # system timers, as root
 ultramarine-updates run-user [--tonight]        # user timers
 ```
 
-`list --json` prints `{"updates": [...], "errors": [...]}`. Each update has
-`id`, `name`, `source`, `backend` (`rpm`, `bootc`, `rpm-ostree`, `flatpak`,
-`nix`), `kind` (`app`, `runtime`, `package`), `app_id` for apps, `old_version`,
-`new_version`, `icon`, `download_size` and `installed_size_change` (bytes, 0 if
-unknown). A source that can't be queried goes into `errors`; the others are
-still listed.
+`list --json` prints `{"updates": [...], "errors": [...], "restart_required": false}`.
+Each update has `id`, `name`, `source`, `backend` (`rpm`, `bootc`, `rpm-ostree`,
+`flatpak`, `nix`, `plasmoid`), `kind` (`app`, `addon`, `runtime`, `package`),
+`app_id` for apps, `old_version`, `new_version`, `icon`, `download_size` and
+`installed_size_change` (bytes, 0 if unknown). A source that can't be queried
+goes into `errors`; the others are still listed. `restart_required` is true when
+a system image is staged, with its version in `staged_version` when known.
 
 ## Privileges
 
-The KCM runs the helper as the logged-in user, so user Flatpaks and the Nix
-profile are updated as that user. Commands that need root (`apply`, changing
+The KCM runs the helper as the logged-in user, so user Flatpaks, the Nix
+profile and Plasma widgets are updated as that user. Commands that need root (`apply`, changing
 `settings`, `schedule`) do the user's part first and then re-execute through
 `pkexec` (no terminal: a polkit prompt) or `sudo` (in a terminal). pkexec's exit
 codes 126 (dismissed) and 127 (not authorized) are passed back to the KCM.
@@ -74,7 +96,8 @@ Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
   at most once every 20 hours.
 - `ultramarine-updates-user.timer` (user, started by the
   `ultramarine-updates-user` autostart entry) runs `run-user`. With automatic
-  updates on, it does the same for the user's Flatpaks and Nix profile. With them
+  updates on, it does the same for the user's Flatpaks, Nix profile and Plasma
+  widgets. With them
   off ("Ask me"), it checks once a day and shows a notification with an
   "Open Updates" action.
 - **Apply Tonight** (`schedule`) creates transient `ultramarine-updates-tonight`
@@ -100,4 +123,5 @@ device is never restarted automatically.
 They're all in the `ultramarine-updates` CMake install component. Runtime
 dependencies: polkit (`pkexec`), systemd, and `libnotify` (`notify-send`) for
 "Ask me" notifications. dnf, flatpak, nix, bootc and rpm-ostree are used when
-present.
+present. Plasma widgets need KNewStuff (`kf6-knewstuff`), which the helper links
+against.

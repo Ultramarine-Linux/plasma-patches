@@ -57,24 +57,6 @@ namespace UltramarineUpdates {
             update.newVersion = newVersion;
             return update;
         }
-
-        /// Parses `bootc status --format=json` into the pending update (status.cachedUpdate).
-        std::optional<PackageUpdate> parseBootcUpdate(const QByteArray &json, const QString &name) {
-            const QJsonObject status = QJsonDocument::fromJson(json).object().value("status"_L1).toObject();
-            const QJsonObject cached = status.value("cachedUpdate"_L1).toObject();
-            if (cached.isEmpty()) {
-                return std::nullopt;
-            }
-            const QJsonObject booted = status.value("booted"_L1).toObject().value("image"_L1).toObject();
-            const QString oldVersion = versionOf(booted, u"imageDigest"_s);
-            const QString newVersion = versionOf(cached, u"imageDigest"_s);
-            if (booted.value("imageDigest"_L1) == cached.value("imageDigest"_L1)) {
-                return std::nullopt;
-            }
-            const QString image = cached.value("image"_L1).toObject().value("image"_L1).toString();
-            return imageUpdate(name, u"bootc"_s, image.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(image), oldVersion,
-                               newVersion);
-        }
     } // namespace
 
     bool isImageMode() { return QFile::exists(u"/run/ostree-booted"_s); }
@@ -97,42 +79,77 @@ namespace UltramarineUpdates {
         return name == "um-env"_L1 || name.startsWith("um-env:"_L1);
     }
 
-    std::optional<PackageUpdate> parseRpmOstreeStatus(const QByteArray &json, const QString &name,
-                                                      const QString &backend) {
-        const QJsonObject root = QJsonDocument::fromJson(json).object();
-        const QJsonObject cached = root.value("cached-update"_L1).toObject();
-        if (cached.isEmpty()) {
-            return std::nullopt;
+    ImageState parseBootcState(const QByteArray &json, const QString &name) {
+        const QJsonObject status = QJsonDocument::fromJson(json).object().value("status"_L1).toObject();
+        const QJsonObject booted = status.value("booted"_L1).toObject();
+        const QJsonObject bootedImage = booted.value("image"_L1).toObject();
+        const QJsonObject staged = status.value("staged"_L1).toObject();
+        const QJsonObject stagedImage = staged.value("image"_L1).toObject();
+        const QString bootedDigest = bootedImage.value("imageDigest"_L1).toString();
+        const QString stagedDigest = stagedImage.value("imageDigest"_L1).toString();
+
+        ImageState state;
+        // A download-only stage stays locked until `bootc upgrade` unlocks it.
+        if (!staged.isEmpty() && !staged.value("downloadOnly"_L1).toBool() && stagedDigest != bootedDigest) {
+            state.staged = true;
+            state.stagedVersion = versionOf(stagedImage, u"imageDigest"_s);
         }
+        const QJsonObject cached = booted.value("cachedUpdate"_L1).toObject();
+        const QString cachedDigest = cached.value("imageDigest"_L1).toString();
+        if (cached.isEmpty() || cachedDigest == bootedDigest || (state.staged && cachedDigest == stagedDigest)) {
+            return state;
+        }
+        const QString image = cached.value("image"_L1).toObject().value("image"_L1).toString();
+        state.update = imageUpdate(name, u"bootc"_s, image.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(image),
+                                   versionOf(bootedImage, u"imageDigest"_s), versionOf(cached, u"imageDigest"_s));
+        return state;
+    }
+
+    ImageState parseRpmOstreeState(const QByteArray &json, const QString &name, const QString &backend) {
+        const QJsonObject root = QJsonDocument::fromJson(json).object();
+        // Upgrades stage a deployment that's finalized when shutting down. A
+        // deployment that isn't staged but comes before the booted one is a rollback.
         QJsonObject booted;
+        QJsonObject pending;
         for (const QJsonArray deployments = root.value("deployments"_L1).toArray(); const auto &value: deployments) {
-            if (value.toObject().value("booted"_L1).toBool()) {
-                booted = value.toObject();
-                break;
+            const QJsonObject deployment = value.toObject();
+            if (deployment.value("booted"_L1).toBool()) {
+                booted = deployment;
+            } else if (deployment.value("staged"_L1).toBool()) {
+                pending = deployment;
             }
         }
-        if (!booted.isEmpty() && booted.value("checksum"_L1) == cached.value("checksum"_L1)) {
-            return std::nullopt;
+
+        ImageState state;
+        if (!pending.isEmpty()) {
+            state.staged = true;
+            state.stagedVersion = versionOf(pending, u"checksum"_s);
+        }
+        const QJsonObject cached = root.value("cached-update"_L1).toObject();
+        if (cached.isEmpty()) {
+            return state;
+        }
+        const QJsonValue checksum = cached.value("checksum"_L1);
+        if ((!booted.isEmpty() && booted.value("checksum"_L1) == checksum) ||
+            (state.staged && pending.value("checksum"_L1) == checksum)) {
+            return state;
         }
         QString origin = cached.value("origin"_L1).toString();
         if (origin.isEmpty()) {
             origin = booted.value("container-image-reference"_L1).toString();
         }
-        return imageUpdate(name, backend, origin.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(origin),
-                           versionOf(booted, u"checksum"_s), versionOf(cached, u"checksum"_s));
+        state.update = imageUpdate(name, backend, origin.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(origin),
+                                   versionOf(booted, u"checksum"_s), versionOf(cached, u"checksum"_s));
+        return state;
     }
 
-    QList<PackageUpdate> imageUpdates(QString *error) {
-        // Neither tool checks the registry here: that needs root and happens when
-        // bootc/rpm-ostree check for updates on their own (or before installing).
-        // We report the update they already found.
+    ImageState imageState(QString *error) {
+        // Neither tool checks the registry here: that needs root and happens in
+        // checkImageUpdate() (or before installing). We report what they already found.
         const QString name = osName();
         if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
             if (const CommandResult result = capture(bootc, {u"status"_s, u"--format=json"_s}); result.succeeded()) {
-                if (const std::optional<PackageUpdate> update = parseBootcUpdate(result.out, name)) {
-                    return {*update};
-                }
-                return {};
+                return parseBootcState(result.out, name);
             }
         }
         const QString rpmOstree = QStandardPaths::findExecutable(u"rpm-ostree"_s);
@@ -145,10 +162,38 @@ namespace UltramarineUpdates {
             return {};
         }
         const QString backend = QStandardPaths::findExecutable(u"bootc"_s).isEmpty() ? u"rpm-ostree"_s : u"bootc"_s;
-        if (const std::optional<PackageUpdate> update = parseRpmOstreeStatus(result.out, name, backend)) {
-            return {*update};
+        return parseRpmOstreeState(result.out, name, backend);
+    }
+
+    bool checkImageUpdate(QString *error) {
+        if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
+            const CommandResult status = capture(bootc, {u"status"_s, u"--format=json"_s});
+            const std::optional<BootcStatus> parsed = parseBootcStatus(status.out);
+            if (parsed && isUmEnvImage(parsed->image)) {
+                // The local derivation has no registry to check; `um env update`
+                // pulls the new base image when installing.
+                return true;
+            }
+            if (parsed && !parsed->image.isEmpty()) {
+                if (const CommandResult result = capture(bootc, {u"upgrade"_s, u"--check"_s}); !result.succeeded()) {
+                    *error = u"bootc upgrade --check failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
+                    return false;
+                }
+                return true;
+            }
         }
-        return {};
+        const QString rpmOstree = QStandardPaths::findExecutable(u"rpm-ostree"_s);
+        if (rpmOstree.isEmpty()) {
+            *error = u"neither bootc nor rpm-ostree is installed"_s;
+            return false;
+        }
+        // Exits with 77 when there's no update.
+        if (const CommandResult result = capture(rpmOstree, {u"upgrade"_s, u"--check"_s});
+            !result.started || (result.exitCode != 0 && result.exitCode != 77)) {
+            *error = u"rpm-ostree upgrade --check failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
+            return false;
+        }
+        return true;
     }
 
     bool upgradeImage(QString *error) {

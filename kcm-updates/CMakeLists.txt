@@ -15,6 +15,7 @@ target_link_libraries(kcm_ultramarine_updates
         PRIVATE
         kcm_common
         Qt6::Core
+        Qt6::DBus
         Qt6::Gui
         Qt6::Qml
         KF6::ConfigCore

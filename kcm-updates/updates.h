@@ -25,9 +25,9 @@ struct UpdateItem {
     qint64 downloadSize = 0;
     /// Change in disk usage once installed, in bytes (negative if it shrinks), 0 if unknown.
     qint64 installedSizeChange = 0;
-    /// "app", "package" or "runtime". Apps are listed first.
+    /// "app", "addon", "package" or "runtime". Apps are listed first, then add-ons.
     QString kind;
-    /// Package manager: "rpm", "bootc", "rpm-ostree", "flatpak" or "nix".
+    /// Package manager: "rpm", "bootc", "rpm-ostree", "flatpak", "nix" or "plasmoid".
     QString backend;
     /// AppStream ID for apps, when known.
     QString appId;
@@ -62,13 +62,22 @@ QStringList upgradeSettingsArguments(const UpgradeSettings &settings);
 /// scheduled and when it next runs (Unix time, 0 if unknown).
 bool parseScheduleStatus(const QByteArray &json, bool *scheduled, qint64 *next);
 
+/// Installed updates that are waiting for a restart, from the update listing.
+struct RestartState {
+    /// Image mode: a new system image is staged and becomes the system when restarting.
+    bool required = false;
+    /// The version running after the restart, if known.
+    QString stagedVersion;
+};
+
 /**
  * Parses the JSON update listing emitted by `ultramarine-updates list --json`. Desktop
- * apps come first, then other packages, then runtimes; the helper's order is kept
- * otherwise. Sources the helper could not query are returned in @p errors, if given.
+ * apps come first, then add-ons (Plasma widgets), then other packages, then runtimes; the helper's order is kept
+ * otherwise. Sources the helper could not query are returned in @p errors, and whether
+ * a restart finishes installed updates in @p restart, if given.
  */
 QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation = nullptr,
-                                     QStringList *errors = nullptr);
+                                     QStringList *errors = nullptr, RestartState *restart = nullptr);
 
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
@@ -146,6 +155,9 @@ class Updates : public KQuickManagedConfigModule {
     Q_PROPERTY(QDateTime scheduledTime READ scheduledTime NOTIFY scheduleChanged)
     Q_PROPERTY(qint64 downloadSize READ downloadSize NOTIFY updateCountChanged)
     Q_PROPERTY(qint64 installedSizeChange READ installedSizeChange NOTIFY updateCountChanged)
+    Q_PROPERTY(bool imageMode READ imageMode CONSTANT)
+    Q_PROPERTY(bool restartRequired READ restartRequired NOTIFY restartStateChanged)
+    Q_PROPERTY(QString stagedVersion READ stagedVersion NOTIFY restartStateChanged)
 
 public:
     /**
@@ -213,6 +225,18 @@ public:
     /// Returns the total change in disk usage of all updates, in bytes.
     [[nodiscard]] qint64 installedSizeChange() const;
 
+    /**
+     * Returns whether this is an image mode (bootc) system. Its system updates are
+     * new images, which are always staged and take effect when restarting, so the
+     * offline update setting doesn't apply.
+     */
+    [[nodiscard]] static bool imageMode();
+
+    /// Returns whether installed updates take effect after restarting.
+    [[nodiscard]] bool restartRequired() const;
+
+    /// Returns the system version after restarting, if known.
+    [[nodiscard]] QString stagedVersion() const;
 
     /// Starts an update check.
     Q_INVOKABLE void refresh();
@@ -231,6 +255,9 @@ public:
 
     /// Cancels the currently running update operation.
     Q_INVOKABLE void cancel();
+
+    /// Asks to restart through Plasma's logout screen, so work can be saved first.
+    Q_INVOKABLE void restart();
 
 Q_SIGNALS:
     /// Emitted when an update operation starts or stops.
@@ -253,6 +280,9 @@ Q_SIGNALS:
 
     /// Emitted when technical update information changes.
     void technicalInformationChanged();
+
+    /// Emitted when updates start or stop waiting for a restart.
+    void restartStateChanged();
 
 
 private Q_SLOTS:
@@ -311,6 +341,7 @@ private:
     [[nodiscard]] bool isSaveNeeded() const override;
     [[nodiscard]] bool isDefaults() const override;
 
+    RestartState m_restartState;
     UpgradeSettings m_upgradeSettings;
     UpgradeSettings m_savedUpgradeSettings;
     bool m_scheduledTonight = false;

@@ -44,6 +44,7 @@ KCMUtils.ScrollViewKCM {
 
             width: ListView.view.width
             text: section === "app" ? i18nc("@title:group", "Apps")
+                : section === "addon" ? i18nc("@title:group", "Add-ons")
                 : section === "runtime" ? i18nc("@title:group", "Runtimes")
                 : i18nc("@title:group", "System Packages")
         }

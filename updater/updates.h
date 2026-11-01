@@ -9,9 +9,9 @@
 #include <QString>
 
 /**
- * Lists and installs updates for an Ultramarine system: RPM packages (dnf),
- * Flatpaks (system and user installations) and Nix (Determinate Nix itself and
- * the user's `nix profile`).
+ * Lists and installs updates for an Ultramarine system: RPM packages (dnf) or
+ * the bootc image, Flatpaks (system and user installations), Nix (Determinate
+ * Nix itself and the user's `nix profile`) and Plasma widgets from the KDE Store.
  *
  * listUpdates() collects pending updates from every available source. Each
  * update says whether it's a desktop app, a runtime or another package, so the
@@ -27,6 +27,8 @@ namespace UltramarineUpdates {
     namespace Kind {
         /// A desktop application.
         inline constexpr auto App = "app";
+        /// An add-on to the desktop, like a Plasma widget.
+        inline constexpr auto Addon = "addon";
         /// A Flatpak runtime or extension.
         inline constexpr auto Runtime = "runtime";
         /// Any other package (libraries, CLI tools, addons, ...).
@@ -35,14 +37,16 @@ namespace UltramarineUpdates {
 
     struct PackageUpdate {
         /// Uniquely identifies the update: "name.arch" for RPMs, the qualified
-        /// application ID for Flatpaks, "nix:<name>" for Nix.
+        /// application ID for Flatpaks, "nix:<name>" for Nix, "plasmoid:<store ID>"
+        /// for Plasma widgets.
         QString id;
         /// The app name for desktop apps, otherwise the package or Flatpak name.
         QString name;
         QString source;
-        /// The package manager handling the update: "rpm", "flatpak" or "nix".
+        /// The package manager handling the update: "rpm", "bootc", "rpm-ostree",
+        /// "flatpak", "nix" or "plasmoid".
         QString backend;
-        /// One of Kind::App, Kind::Runtime or Kind::Package.
+        /// One of Kind::App, Kind::Addon, Kind::Runtime or Kind::Package.
         QString kind;
         /// The AppStream component ID for apps, when known.
         QString appId;
@@ -65,6 +69,11 @@ namespace UltramarineUpdates {
         QList<PackageUpdate> updates;
         /// Sources that could not be queried. Updates from the others are still reported.
         QStringList errors;
+        /// Whether installed system updates take effect only after restarting:
+        /// image mode systems with a staged image.
+        bool restartRequired = false;
+        /// The version the system runs after restarting, if known.
+        QString stagedVersion;
 
         [[nodiscard]] QJsonObject toJson() const;
     };
@@ -73,9 +82,9 @@ namespace UltramarineUpdates {
     ListResponse listUpdates();
 
     /**
-     * Updates user-installation Flatpaks and the user's Nix profile. Must run as
-     * the user: after escalating, flatpak and nix would only see root's (empty)
-     * installation and profile.
+     * Updates user-installation Flatpaks, the user's Nix profile and Plasma
+     * widgets. Must run as the user: after escalating, flatpak, nix and KNewStuff
+     * would only see root's (empty) installation, profile and widgets.
      */
     bool applyUser(bool assumeYes, QString *error);
 

@@ -9,6 +9,7 @@ function(add_kcm_test name source kcm_dir kcm_source)
         PRIVATE
             kcm_common
             Qt6::Core
+            Qt6::DBus
             Qt6::Gui
             Qt6::Qml
             Qt6::Test
