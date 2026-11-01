@@ -4,7 +4,7 @@ Ultramarine doesn't install an office suite by default. When no suite is install
 opening an office document (ODF, OOXML, legacy Microsoft Office, iWork, WordPerfect)
 shows a dialog that offers to install one:
 
-- **Collabora Office** (recommended): Flathub only. It isn't packaged in Fedora or Terra.
+- **Collabora Office** (recommended): Flathub, or Terra's RPM (`collabora-office`).
 - **LibreOffice**: Flathub, or Fedora's RPMs (`libreoffice-writer`, `-calc`, `-impress`).
 - **ONLYOFFICE**: Flathub only.
 
@@ -35,7 +35,7 @@ rpm-ostree) systems, where `/run/ostree-booted` exists.
   dialog can't be closed while installing, so the install isn't left half done.
   Afterwards the installer refreshes KSycoca and opens the documents with the new suite.
   If KSycoca doesn't know about the suite yet, it runs the suite directly
-  (`flatpak run --file-forwarding` or `libreoffice`).
+  (`flatpak run --file-forwarding`, `coda-qt` or `libreoffice`).
 
 ## Packaging
 

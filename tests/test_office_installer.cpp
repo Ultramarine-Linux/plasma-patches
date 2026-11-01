@@ -46,8 +46,7 @@ void OfficeInstallerTest::defaultsToFlatpak() {
         QCOMPARE(sources(suite, false).value(0), Source::Flatpak);
         QCOMPARE(sources(suite, true), QList{Source::Flatpak});
     }
-    // Collabora Office isn't packaged in Fedora or Terra.
-    QCOMPARE(sources(suiteWithFlatpak(u"com.collaboraoffice.Office"_s), false), QList{Source::Flatpak});
+    QCOMPARE(sources(suiteWithFlatpak(u"com.collaboraoffice.Office"_s), false), (QList{Source::Flatpak, Source::Rpm}));
     QCOMPARE(sources(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), false), (QList{Source::Flatpak, Source::Rpm}));
 }
 
@@ -60,6 +59,8 @@ void OfficeInstallerTest::installCommands() {
              (Command{u"pkcon"_s,
                       {u"install"_s, u"--noninteractive"_s, u"libreoffice-writer"_s, u"libreoffice-calc"_s,
                        u"libreoffice-impress"_s}}));
+    QCOMPARE(installCommand(suiteWithFlatpak(u"com.collaboraoffice.Office"_s), Source::Rpm),
+             (Command{u"pkcon"_s, {u"install"_s, u"--noninteractive"_s, u"collabora-office"_s}}));
 }
 
 void OfficeInstallerTest::launchCommands() {
@@ -72,6 +73,7 @@ void OfficeInstallerTest::launchCommands() {
              (Command{u"flatpak"_s, {u"run"_s, u"com.collaboraoffice.Office"_s}}));
     QCOMPARE(launchCommand(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), Source::Rpm, {u"/tmp/x.odt"_s}),
              (Command{u"libreoffice"_s, {u"/tmp/x.odt"_s}}));
+    QCOMPARE(launchCommand(collabora, Source::Rpm, {u"/tmp/x.odt"_s}), (Command{u"coda-qt"_s, {u"/tmp/x.odt"_s}}));
 }
 
 QTEST_GUILESS_MAIN(OfficeInstallerTest)

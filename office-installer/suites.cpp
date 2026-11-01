@@ -31,8 +31,8 @@ namespace OfficeInstaller {
                 .recommended = false,
             },
             {
-                .name = i18nc("@option:radio office suite", "OpenOffice"),
-                .description = i18n("A classic office suite, built by Apache"),
+                .name = i18nc("@option:radio office suite", "ONLYOFFICE"),
+                .description = i18n("Focused on compatibility with Microsoft Office documents"),
                 .flatpakId = u"org.onlyoffice.desktopeditors"_s,
                 .rpmPackages = {},
                 .rpmExecutable = {},

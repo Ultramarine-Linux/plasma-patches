@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ultramarine_office_installer\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 17:01-0600\n"
+"POT-Creation-Date: 2026-10-31 22:46-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,18 +18,18 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: office-installer/installerdialog.cpp:497
+#: office-installer/installerdialog.cpp:518
 msgctxt "@info %1 is an office suite"
 msgid "%1 could not be installed."
 msgstr ""
 
-#: office-installer/installerdialog.cpp:498
+#: office-installer/installerdialog.cpp:519
 msgctxt "@info %1 is an office suite, %2 the installer's error"
 msgid "%1 could not be installed: %2"
 msgstr ""
 
-#: office-installer/suites.cpp:36
-msgid "An office suite with an interface like Microsoft Office."
+#: office-installer/suites.cpp:19
+msgid "A simple, modern interface built on LibreOffice"
 msgstr ""
 
 #: office-installer/suites.cpp:18
@@ -37,94 +37,92 @@ msgctxt "@option:radio office suite"
 msgid "Collabora Office"
 msgstr ""
 
-#: office-installer/main.cpp:36
+#: office-installer/main.cpp:35
 msgid "Documents to open once an office suite is installed."
 msgstr ""
 
-#: office-installer/suites.cpp:19
-msgid ""
-"Documents, spreadsheets and presentations, with a simple, modern interface. "
-"Built on LibreOffice."
-msgstr ""
-
-#: office-installer/installerdialog.cpp:45
+#: office-installer/installerdialog.cpp:48
 msgctxt "@item:inlistbox install source"
-msgid "Flathub"
+msgid "Flatpak"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:322
+#: office-installer/suites.cpp:35
+msgid "Focused on compatibility with Microsoft Office documents"
+msgstr ""
+
+#: office-installer/installerdialog.cpp:341
 msgctxt "@action:button"
 msgid "Install"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:299
+#: office-installer/installerdialog.cpp:318
 msgctxt "@title:window"
 msgid "Install an Office Suite"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:60
+#: office-installer/installerdialog.cpp:63
 msgid ""
-"Install an office suite to open documents, spreadsheets and presentations."
+"Install an office suite to open documents, spreadsheets and presentations"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:57
-msgid "Install an office suite to open this document."
-msgid_plural "Install an office suite to open these %1 documents."
+#: office-installer/installerdialog.cpp:60
+msgid "Install an office suite to open this document"
+msgid_plural "Install an office suite to open these %1 documents"
 msgstr[0] ""
 msgstr[1] ""
 
-#: office-installer/installerdialog.cpp:54
+#: office-installer/installerdialog.cpp:57
 msgid "Install an office suite to open “%1”."
 msgstr ""
 
-#: office-installer/installerdialog.cpp:310
+#: office-installer/installerdialog.cpp:329
 msgctxt "@label:listbox"
 msgid "Install from:"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:458
+#: office-installer/installerdialog.cpp:479
 msgctxt "@info:status %1 is an office suite"
 msgid "Installing %1…"
 msgstr ""
 
-#: office-installer/main.cpp:34
+#: office-installer/main.cpp:33
 msgid "Installs an office suite to open office documents with."
 msgstr ""
 
-#: office-installer/suites.cpp:27
+#: office-installer/suites.cpp:26
 msgctxt "@option:radio office suite"
 msgid "LibreOffice"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:345
+#: office-installer/installerdialog.cpp:364
 msgctxt "@title"
 msgid "No Office Suite Installed"
 msgstr ""
 
-#: office-installer/suites.cpp:35
+#: office-installer/suites.cpp:34
 msgctxt "@option:radio office suite"
 msgid "ONLYOFFICE"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:507
+#: office-installer/installerdialog.cpp:528
 msgctxt "@info:status %1 is an office suite"
 msgid "Opening %1…"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:192
+#: office-installer/installerdialog.cpp:50
+msgctxt "@item:inlistbox install source"
+msgid "RPM"
+msgstr ""
+
+#: office-installer/installerdialog.cpp:211
 msgctxt "@info:status office suite"
 msgid "Recommended"
 msgstr ""
 
-#: office-installer/suites.cpp:28
-msgid "The full-featured LibreOffice suite, with a classic interface."
+#: office-installer/suites.cpp:27
+msgid "The full-featured LibreOffice suite"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:399
+#: office-installer/installerdialog.cpp:418
 msgid "This can take a few minutes. You may be asked to authenticate."
-msgstr ""
-
-#: office-installer/installerdialog.cpp:47
-msgctxt "@item:inlistbox install source"
-msgid "Ultramarine repositories (RPM)"
 msgstr ""
