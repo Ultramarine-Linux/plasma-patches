@@ -25,6 +25,8 @@ add_kcm_test(test_updates test_updates.cpp kcm-updates updates.cpp)
 
 add_kcm_test(test_tweaks test_tweaks.cpp kcm-tweaks tweaks.cpp)
 
+add_kcm_test(test_location test_location.cpp kcm-location location.cpp)
+
 add_executable(test_updater test_updater.cpp)
 target_link_libraries(test_updater PRIVATE ultramarine_updates_core Qt6::Test)
 add_test(NAME test_updater COMMAND test_updater)

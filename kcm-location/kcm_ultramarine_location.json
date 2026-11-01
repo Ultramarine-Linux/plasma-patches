@@ -1,0 +1,14 @@
+{
+  "KPlugin": {
+    "Description": "Allow apps to request your approximate location",
+    "FormFactors": [
+      "desktop",
+      "tablet",
+      "mediacenter"
+    ],
+    "Icon": "preferences-system-privacy",
+    "Name": "Location Services"
+  },
+  "X-KDE-Keywords": "location,geolocation,geoclue,gps,beacondb,privacy,position,where",
+  "X-KDE-System-Settings-Parent-Category": "security-privacy"
+}

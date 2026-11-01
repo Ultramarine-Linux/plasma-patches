@@ -51,5 +51,9 @@ extract_domain kcm_ultramarine_tweaks \
     kcm-tweaks/tweaks.cpp \
     kcm-tweaks/ui/main.qml
 
+extract_domain kcm_ultramarine_location \
+    kcm-location/location.cpp \
+    kcm-location/ui/main.qml
+
 extract_domain ultramarine_office_installer \
     "office-installer/main.cpp office-installer/installerdialog.cpp office-installer/suites.cpp"

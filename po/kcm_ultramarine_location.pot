@@ -1,0 +1,68 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the kcm_ultramarine_location package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: kcm_ultramarine_location\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-01 16:01-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: kcm-location/ui/main.qml:44
+msgctxt "@option:check"
+msgid "Allow apps to request your approximate location"
+msgstr ""
+
+#: kcm-location/location.cpp:143
+msgid "Authentication was cancelled or failed. No changes were made."
+msgstr ""
+
+#: kcm-location/location.cpp:145
+msgid "Could not change location services: %1"
+msgstr ""
+
+#: kcm-location/location.cpp:87
+msgid "Could not read the state of location services: %1"
+msgstr ""
+
+#: kcm-location/ui/main.qml:96
+msgctxt "@info:placeholder"
+msgid "Install the geoclue2 package to let apps request your location."
+msgstr ""
+
+#: kcm-location/ui/main.qml:60
+msgctxt "@option:check"
+msgid "Location Services"
+msgstr ""
+
+#: kcm-location/ui/main.qml:15
+msgctxt "@title"
+msgid "Location Services"
+msgstr ""
+
+#: kcm-location/ui/main.qml:95
+msgctxt "@info:placeholder"
+msgid "Location services aren't installed"
+msgstr ""
+
+#: kcm-location/ui/main.qml:79
+msgctxt "@info"
+msgid "This applies to every user on this computer."
+msgstr ""
+
+#: kcm-location/ui/main.qml:72
+msgctxt "@info"
+msgid ""
+"To find your location, nearby Wi-Fi networks are looked up with beaconDB. "
+"Your location is never shared with Fyra Labs, only with the apps that ask "
+"for it, like the weather widget, Night Light or a website you visit."
+msgstr ""

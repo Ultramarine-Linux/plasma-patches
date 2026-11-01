@@ -5,6 +5,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "kcm-location/**"
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
@@ -23,6 +24,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "kcm-location/**"
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
