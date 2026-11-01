@@ -149,13 +149,18 @@ namespace UltramarineUpdates {
     }
 
     std::chrono::seconds ActivityTracker::inactiveFor(const bool inUse, const QDateTime &now) const {
+        const std::optional<QDateTime> lastPoll = readTimestamp(m_lastPollPath);
+        writeTimestamp(m_lastPollPath, now, nullptr);
         if (inUse) {
-            QFile::remove(m_path);
+            QFile::remove(m_sincePath);
             return std::chrono::seconds(0);
         }
-        const std::optional<QDateTime> since = readTimestamp(m_path);
-        if (!since || *since > now) {
-            writeTimestamp(m_path, now, nullptr);
+        // wall-clock time also passes while suspended or switched off; only time
+        // the polls saw counts, so a missed poll starts over
+        const bool watched = lastPoll && *lastPoll <= now && lastPoll->secsTo(now) <= m_maxPollGap.count();
+        const std::optional<QDateTime> since = readTimestamp(m_sincePath);
+        if (!since || *since > now || !watched) {
+            writeTimestamp(m_sincePath, now, nullptr);
             return std::chrono::seconds(0);
         }
         return std::chrono::seconds(since->secsTo(now));

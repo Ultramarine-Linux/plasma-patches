@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kcm_ultramarine_tweaks\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 23:35-0600\n"
+"POT-Creation-Date: 2026-10-31 15:11-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -22,26 +22,26 @@ msgctxt "@info tweak stability"
 msgid "Alpha"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:133
+#: kcm-tweaks/ui/main.qml:132
 msgctxt "@info"
 msgid "Already applied"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:184
+#: kcm-tweaks/ui/main.qml:183
 msgctxt "@action:button"
 msgid "Applied"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:185 kcm-tweaks/ui/main.qml:248
+#: kcm-tweaks/ui/main.qml:184 kcm-tweaks/ui/main.qml:247
 msgctxt "@action:button"
 msgid "Apply"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:212
+#: kcm-tweaks/tweaks.cpp:216
 msgid "Applying “%1”…"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:286
+#: kcm-tweaks/tweaks.cpp:284
 msgid "Authentication was cancelled or failed. No changes were made."
 msgstr ""
 
@@ -50,7 +50,7 @@ msgctxt "@info tweak stability"
 msgid "Beta"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:85 kcm-tweaks/ui/main.qml:261
+#: kcm-tweaks/ui/main.qml:260
 msgctxt "@action:button"
 msgid "Cancel"
 msgstr ""
@@ -63,30 +63,30 @@ msgstr ""
 msgid "Could not load the list of tweaks: %1"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:156 kcm-tweaks/tweaks.cpp:168
+#: kcm-tweaks/tweaks.cpp:158 kcm-tweaks/tweaks.cpp:170
 msgid "Could not start um."
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:177
+#: kcm-tweaks/ui/main.qml:176
 msgctxt "@info:tooltip"
 msgid "Disable this tweak"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:209
+#: kcm-tweaks/tweaks.cpp:213
 msgid "Disabling “%1”…"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:249
+#: kcm-tweaks/ui/main.qml:248
 msgctxt "@action:button"
 msgid "Enable"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:178
+#: kcm-tweaks/ui/main.qml:177
 msgctxt "@info:tooltip"
 msgid "Enable this tweak"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:207
+#: kcm-tweaks/tweaks.cpp:211
 msgid "Enabling “%1”…"
 msgstr ""
 
@@ -95,70 +95,66 @@ msgctxt "@info tweak stability"
 msgid "In development"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:106
+#: kcm-tweaks/ui/main.qml:105
 msgctxt "@title:group"
 msgid "Maintenance Tasks"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:212
+#: kcm-tweaks/ui/main.qml:211
 msgctxt "@info:placeholder"
 msgid "No tweaks available"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:105
+#: kcm-tweaks/ui/main.qml:104
 msgctxt "@title:group"
 msgid "One-Time Changes"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:107
+#: kcm-tweaks/ui/main.qml:106
 msgctxt "@title:group"
 msgid "Other"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:271
+#: kcm-tweaks/ui/main.qml:270
 msgctxt "@title:window"
 msgid "Output"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:214
+#: kcm-tweaks/ui/main.qml:213
 msgctxt "@action:button"
 msgid "Reload"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:194 kcm-tweaks/ui/main.qml:247
+#: kcm-tweaks/ui/main.qml:193 kcm-tweaks/ui/main.qml:246
 msgctxt "@action:button"
 msgid "Run"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:221
+#: kcm-tweaks/tweaks.cpp:225
 msgid "Running “%1”…"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:64 kcm-tweaks/ui/main.qml:80
+#: kcm-tweaks/ui/main.qml:69 kcm-tweaks/ui/main.qml:85
 msgctxt "@action:button"
 msgid "Show Output"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:104
+#: kcm-tweaks/ui/main.qml:103
 msgctxt "@title:group"
 msgid "System Tweaks"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:284
-msgid "The operation was cancelled. The tweak may have been partially applied."
-msgstr ""
-
-#: kcm-tweaks/tweaks.cpp:288
+#: kcm-tweaks/tweaks.cpp:286
 msgid ""
 "The tweak could not be changed (exit code %1). See the output for details."
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:237
+#: kcm-tweaks/ui/main.qml:236
 msgctxt "@info"
 msgid "This change cannot be undone from here."
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:230
+#: kcm-tweaks/ui/main.qml:229
 msgctxt "@info"
 msgid "This tweak is marked as “%1” and may be unstable."
 msgstr ""
@@ -167,7 +163,7 @@ msgstr ""
 msgid "This version of um is too old to manage tweaks from System Settings."
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:239
+#: kcm-tweaks/ui/main.qml:238
 msgctxt "@info"
 msgid "This will run a maintenance script with administrator privileges."
 msgstr ""
@@ -182,11 +178,11 @@ msgctxt "@info tweak stability"
 msgid "Use at your own risk"
 msgstr ""
 
-#: kcm-tweaks/ui/main.qml:154
+#: kcm-tweaks/ui/main.qml:153
 msgctxt "@info"
 msgid "Use “um tweaks” in a terminal"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp:193 kcm-tweaks/tweaks.cpp:239
+#: kcm-tweaks/tweaks.cpp:197 kcm-tweaks/tweaks.cpp:234
 msgid "um is not installed."
 msgstr ""

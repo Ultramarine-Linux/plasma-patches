@@ -244,7 +244,8 @@ namespace UltramarineUpdates {
             return false;
         }
         QStringList failed;
-        for (const KNSCore::Entry &entry: *entries) {
+        for (qsizetype index = 0; index < entries->size(); ++index) {
+            const KNSCore::Entry &entry = entries->at(index);
             say(u"Updating widget %1 to %2"_s.arg(entry.name(), entry.updateVersion()));
             QEventLoop loop;
             QString failure;
@@ -256,13 +257,21 @@ namespace UltramarineUpdates {
                                  }
                              });
             QObject::connect(transaction, &KNSCore::Transaction::finished, &loop, &QEventLoop::quit);
-            if (!runLoop(loop, installTimeout)) {
+            const bool timedOut = !runLoop(loop, installTimeout);
+            if (timedOut) {
                 failure = u"timed out"_s;
             }
             if (!failure.isEmpty()) {
                 std::fprintf(stderr, "warning: could not update %s: %s\n", qPrintable(entry.name()),
                              qPrintable(failure));
                 failed.append(entry.name());
+            }
+            // KNewStuff can't cancel the transaction, so don't start more next to it
+            if (timedOut) {
+                for (qsizetype i = index + 1; i < entries->size(); ++i) {
+                    failed.append(entries->at(i).name());
+                }
+                break;
             }
         }
         if (!failed.isEmpty()) {

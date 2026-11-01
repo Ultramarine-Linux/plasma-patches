@@ -56,7 +56,8 @@ namespace UltramarineUpdates {
     /// manager (as root). Scheduling again replaces the old timer.
     bool scheduleTonight(bool userManager, QString *error);
 
-    /// Removes Apply Tonight. It's not an error if nothing was scheduled.
-    void cancelTonight(bool userManager);
+    /// Removes Apply Tonight. It's not an error if nothing was scheduled. Returns false
+    /// and sets @p error if the timer couldn't be stopped.
+    bool cancelTonight(bool userManager, QString *error);
 
 } // namespace UltramarineUpdates

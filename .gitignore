@@ -70,3 +70,5 @@ Testing/
 .cache/
 
 .idea/*
+# CLion build directories
+cmake-build-*/

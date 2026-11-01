@@ -19,17 +19,28 @@ The project requires Qt 6.5 and KDE Frameworks 6.0 or newer.
 ```bash
 cmake -S . -B build \
     -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_CXX_FLAGS=-Werror
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 just cppcheck
 ```
 
+The install paths of the update helper, its systemd units and the dGPU launcher
+follow `CMAKE_INSTALL_PREFIX`. Build directories configured before they did still
+have the old paths cached, so reconfigure those with `cmake --fresh` (or
+`just clean`) before changing the prefix.
+
 The `justfile` also provides `just build`, `just test`, `just install`, and
 `just install-user`. `just configure` generates `compile_commands.json` for
 clangd.
 
-To install a development build of the modules without installing them system-wide:
+`just install-user` installs under `~/.local`, which only works for the KCMs.
+The update helper, its polkit actions, the systemd units, the udev rule and the
+autostart entry are only read from system locations, and the KCM would run a
+user-writable helper through pkexec. Use `just dev-updates-install` for those.
+
+To open the modules from the build without installing them:
 
 ```bash
 just run updates

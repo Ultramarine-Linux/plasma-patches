@@ -33,6 +33,10 @@ namespace UltramarineUpdates {
                 return u"invalid time \"%1\", expected HH:MM"_s.arg(clock);
             }
         }
+        // inWindow() treats an equal start and end as an empty window, so nothing would ever install
+        if (!windowStart.isEmpty() && parseClock(windowStart) == parseClock(windowEnd)) {
+            return u"a time window's start and end must differ"_s;
+        }
         return {};
     }
 
@@ -149,6 +153,11 @@ namespace UltramarineUpdates {
                 *error = u"inactive_minutes must be a whole number"_s;
                 return false;
             }
+            // checked before the cast, which is undefined for values outside int's range
+            if (value < 0 || value > maxInactiveMinutes) {
+                *error = u"inactive minutes must be between 0 and %1"_s.arg(maxInactiveMinutes);
+                return false;
+            }
             parsed.inactiveMinutes = static_cast<int>(value);
         }
         if (const QString invalid = parsed.validate(); !invalid.isEmpty()) {
@@ -180,9 +189,17 @@ namespace UltramarineUpdates {
 
     bool saveSettings(const Settings &settings, QString *error) {
         const QString path = settingsPath();
-        if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
-            *error = u"could not create %1"_s.arg(QFileInfo(path).absolutePath());
+        const QString directory = QFileInfo(path).absolutePath();
+        const bool created = !QFileInfo::exists(directory);
+        if (!QDir().mkpath(directory)) {
+            *error = u"could not create %1"_s.arg(directory);
             return false;
+        }
+        // mkpath uses the caller's umask, which pkexec keeps; users must be able to read the settings
+        if (created) {
+            QFile::setPermissions(directory,
+                                  QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |
+                                      QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther);
         }
         QSaveFile file(path);
         if (!file.open(QIODevice::WriteOnly)) {

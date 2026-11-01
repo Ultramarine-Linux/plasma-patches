@@ -2,11 +2,12 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// ultramarine-updates: the backend of the Ultramarine Updates KCM.
+// ultramarine-updates: the backend of the Ultramarine Updates KCM
 //
-// The KCM runs it as the logged-in user. Commands that need root re-execute
-// through pkexec (no terminal: a polkit prompt) or sudo (from a terminal), after
-// doing the user's own part (user Flatpaks, Nix profile) as the user.
+// the KCM runs it as the logged-in user; commands that need root run their
+// system part as a child through pkexec (no terminal: a polkit prompt) or sudo
+// (from a terminal), and only then the user's own part (user Flatpaks, Nix
+// profile, Plasma widgets) as the user
 
 #include <KLocalizedString>
 
@@ -15,12 +16,14 @@
 #include <QSet>
 #include <QStandardPaths>
 
-#include <algorithm>
 #include <cstdio>
-#include <vector>
 
 #include <unistd.h>
 
+#include "image.h"
+#include "lock.h"
+#include "packagekit.h"
+#include "process.h"
 #include "schedule.h"
 #include "settings.h"
 #include "updates.h"
@@ -48,45 +51,51 @@ namespace {
     }
 
     /**
-     * Re-executes this command as root if it isn't already, and only returns as
-     * root (or with an error message). pkexec exits with 126 if the prompt is
-     * dismissed and 127 if authorization fails; the KCM checks for both. pkexec
-     * runs us with a clean environment: wrapping the helper in `env` would stop
-     * the polkit action, which matches our exact path, from applying.
+     * runs `<this helper> @p arguments` as root and returns its exit code: pkexec
+     * exits with 126 if the prompt is dismissed and 127 if authorization fails,
+     * which the KCM checks for; the polkit actions match our exact path and the
+     * command (argv[1]), so @p arguments must start with the command; pkexec runs
+     * it with a clean environment, so wrapping the helper in `env` would stop the
+     * actions from applying
      */
-    QString escalate() {
-        if (geteuid() == 0) {
-            return {};
-        }
+    int runAsRoot(const QStringList &arguments) {
         const QString self = QCoreApplication::applicationFilePath();
-        const QStringList arguments = QCoreApplication::arguments().mid(1);
-
         QString program;
         QStringList argv;
         if (const QString pkexec = QStandardPaths::findExecutable(u"pkexec"_s);
             !isatty(STDIN_FILENO) && !pkexec.isEmpty()) {
             program = pkexec;
-            argv << u"pkexec"_s << self << arguments;
         } else {
             program = u"/usr/bin/sudo"_s;
-            argv << u"sudo"_s;
             for (const QString &name: forwardedEnvironment) {
                 if (qEnvironmentVariableIsSet(name.toLatin1().constData())) {
                     argv << name + u'=' + qEnvironmentVariable(name.toLatin1().constData());
                 }
             }
-            argv << self << arguments;
         }
-
-        std::vector<QByteArray> storage(static_cast<size_t>(argv.size()));
-        std::ranges::transform(argv, storage.begin(), [](const QString &argument) { return argument.toLocal8Bit(); });
-        std::vector<char *> raw(storage.size() + 1, nullptr);
-        std::ranges::transform(storage, raw.begin(), [](QByteArray &argument) { return argument.data(); });
-
+        argv << self << arguments;
         std::fflush(stdout);
         std::fflush(stderr);
-        execv(program.toLocal8Bit().constData(), raw.data());
-        return u"could not run %1"_s.arg(program);
+        const int exitCode = runForwarded(program, argv);
+        if (exitCode < 0) {
+            std::fprintf(stderr, "could not run %s\n", qPrintable(program));
+            return 1;
+        }
+        return exitCode;
+    }
+
+    /// this command line, rebuilt for runAsRoot() with the command first
+    QStringList commandLine(const QString &command, const QCommandLineParser &parser) {
+        static const QSet<QString> valueOptions{u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s};
+        QStringList arguments{command};
+        for (const QStringList names = parser.optionNames(); const QString &name: names) {
+            if (valueOptions.contains(name)) {
+                arguments << u"--%1=%2"_s.arg(name, parser.value(name));
+            } else {
+                arguments << (name == "y"_L1 ? u"--yes"_s : u"--"_s + name);
+            }
+        }
+        return arguments;
     }
 
     std::optional<bool> parseBool(const QString &value) {
@@ -111,39 +120,63 @@ namespace {
             for (const QString &error: response.errors) {
                 std::fprintf(stderr, "warning: failed to list updates from %s\n", qPrintable(error));
             }
+            if (!response.offlineError.isEmpty()) {
+                std::fprintf(stderr, "warning: the updates installed while restarting failed: %s\n",
+                             qPrintable(response.offlineError));
+            }
         }
         // Only fail when nothing could be queried at all.
         return !response.errors.isEmpty() && response.updates.isEmpty() ? 1 : 0;
     }
 
-    int applyCommand(const QCommandLineParser &parser) {
+    int applyCommand(const QString &command, const QCommandLineParser &parser) {
         const bool assumeYes = parser.isSet(u"yes"_s);
         QString error;
-        // User-level updates must run as the invoking user, before escalating.
-        if (geteuid() != 0 && !applyUser(assumeYes, &error)) {
-            return fail(error);
+        if (geteuid() != 0) {
+            InstallLock userLock(userLockPath());
+            if (const InstallLock::Result locked = userLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
+                return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
+            }
+            // system updates first: if authentication is canceled (or they fail),
+            // nothing is installed; pkexec's exit codes are passed on
+            if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
+                return exitCode;
+            }
+            // user-level updates must run as the invoking user
+            return applyUser(assumeYes, &error) ? 0 : fail(error);
         }
-        if (const QString escalateError = escalate(); !escalateError.isEmpty()) {
-            return fail(escalateError);
+
+        InstallLock systemLock(systemLockPath());
+        if (const InstallLock::Result locked = systemLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
+            return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
+        }
+        // read as root: pkexec cleared any development override
+        Settings settings;
+        if (!loadSettings(&settings, &error)) {
+            std::fprintf(stderr, "warning: %s\n", qPrintable(error));
         }
         bool updated = false;
-        if (!applySystem(assumeYes, false, &updated, &error)) {
+        if (!applySystem(assumeYes, settings.offline, &updated, &error)) {
             return fail(error);
         }
-        return updated ? 0 : fail(u"no supported package manager found"_s);
+        if (!updated) {
+            return fail(u"no supported package manager found"_s);
+        }
+        if (!isImageMode() && offlineUpdatePending()) {
+            print(u"System updates will be installed during the next restart.\n"_s);
+        }
+        return 0;
     }
 
-    int settingsCommand(const QCommandLineParser &parser) {
+    int settingsCommand(const QString &command, const QCommandLineParser &parser) {
         const bool changing = parser.isSet(u"automatic"_s) || parser.isSet(u"offline"_s) ||
             parser.isSet(u"inactive-minutes"_s) || parser.isSet(u"window"_s);
         QString error;
         if (changing) {
             // ULTRAMARINE_UPDATES_CONFIG points at a development file; escalating
             // would drop it (pkexec clears the environment) and change the real settings.
-            if (qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG")) {
-                if (const QString escalateError = escalate(); !escalateError.isEmpty()) {
-                    return fail(escalateError);
-                }
+            if (geteuid() != 0 && qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG")) {
+                return runAsRoot(commandLine(command, parser));
             }
             Settings settings;
             // Broken settings are replaced instead of getting stuck on them.
@@ -203,7 +236,7 @@ namespace {
         return 0;
     }
 
-    int scheduleCommand(const QCommandLineParser &parser) {
+    int scheduleCommand(const QString &command, const QCommandLineParser &parser) {
         if (parser.isSet(u"status"_s)) {
             const ScheduleStatus status = tonightStatus();
             if (parser.isSet(u"json"_s)) {
@@ -217,20 +250,27 @@ namespace {
 
         const bool cancel = parser.isSet(u"cancel"_s);
         QString error;
-        // The user's own updates are scheduled in their user manager first;
-        // escalating then re-runs this command as root for the system part.
         if (geteuid() != 0) {
+            // the system's timer first: if authentication is canceled, nothing
+            // changes; then the user's own updates, in their user manager
+            if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
+                return exitCode;
+            }
             if (cancel) {
-                cancelTonight(true);
+                if (!cancelTonight(true, &error)) {
+                    return fail(u"failed to cancel your updates: %1"_s.arg(error));
+                }
             } else if (!scheduleTonight(true, &error)) {
+                // don't leave only the system's half scheduled
+                runAsRoot({command, u"--cancel"_s});
                 return fail(u"failed to schedule your updates: %1"_s.arg(error));
             }
-        }
-        if (const QString escalateError = escalate(); !escalateError.isEmpty()) {
-            return fail(escalateError);
+            return 0;
         }
         if (cancel) {
-            cancelTonight(false);
+            if (!cancelTonight(false, &error)) {
+                return fail(u"failed to cancel updates: %1"_s.arg(error));
+            }
             print(u"Tonight's updates were cancelled.\n"_s);
             return 0;
         }
@@ -307,13 +347,13 @@ int main(int argc, char *argv[]) {
         return listCommand(parser);
     }
     if (command == "apply"_L1) {
-        return applyCommand(parser);
+        return applyCommand(command, parser);
     }
     if (command == "settings"_L1) {
-        return settingsCommand(parser);
+        return settingsCommand(command, parser);
     }
     if (command == "schedule"_L1) {
-        return scheduleCommand(parser);
+        return scheduleCommand(command, parser);
     }
     QString error;
     const bool tonight = parser.isSet(u"tonight"_s);

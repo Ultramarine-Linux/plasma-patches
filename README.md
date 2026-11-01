@@ -10,7 +10,7 @@ Plasma System Settings modules and Discover integration for Ultramarine Linux.
 - **Tweaks** (`kcm_ultramarine_tweaks`): optional Ultramarine system tweaks, backed by
   [`umcli`](https://github.com/Ultramarine-Linux/um).
 - **Discover patch** (`discover/`): routes Discover's Updates entry to the Ultramarine Updates KCM.
-- **Launch Using Dedicated Graphics Card** (`dgpu-launch/`, `plasma-desktop/`): app launcher and task manager
+- **Launch Using Dedicated Graphics Card** (`dgpu-launch/`): app launcher
   action that runs an app on the discrete GPU, only shown on hybrid GPU systems and with an eGPU.
 - **Office suite installer** (`office-installer/`): opening an office document with no office suite installed offers
   to install one: Collabora Office (recommended), LibreOffice or ONLYOFFICE, from Flathub by default.
@@ -20,7 +20,7 @@ Plasma System Settings modules and Discover integration for Ultramarine Linux.
 - [Build and test](docs/building.md)
 - [Update helper, automatic updates and runtime requirements](docs/updates-backend.md)
 - [umcli backend (Tweaks)](docs/umcli-backend.md)
-- [Discover patch and packaging](docs/discover.md)
+- [Discover patch](docs/discover.md)
 - [Launch Using Dedicated Graphics Card](docs/dgpu-launch.md)
 - [Office suite installer](docs/office-installer.md)
 - [Translations with Weblate](docs/translations.md)

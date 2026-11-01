@@ -10,6 +10,7 @@
 #include "flatpak.h"
 #include "image.h"
 #include "nix.h"
+#include "packagekit.h"
 #include "plasmoid.h"
 #include "process.h"
 #include "rpm.h"
@@ -46,9 +47,13 @@ namespace UltramarineUpdates {
             {u"updates"_s, updateArray},
             {u"errors"_s, QJsonArray::fromStringList(errors)},
             {u"restart_required"_s, restartRequired},
+            {u"offline_pending"_s, offlinePending},
         };
         if (!stagedVersion.isEmpty()) {
             object.insert(u"staged_version"_s, stagedVersion);
+        }
+        if (!offlineError.isEmpty()) {
+            object.insert(u"offline_error"_s, offlineError);
         }
         return object;
     }
@@ -78,6 +83,9 @@ namespace UltramarineUpdates {
         } else if (hasExecutable(u"dnf"_s)) {
             const QList<PackageUpdate> updates = rpmPackageUpdates(&error);
             collect(u"rpm"_s, updates, error);
+            response.offlinePending = offlineUpdatePending();
+            response.restartRequired = response.offlinePending;
+            response.offlineError = lastOfflineUpdateError();
         }
         if (!determinateNixdBinary().isEmpty()) {
             error.clear();
@@ -142,13 +150,35 @@ namespace UltramarineUpdates {
         } else if (const QString dnf = QStandardPaths::findExecutable(u"dnf"_s); !dnf.isEmpty()) {
             QStringList arguments{u"upgrade"_s, u"--refresh"_s};
             if (offline) {
-                arguments.append(u"--offline"_s);
+                // checked first, so nothing is downloaded for nothing
+                if (packageKitClient().isEmpty()) {
+                    *error = u"Installing updates while restarting needs PackageKit, which isn't installed"_s;
+                    return false;
+                }
+                // PackageKit would replace it
+                if (const SystemUpdateTrigger trigger = systemUpdateTrigger();
+                    trigger == SystemUpdateTrigger::PackageKitUpgrade || trigger == SystemUpdateTrigger::Other) {
+                    *error = trigger == SystemUpdateTrigger::PackageKitUpgrade
+                        ? u"A system upgrade is already scheduled to install while restarting"_s
+                        : u"Another offline update is already scheduled (%1 exists)"_s.arg(PackageKitPaths().trigger);
+                    return false;
+                }
+                // into PackageKit's cache, which then prepares the update from
+                // the same metadata and packages; dnf (as root) uses cachedir
+                arguments.append(u"--downloadonly"_s);
+                if (const QString cacheDir = packageKitCacheDir(); !cacheDir.isEmpty()) {
+                    arguments.append(u"--setopt=cachedir="_s + cacheDir);
+                }
             }
             if (assumeYes) {
                 arguments.append(u"-y"_s);
             }
             if (const int exitCode = runForwarded(dnf, arguments); exitCode != 0) {
                 *error = u"RPM update failed (exit code %1)"_s.arg(exitCode);
+                return false;
+            }
+            // dnf has finished (and released its locks) before PackageKit starts
+            if (offline && !prepareOfflineUpdate(error)) {
                 return false;
             }
             *updated = true;
