@@ -45,7 +45,7 @@ jobs:
       contents: read
       security-events: write
       actions: read
-    uses: FyraLabs/actions/.github/workflows/cpp.yml@6a8ccb91a264170f44427e4ac89eb223fc172d13 # main
+    uses: FyraLabs/actions/.github/workflows/cpp.yml@main
     with:
       configure-command: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-Werror
       build-command: cmake --build build --parallel
