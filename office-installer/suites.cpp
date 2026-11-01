@@ -18,8 +18,8 @@ namespace OfficeInstaller {
                 .name = i18nc("@option:radio office suite", "Collabora Office"),
                 .description = i18n("A simple, modern interface built on LibreOffice"),
                 .flatpakId = u"com.collaboraoffice.Office"_s,
-                .rpmPackages = {},
-                .rpmExecutable = {},
+                .rpmPackages = {u"collabora-office"_s},
+                .rpmExecutable = u"coda-qt"_s,
                 .recommended = true,
             },
             {
