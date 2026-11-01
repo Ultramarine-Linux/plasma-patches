@@ -69,11 +69,17 @@ namespace UltramarineUpdates {
         QList<PackageUpdate> updates;
         /// Sources that could not be queried. Updates from the others are still reported.
         QStringList errors;
-        /// Whether installed system updates take effect only after restarting:
-        /// image mode systems with a staged image.
+        /// whether installed system updates take effect only after restarting:
+        /// image mode systems with a staged image, or a pending offline update
         bool restartRequired = false;
+        /// whether RPM updates are scheduled to install while restarting
+        /// (`/system-update` links to PackageKit's prepared update); they're
+        /// still listed as updates
+        bool offlinePending = false;
         /// The version the system runs after restarting, if known.
         QString stagedVersion;
+        /// why the last offline update failed while restarting, if it did
+        QString offlineError;
 
         [[nodiscard]] QJsonObject toJson() const;
     };
@@ -89,9 +95,10 @@ namespace UltramarineUpdates {
     bool applyUser(bool assumeYes, QString *error);
 
     /**
-     * Updates system packages, system Flatpaks and Nix itself. Needs root. With
-     * @p offline, RPM updates are staged for the next restart (dnf5 offline
-     * transactions). Sets @p updated to whether any package manager was found.
+     * updates system packages, system Flatpaks and Nix itself, needs root; with
+     * @p offline, dnf downloads the RPM updates and PackageKit prepares them to
+     * install during the next restart (see packagekit.h); sets @p updated to
+     * whether any package manager was found
      */
     bool applySystem(bool assumeYes, bool offline, bool *updated, QString *error);
 

@@ -2,14 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# "Launch Using Dedicated Graphics Card" in the app launchers and task manager,
-# only on hybrid GPU systems (including laptops with an eGPU plugged in).
-# See docs/dgpu-launch.md.
+# "Launch Using Dedicated Graphics Card" in the app launchers,
+# only on hybrid GPU systems (including laptops with an eGPU plugged in)
+# see docs/dgpu-launch.md
 set(_component COMPONENT ultramarine-dgpu-launch)
 
-set(DGPU_DETECT_EXECUTABLE "${CMAKE_INSTALL_PREFIX}/libexec/ultramarine-dgpu-detect"
-    CACHE FILEPATH "Path the hybrid GPU detection script is installed to")
-set(UDEV_RULES_DIR "${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d" CACHE PATH "udev rules")
+# like the paths in the top-level CMakeLists.txt, these follow the install prefix unless set with -D
+if (NOT DEFINED DGPU_DETECT_EXECUTABLE)
+    set(DGPU_DETECT_EXECUTABLE "${CMAKE_INSTALL_PREFIX}/libexec/ultramarine-dgpu-detect")
+endif ()
+if (NOT DEFINED UDEV_RULES_DIR)
+    set(UDEV_RULES_DIR "${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d")
+endif ()
 set(SYSTEMCTL_EXECUTABLE "/usr/bin/systemctl" CACHE FILEPATH "systemctl, run from the udev rule")
 set(UDEVADM_EXECUTABLE "/usr/bin/udevadm" CACHE FILEPATH "udevadm")
 

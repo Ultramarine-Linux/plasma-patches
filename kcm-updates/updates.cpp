@@ -5,6 +5,7 @@
 
 #include <KLocalizedString>
 #include <algorithm>
+#include <utility>
 
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -81,6 +82,11 @@ QHash<int, QByteArray> UpdatesModel::roleNames() const {
 
 int UpdatesModel::count() const { return static_cast<int>(m_updates.size()); }
 
+int UpdatesModel::countExcluding(const QString &backend) const {
+    return static_cast<int>(
+        std::ranges::count_if(m_updates, [&backend](const UpdateItem &item) { return item.backend != backend; }));
+}
+
 qint64 UpdatesModel::totalDownloadSize() const {
     qint64 total = 0;
     for (const UpdateItem &item: m_updates) {
@@ -130,6 +136,8 @@ Updates::Updates(QObject *parent, const KPluginMetaData &metaData) :
 
 bool Updates::running() const { return m_running; }
 
+bool Updates::scheduling() const { return m_scheduling; }
+
 QString Updates::status() const { return m_status; }
 
 QString Updates::errorMessage() const { return m_errorMessage; }
@@ -149,6 +157,10 @@ QString Updates::distributionVersion() {
 }
 
 int Updates::updateCount() const { return m_updates.count(); }
+
+int Updates::installableCount() const {
+    return m_restartState.offlinePending ? m_updates.countExcluding(QStringLiteral("rpm")) : m_updates.count();
+}
 
 UpdatesModel *Updates::updates() { return &m_updates; }
 
@@ -223,11 +235,16 @@ void Updates::setWindowEnd(int minutes) {
     settingsChanged();
 }
 
+bool Updates::windowValid() const { return m_upgradeSettings.isValid(); }
+
 bool Updates::scheduledTonight() const { return m_scheduledTonight; }
 
 QDateTime Updates::scheduledTime() const { return m_scheduledTime; }
 
-bool Updates::isSaveNeeded() const { return m_upgradeSettings != m_savedUpgradeSettings; }
+bool Updates::isSaveNeeded() const {
+    // the helper rejects an empty window; AdvancedSettings.qml points it out
+    return m_upgradeSettings.isValid() && m_upgradeSettings != m_savedUpgradeSettings;
+}
 
 bool Updates::isDefaults() const { return m_upgradeSettings == UpgradeSettings{}; }
 
@@ -255,11 +272,16 @@ void Updates::runHelper(const QStringList &arguments,
 
 void Updates::load() {
     runHelper({QStringLiteral("settings"), QStringLiteral("--json")},
-              [this](const int exitCode, const QByteArray &out, const QByteArray &) {
+              [this](const int exitCode, const QByteArray &out, const QByteArray &err) {
                   UpgradeSettings loaded;
                   if (exitCode != 0 || !parseUpgradeSettings(out, &loaded)) {
-                      // Unreadable settings: show the defaults.
+                      // unreadable settings: show the defaults, and say so
                       loaded = UpgradeSettings{};
+                      const QString detail = QString::fromLocal8Bit(err).trimmed();
+                      setErrorMessage(
+                          detail.isEmpty()
+                              ? i18n("The update settings could not be loaded. Showing the defaults.")
+                              : i18n("The update settings could not be loaded. Showing the defaults. %1", detail));
                   }
                   m_upgradeSettings = loaded;
                   m_savedUpgradeSettings = loaded;
@@ -280,12 +302,14 @@ void Updates::save() {
                   } else {
                       const QString detail = QString::fromUtf8(err).trimmed();
                       setErrorMessage(detail.isEmpty() ? i18n("The settings could not be saved.")
-                                                       : i18n("The settings could not be saved: %1").arg(detail));
+                                                       : i18n("The settings could not be saved: %1", detail));
                   }
                   // Keeps Apply enabled if saving failed.
                   settingsChanged();
               });
 }
+
+void Updates::clearError() { setErrorMessage({}); }
 
 void Updates::setErrorMessage(const QString &message) {
     if (m_errorMessage == message) {
@@ -302,8 +326,13 @@ void Updates::defaults() {
 }
 
 void Updates::refreshSchedule() {
+    const quint64 request = ++m_scheduleRequest;
     runHelper({QStringLiteral("schedule"), QStringLiteral("--status"), QStringLiteral("--json")},
-              [this](const int exitCode, const QByteArray &out, const QByteArray &) {
+              [this, request](const int exitCode, const QByteArray &out, const QByteArray &) {
+                  // a later request (like after Apply Tonight) is newer than this reply
+                  if (request != m_scheduleRequest) {
+                      return;
+                  }
                   bool scheduled = false;
                   qint64 next = 0;
                   if (exitCode == 0) {
@@ -312,28 +341,57 @@ void Updates::refreshSchedule() {
                   m_scheduledTonight = scheduled;
                   m_scheduledTime = next > 0 ? QDateTime::fromSecsSinceEpoch(next) : QDateTime();
                   Q_EMIT scheduleChanged();
+                  if (!m_scheduleChanging) {
+                      setScheduling(false);
+                  }
               });
 }
 
+void Updates::setScheduling(const bool scheduling) {
+    if (m_scheduling == scheduling) {
+        return;
+    }
+    m_scheduling = scheduling;
+    Q_EMIT schedulingChanged();
+}
+
 void Updates::applyTonight() {
+    if (m_running || m_scheduling) {
+        return;
+    }
+    // stays set until the status read afterwards arrives, so the button can't be
+    // pressed again (another authentication prompt) while it still shows the old state
+    m_scheduleChanging = true;
+    setScheduling(true);
     runHelper({QStringLiteral("schedule")}, [this](const int exitCode, const QByteArray &, const QByteArray &err) {
+        m_scheduleChanging = false;
         if (Pkexec::isAuthenticationFailure(exitCode)) {
             setErrorMessage(i18n("Authentication was cancelled or failed. Updates were not scheduled."));
         } else if (exitCode != 0) {
-            const QString detail = QString::fromUtf8(err).trimmed();
+            const QString detail = QString::fromLocal8Bit(err).trimmed();
             setErrorMessage(detail.isEmpty() ? i18n("Updates could not be scheduled.")
-                                             : i18n("Updates could not be scheduled: %1").arg(detail));
+                                             : i18n("Updates could not be scheduled: %1", detail));
         }
         refreshSchedule();
     });
 }
 
 void Updates::cancelTonight() {
+    if (m_scheduling) {
+        return;
+    }
+    m_scheduleChanging = true;
+    setScheduling(true);
     runHelper({QStringLiteral("schedule"), QStringLiteral("--cancel")},
-              [this](const int exitCode, const QByteArray &, const QByteArray &) {
+              [this](const int exitCode, const QByteArray &, const QByteArray &err) {
+                  m_scheduleChanging = false;
                   if (Pkexec::isAuthenticationFailure(exitCode)) {
                       setErrorMessage(
                           i18n("Authentication was cancelled or failed. Tonight's updates are still scheduled."));
+                  } else if (exitCode != 0) {
+                      const QString detail = QString::fromLocal8Bit(err).trimmed();
+                      setErrorMessage(detail.isEmpty() ? i18n("Tonight's updates could not be cancelled.")
+                                                       : i18n("Tonight's updates could not be cancelled: %1", detail));
                   }
                   refreshSchedule();
               });
@@ -349,6 +407,8 @@ bool Updates::imageMode() {
 }
 
 bool Updates::restartRequired() const { return m_restartState.required; }
+
+bool Updates::offlinePending() const { return m_restartState.offlinePending; }
 
 QString Updates::stagedVersion() const { return m_restartState.stagedVersion; }
 
@@ -372,10 +432,13 @@ void Updates::refresh() {
 
     m_updates.clear();
     setTechnicalInformation({});
-    if (!m_errorMessage.isEmpty()) {
-        m_errorMessage.clear();
-        Q_EMIT errorMessageChanged();
+    if (m_restartState != RestartState{}) {
+        m_restartState = {};
+        Q_EMIT restartStateChanged();
+        // installableCount depends on offlinePending
+        Q_EMIT updateCountChanged();
     }
+    setErrorMessage({});
     setStatus(i18n("Checking for updates…"));
 
     const QString helper = UpdatesHelper::executable();
@@ -390,16 +453,13 @@ void Updates::refresh() {
 }
 
 void Updates::applyUpdates() {
-    if (m_running) {
+    if (m_running || m_scheduling) {
         return;
     }
 
     m_running = true;
     Q_EMIT runningChanged();
-    if (!m_errorMessage.isEmpty()) {
-        m_errorMessage.clear();
-        Q_EMIT errorMessageChanged();
-    }
+    setErrorMessage({});
     setStatus(i18n("Applying updates…"));
 
     const QString helper = UpdatesHelper::executable();
@@ -407,24 +467,16 @@ void Updates::applyUpdates() {
         finishOperation(false, i18n("The update helper (ultramarine-updates) is not installed."));
         return;
     }
-    // The helper updates user-installation Flatpaks and Nix as us, then escalates through pkexec.
+    // the helper runs the system part through pkexec first and only then updates the
+    // user's Flatpaks, Nix profile and widgets as us; once it runs as root, it can't be
+    // stopped from here, so there is no Cancel
     startProcess(helper, {QStringLiteral("apply"), QStringLiteral("--yes")}, Operation::Install);
-}
-
-
-void Updates::cancel() {
-    if (!m_running) {
-        return;
-    }
-    m_process.kill();
-    m_operation = Operation::None;
-    finishOperation(false, i18n("Operation canceled."));
 }
 
 void Updates::startProcess(const QString &program, const QStringList &arguments, const Operation operation) {
     m_operation = operation;
-    m_lastProcessOutput.clear();
-    m_refreshStdout.clear();
+    m_processStdout.clear();
+    m_processStderr.clear();
     m_process.setProgram(program);
     m_process.setArguments(arguments);
     m_process.start();
@@ -432,42 +484,61 @@ void Updates::startProcess(const QString &program, const QStringList &arguments,
 
 void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
     readProcessOutput();
-    const Operation operation = m_operation;
-    m_operation = Operation::None;
-    const bool success = exitStatus == QProcess::NormalExit && exitCode == 0;
+    const Operation operation = std::exchange(m_operation, Operation::None);
+    const QByteArray stdOut = std::exchange(m_processStdout, {});
+    const QByteArray stdErr = std::exchange(m_processStderr, {});
+    const bool normalExit = exitStatus == QProcess::NormalExit;
 
-    if (!success && operation == Operation::Install && exitStatus == QProcess::NormalExit &&
-        Pkexec::isAuthenticationFailure(exitCode)) {
-        finishOperation(false, i18n("Authentication was cancelled or failed. No updates were installed."));
-        return;
-    }
-
-    if (!success) {
-        const bool isNoUpdateMessage = m_lastProcessOutput.contains(QLatin1String("no updates"), Qt::CaseInsensitive) ||
-            m_lastProcessOutput.contains(QLatin1String("nothing to update"), Qt::CaseInsensitive);
-        const QString detail = m_lastProcessOutput.isEmpty() || isNoUpdateMessage
-            ? QString()
-            : QStringLiteral(" %1").arg(m_lastProcessOutput);
-        finishOperation(false, i18n("Updating failed (exit code %1).%2").arg(exitCode).arg(detail));
-        return;
-    }
-
-    if (!m_errorMessage.isEmpty()) {
-        m_errorMessage.clear();
-        Q_EMIT errorMessageChanged();
+    // only stderr is logged; stdout is the (large) update listing or progress output
+    if (const QString errors = QString::fromLocal8Bit(stdErr).trimmed(); !errors.isEmpty()) {
+        qWarning().noquote() << "kcm-updates: ultramarine-updates:" << errors;
     }
 
     switch (operation) {
-    case Operation::Refresh:
+    case Operation::Refresh: {
+        // `list` still prints a listing when it fails (exit code 1 if no source worked)
         m_updates.clear();
-        parseListing(QString::fromUtf8(m_refreshStdout));
-        finishOperation(true, i18np("%1 update available.", "%1 updates available.", updateCount()));
+        parseListing(QString::fromUtf8(stdOut));
+        const QString error = refreshErrorMessage(normalExit ? exitCode : -1, stdOut, stdErr);
+        if (normalExit && exitCode == 0) {
+            finishOperation(true, i18np("%1 update available.", "%1 updates available.", updateCount()));
+            // some sources failed and the others are still listed. Don't clear the banner
+            // otherwise, it may show a settings or schedule error that came in during the check.
+            if (!error.isEmpty()) {
+                setErrorMessage(error);
+            }
+        } else {
+            finishOperation(false, error);
+        }
         break;
-    case Operation::Install:
-        finishOperation(true, i18n("Updates installed."));
-        // Re-check so the page reflects what is still pending.
-        refresh();
+    }
+    case Operation::Install: {
+        if (normalExit && exitCode == 0) {
+            finishOperation(true, i18n("Updates installed."));
+            // re-check so the page reflects what is still pending
+            refresh();
+            break;
+        }
+        // the helper asks for authentication before changing anything
+        if (normalExit && Pkexec::isAuthenticationFailure(exitCode)) {
+            finishOperation(false, i18n("Authentication was cancelled or failed. No updates were installed."));
+            break;
+        }
+        QStringList parts;
+        for (const QByteArray &output: {stdOut, stdErr}) {
+            if (const QString text = QString::fromLocal8Bit(output).trimmed(); !text.isEmpty()) {
+                parts.append(text);
+            }
+        }
+        const QString output = parts.join(QLatin1Char('\n'));
+        const bool isNoUpdateMessage = output.contains(QLatin1String("no updates"), Qt::CaseInsensitive) ||
+            output.contains(QLatin1String("nothing to update"), Qt::CaseInsensitive);
+        finishOperation(false,
+                        output.isEmpty() || isNoUpdateMessage
+                            ? i18n("Updating failed (exit code %1).", exitCode)
+                            : i18n("Updating failed (exit code %1). %2", exitCode, output));
         break;
+    }
     case Operation::None:
         break;
     }
@@ -482,48 +553,65 @@ void Updates::processError(const QProcess::ProcessError error) {
 
 void Updates::readProcessOutput() {
     const QByteArray stdOut = m_process.readAllStandardOutput();
-    if (m_operation == Operation::Refresh) {
-        m_refreshStdout += stdOut;
-    }
     const QByteArray stdErr = m_process.readAllStandardError();
-    if (const QString errors = QString::fromLocal8Bit(stdErr).trimmed(); !errors.isEmpty()) {
-        // Only stderr is logged; stdout is the (large) update listing or progress output.
-        qWarning().noquote() << "kcm-updates: ultramarine-updates:" << errors;
-    }
-    const QString text = QString::fromLocal8Bit(stdOut + stdErr).trimmed();
-    if (text.isEmpty()) {
+    m_processStdout += stdOut;
+    m_processStderr += stdErr;
+    // a refresh's listing is parsed once the process exits; installs show their latest line
+    if (m_operation != Operation::Install || (stdOut.isEmpty() && stdErr.isEmpty())) {
         return;
     }
-    m_lastProcessOutput += text;
-
-    switch (m_operation) {
-    case Operation::Refresh:
-        // Parse the complete JSON document after the process exits.
-        break;
-    default:
-        setStatus(text.split(QLatin1Char('\n')).constLast().trimmed());
-        break;
+    // the whole buffer is decoded so a character split across reads isn't garbled
+    const QByteArray &latest = stdErr.isEmpty() ? m_processStdout : m_processStderr;
+    const QByteArray trimmed = latest.trimmed();
+    if (const QString line = QString::fromLocal8Bit(trimmed.sliced(trimmed.lastIndexOf('\n') + 1)).trimmed();
+        !line.isEmpty()) {
+        setStatus(line);
     }
 }
 
 void Updates::parseListing(const QString &output) {
     QString technical;
-    QStringList errors;
     RestartState restart;
-    for (const QList<UpdateItem> parsedUpdates = parseUpdateListing(output, &technical, &errors, &restart);
+    for (const QList<UpdateItem> parsedUpdates = parseUpdateListing(output, &technical, nullptr, &restart);
          const UpdateItem &item: parsedUpdates) {
         m_updates.addUpdate(item);
     }
     setTechnicalInformation(technical);
-    if (restart.required != m_restartState.required || restart.stagedVersion != m_restartState.stagedVersion) {
+    if (restart != m_restartState) {
         m_restartState = restart;
         Q_EMIT restartStateChanged();
+        // installableCount depends on offlinePending
+        Q_EMIT updateCountChanged();
+    }
+}
+
+QString refreshErrorMessage(const int exitCode, const QByteArray &stdOut, const QByteArray &stdErr) {
+    QStringList errors;
+    const QJsonDocument document = QJsonDocument::fromJson(stdOut);
+    const bool listed = document.isObject();
+    if (listed) {
+        parseUpdateListing(QString::fromUtf8(stdOut), nullptr, &errors);
+    }
+    QStringList messages;
+    if (const QString offlineError = document.object().value(QStringLiteral("offline_error")).toString();
+        !offlineError.isEmpty()) {
+        messages << i18n("The updates could not be installed while restarting: %1", offlineError);
     }
     if (!errors.isEmpty()) {
-        // The helper still lists updates from the sources that worked.
-        m_errorMessage = i18n("Could not check for updates from: %1").arg(errors.join(QStringLiteral(", ")));
-        Q_EMIT errorMessageChanged();
+        messages << i18n("Could not check for updates from: %1", errors.join(QStringLiteral(", ")));
     }
+    if (!messages.isEmpty()) {
+        return messages.join(QLatin1Char('\n'));
+    }
+    if (exitCode == 0) {
+        return listed ? QString() : i18n("Checking for updates failed: the update helper’s output could not be read.");
+    }
+    if (exitCode < 0) {
+        return i18n("Checking for updates failed: the update helper stopped unexpectedly.");
+    }
+    const QString detail = QString::fromLocal8Bit(stdErr).trimmed();
+    return detail.isEmpty() ? i18n("Checking for updates failed (exit code %1).", exitCode)
+                            : i18n("Checking for updates failed (exit code %1). %2", exitCode, detail);
 }
 
 QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation, QStringList *errors,
@@ -573,7 +661,7 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
 
     QString technical;
     for (const UpdateItem &item: std::as_const(result)) {
-        technical += i18n("%1: %2 → %3 (%4)\n").arg(item.name, item.oldVersion, item.newVersion, item.source);
+        technical += QStringLiteral("%1: %2 → %3 (%4)\n").arg(item.name, item.oldVersion, item.newVersion, item.source);
     }
 
     if (technicalInformation) {
@@ -589,12 +677,17 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         }
     }
     if (restart) {
-        restart->required = document.object().value(QStringLiteral("restart_required")).toBool();
+        restart->offlinePending = document.object().value(QStringLiteral("offline_pending")).toBool();
+        // offline updates always need a restart, even if an older helper didn't say so
+        restart->required =
+            restart->offlinePending || document.object().value(QStringLiteral("restart_required")).toBool();
         restart->stagedVersion =
             restart->required ? document.object().value(QStringLiteral("staged_version")).toString() : QString();
     }
     return result;
 }
+
+bool UpgradeSettings::isValid() const { return !windowEnabled || windowStart != windowEnd; }
 
 bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
     const QJsonDocument document = QJsonDocument::fromJson(json);
@@ -607,9 +700,9 @@ bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
     parsed.offline = object.value(QStringLiteral("offline")).toBool(parsed.offline);
     parsed.inactiveMinutes = object.value(QStringLiteral("inactive_minutes")).toInt(parsed.inactiveMinutes);
     const QTime start =
-        QTime::fromString(object.value(QStringLiteral("window_start")).toString(), QStringLiteral("HH:mm"));
+        QTime::fromString(object.value(QStringLiteral("window_start")).toString(), QStringLiteral("H:mm"));
     if (const QTime end =
-            QTime::fromString(object.value(QStringLiteral("window_end")).toString(), QStringLiteral("HH:mm"));
+            QTime::fromString(object.value(QStringLiteral("window_end")).toString(), QStringLiteral("H:mm"));
         start.isValid() && end.isValid()) {
         parsed.windowEnabled = true;
         parsed.windowStart = start.msecsSinceStartOfDay() / 60000;

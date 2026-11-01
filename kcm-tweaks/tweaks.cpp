@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <ranges>
+#include <utility>
 
 #include "tweaks.h"
 #include "umcli.h"
@@ -153,6 +154,7 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
     connect(&m_listProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             setLoading(false);
+            m_reloadPending = false;
             setErrorMessage(i18n("Could not start um."));
         }
     });
@@ -186,6 +188,8 @@ QString Tweaks::output() const { return m_output; }
 
 void Tweaks::refresh() {
     if (m_loading) {
+        // the list being loaded may predate a change; load it again once it's done
+        m_reloadPending = true;
         return;
     }
     const QString um = UmCli::executable();
@@ -221,15 +225,6 @@ void Tweaks::runTweak(const QString &id) {
     startChange(id, {QStringLiteral("run")}, i18n("Running “%1”…", tweak->description));
 }
 
-void Tweaks::cancel() {
-    if (!m_running) {
-        return;
-    }
-    // pkexec forwards SIGTERM to the privileged child.
-    m_cancelled = true;
-    m_changeProcess.terminate();
-}
-
 void Tweaks::startChange(const QString &id, const QStringList &arguments, const QString &progressMessage) {
     if (m_running) {
         return;
@@ -243,7 +238,6 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     setErrorMessage({});
     m_output.clear();
     Q_EMIT outputChanged();
-    m_cancelled = false;
     m_tweaks.setBusyId(id);
     setRunning(true);
     setStatus(progressMessage);
@@ -251,7 +245,8 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     // --yes skips um's terminal prompt; the KCM shows its own confirmation first.
     const QStringList umArguments =
         QStringList{QStringLiteral("tweaks")} + arguments + QStringList{QStringLiteral("--yes"), id};
-    // um escalates through pkexec itself when it isn't run from a terminal.
+    // um escalates through pkexec itself when it isn't run from a terminal; there is no
+    // Cancel, since once the tweak runs as root, signals from this unprivileged process fail
     m_changeProcess.start(um, umArguments);
 }
 
@@ -259,6 +254,11 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
     setLoading(false);
     const QString stdOut = QString::fromUtf8(m_listProcess.readAllStandardOutput());
     const QString stdErr = QString::fromUtf8(m_listProcess.readAllStandardError()).trimmed();
+    if (std::exchange(m_reloadPending, false)) {
+        // this list is already out of date
+        refresh();
+        return;
+    }
 
     QList<TweakItem> items;
     if (exitStatus != QProcess::NormalExit || exitCode != 0 || !parseTweaksOutput(stdOut, &items)) {
@@ -280,9 +280,7 @@ void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitS
     setRunning(false);
     setStatus({});
 
-    if (m_cancelled) {
-        setErrorMessage(i18n("The operation was cancelled. The tweak may have been partially applied."));
-    } else if (exitStatus == QProcess::NormalExit && UmCli::isAuthenticationFailure(exitCode)) {
+    if (exitStatus == QProcess::NormalExit && UmCli::isAuthenticationFailure(exitCode)) {
         setErrorMessage(i18n("Authentication was cancelled or failed. No changes were made."));
     } else if (exitStatus != QProcess::NormalExit || exitCode != 0) {
         setErrorMessage(i18n("The tweak could not be changed (exit code %1). See the output for details.", exitCode));
@@ -341,6 +339,8 @@ void Tweaks::setStatus(const QString &status) {
     m_status = status;
     Q_EMIT statusChanged();
 }
+
+void Tweaks::clearError() { setErrorMessage({}); }
 
 void Tweaks::setErrorMessage(const QString &message) {
     if (m_errorMessage == message) {

@@ -55,6 +55,19 @@ namespace UltramarineUpdates {
      */
     ImageState parseRpmOstreeState(const QByteArray &json, const QString &name, const QString &backend);
 
+    /// wraps `bootc status --format=json` output for the status cache, tagged with the boot it's from
+    QByteArray bootcStatusCache(const QByteArray &status, const QString &bootId);
+
+    /// the `bootc status` output from a status cache, unless it's from another boot or broken
+    std::optional<QByteArray> parseBootcStatusCache(const QByteArray &cache, const QString &bootId);
+
+    /**
+     * `bootc status` needs root, so the system timer (and installing) keeps a
+     * world-readable copy in /var/lib/ultramarine-updates/bootc-status.json for
+     * imageState() to read as the user; does nothing without bootc, needs root
+     */
+    void updateBootcStatusCache();
+
     /// Reports a pending or staged image update. Needs no privileges, so it only
     /// knows about updates bootc (or rpm-ostree) already found; see checkImageUpdate().
     ImageState imageState(QString *error);

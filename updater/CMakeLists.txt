@@ -12,9 +12,11 @@ add_library(ultramarine_updates_core STATIC
         flatpak.cpp
         nix.cpp
         image.cpp
+        packagekit.cpp
         plasmoid.cpp
         settings.cpp
         activity.cpp
+        lock.cpp
         schedule.cpp
 )
 

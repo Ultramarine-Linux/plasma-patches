@@ -27,6 +27,7 @@ cppcheck: build
         --error-exitcode=1 \
         --suppress=missingIncludeSystem \
         --suppress='preprocessorErrorDirective:*_autogen*' \
+        --inline-suppr \
         --quiet
 
 # run the test suite
@@ -65,8 +66,8 @@ dev-updates-uninstall:
     -sudo systemctl disable --now ultramarine-updates-automatic.timer
     -sudo systemctl stop ultramarine-updates-tonight.timer
     -systemctl --user stop ultramarine-updates-user.timer ultramarine-updates-tonight-user.timer
-    [ -f {{ build_dir }}/install_manifest_ultramarine-updates.txt ] && \
-        xargs -d '\n' sudo rm -fv < {{ build_dir }}/install_manifest_ultramarine-updates.txt
+    if [ -f {{ build_dir }}/install_manifest_ultramarine-updates.txt ]; then \
+        xargs -d '\n' sudo rm -fv < {{ build_dir }}/install_manifest_ultramarine-updates.txt; fi
     sudo systemctl daemon-reload
     systemctl --user daemon-reload
 
