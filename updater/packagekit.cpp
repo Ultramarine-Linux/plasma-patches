@@ -149,7 +149,7 @@ namespace UltramarineUpdates {
         if (!results.open(QIODevice::ReadOnly)) {
             return {};
         }
-        const QString error = parseOfflineResultsError(results.read(64 * 1024));
+        QString error = parseOfflineResultsError(results.read(qint64{64} * 1024));
         // packages were installed (or removed) since, by PackageKit or anything
         // else, so the failure is probably no longer relevant
         if (const QFileInfo rpmDatabase(paths.rpmDatabase); !error.isEmpty() && rpmDatabase.exists() &&
@@ -180,7 +180,7 @@ namespace UltramarineUpdates {
         if (!osRelease.open(QIODevice::ReadOnly)) {
             return {};
         }
-        const QString versionId = parseOsReleaseVersionId(osRelease.read(64 * 1024));
+        const QString versionId = parseOsReleaseVersionId(osRelease.read(qint64{64} * 1024));
         return versionId.isEmpty() ? QString() : u"/var/cache/PackageKit/%1/metadata"_s.arg(versionId);
     }
 
