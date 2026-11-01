@@ -65,6 +65,7 @@ add_subdirectory(updater)
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
 add_subdirectory(dgpu-launch)
+add_subdirectory(office-installer)
 
 if (BUILD_TESTING)
     add_subdirectory(tests)
