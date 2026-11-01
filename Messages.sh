@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Extract KI18n strings to one POT per KCM. Weblate writes translations to
+# Extract KI18n strings to one POT per KCM (and the office suite installer). Weblate writes translations to
 # po/<locale>/<domain>.po; KI18N_INSTALL(po) compiles and installs those files.
 set -euo pipefail
 
@@ -30,6 +30,10 @@ extract_domain() {
 
     xgettext --language=C++ --from-code=UTF-8 --package-name="$domain" \
         "${keywords[@]}" --output="$cpp_pot" "${cpp_sources[@]}"
+    if [ $# -eq 0 ]; then
+        msgcat --sort-output "$cpp_pot" --output="po/${domain}.pot"
+        return
+    fi
     xgettext --language=Java --from-code=UTF-8 --package-name="$domain" \
         "${keywords[@]}" --output="$qml_pot" "$@"
     msgcat --use-first --sort-output "$cpp_pot" "$qml_pot" \
@@ -46,3 +50,6 @@ extract_domain kcm_ultramarine_updates \
 extract_domain kcm_ultramarine_tweaks \
     kcm-tweaks/tweaks.cpp \
     kcm-tweaks/ui/main.qml
+
+extract_domain ultramarine_office_installer \
+    "office-installer/main.cpp office-installer/installerdialog.cpp office-installer/suites.cpp"

@@ -7,6 +7,8 @@
 #include <QByteArray>
 #include <QString>
 
+#include <cstdint>
+
 /**
  * PackageKit offline updates: RPM updates installed while restarting
  *
@@ -35,7 +37,7 @@ namespace UltramarineUpdates {
     };
 
     /// what `/system-update` starts during the next restart
-    enum class SystemUpdateTrigger {
+    enum class SystemUpdateTrigger : std::uint8_t {
         None,
         /// PackageKit's prepared update
         PackageKitUpdate,

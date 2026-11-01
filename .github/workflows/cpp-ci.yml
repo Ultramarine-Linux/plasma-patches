@@ -1,4 +1,4 @@
-name: C++
+name: Plasma KCM CI
 
 "on":
   push:
@@ -8,6 +8,7 @@ name: C++
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
+      - "office-installer/**"
       - "po/**"
       - "Messages.sh"
       - "tests/**"
@@ -25,6 +26,7 @@ name: C++
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
+      - "office-installer/**"
       - "po/**"
       - "Messages.sh"
       - "tests/**"
@@ -54,4 +56,4 @@ jobs:
       # emits false #error diagnostics from Qt's intentional QObject checks.
       # --inline-suppr honors `// cppcheck-suppress` comments for other false positives
       cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen*
-      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-knewstuff-devel gettext
+      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel gettext

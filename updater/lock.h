@@ -6,6 +6,8 @@
 
 #include <QString>
 
+#include <cstdint>
+
 /// keeps automatic updates, Apply Tonight and manual installs from running at the same time
 namespace UltramarineUpdates {
 
@@ -15,7 +17,7 @@ namespace UltramarineUpdates {
      */
     class InstallLock {
     public:
-        enum class Result {
+        enum class Result : std::uint8_t {
             Acquired,
             /// another install holds the lock
             Busy,

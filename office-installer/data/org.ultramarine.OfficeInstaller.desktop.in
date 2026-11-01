@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Claims the office formats, so documents open here while no office suite is
+# installed. Formats that are also plain text (CSV, RTF, flat ODF) are left to
+# text editors. When a suite is installed, this sorts after it: KDE breaks ties
+# by desktop file name, and org.ultramarine comes after com.collaboraoffice,
+# libreoffice-*, org.libreoffice and org.onlyoffice.
+[Desktop Entry]
+Type=Application
+Name=Install an Office Suite
+Comment=Install an office suite to open documents, spreadsheets and presentations
+Icon=system-software-install
+Exec=@OFFICE_INSTALLER_EXECUTABLE@ %U
+TryExec=@OFFICE_INSTALLER_EXECUTABLE@
+NoDisplay=true
+Terminal=false
+MimeType=application/vnd.oasis.opendocument.text;application/vnd.oasis.opendocument.text-template;application/vnd.oasis.opendocument.text-master;application/vnd.oasis.opendocument.text-master-template;application/vnd.oasis.opendocument.text-web;application/vnd.oasis.opendocument.spreadsheet;application/vnd.oasis.opendocument.spreadsheet-template;application/vnd.oasis.opendocument.presentation;application/vnd.oasis.opendocument.presentation-template;application/vnd.oasis.opendocument.chart;application/vnd.oasis.opendocument.chart-template;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.openxmlformats-officedocument.wordprocessingml.template;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.openxmlformats-officedocument.spreadsheetml.template;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.openxmlformats-officedocument.presentationml.slideshow;application/vnd.openxmlformats-officedocument.presentationml.template;application/vnd.ms-word.document.macroEnabled.12;application/vnd.ms-word.template.macroEnabled.12;application/vnd.ms-excel.sheet.macroEnabled.12;application/vnd.ms-excel.sheet.binary.macroEnabled.12;application/vnd.ms-excel.template.macroEnabled.12;application/vnd.ms-powerpoint.presentation.macroEnabled.12;application/vnd.ms-powerpoint.slideshow.macroEnabled.12;application/vnd.ms-powerpoint.template.macroEnabled.12;application/msword;application/vnd.ms-excel;application/vnd.ms-powerpoint;application/vnd.ms-works;application/vnd.wordperfect;application/vnd.apple.pages;application/vnd.apple.numbers;application/vnd.apple.keynote;
