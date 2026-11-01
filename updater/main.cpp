@@ -249,18 +249,19 @@ int main(int argc, char *argv[]) {
     KLocalizedString::setApplicationDomain("kcm_ultramarine_updates");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(u"Lists and installs RPM (or bootc image), Flatpak, Nix and Plasma widget updates.\n\n"
-                                     u"Commands:\n"
-                                     u"  list            List available updates (--json)\n"
-                                     u"  apply           Install available updates (--yes)\n"
-                                     u"  settings        Show or change automatic update settings (--json, "
-                                     u"--automatic, --offline, --inactive-minutes, --window)\n"
-                                     u"  schedule        Install updates tonight, when the device isn't in use "
-                                     u"(--cancel, --status, --json)\n"
-                                     u"  run-scheduled   Install system updates if the device isn't in use (system "
-                                     u"timers; --tonight)\n"
-                                     u"  run-user        Install your updates or notify about them (user timers; "
-                                     u"--tonight)"_s);
+    parser.setApplicationDescription(
+        u"Lists and installs RPM (or bootc image), Flatpak, Nix and Plasma widget updates.\n\n"
+        u"Commands:\n"
+        u"  list            List available updates (--json)\n"
+        u"  apply           Install available updates (--yes)\n"
+        u"  settings        Show or change automatic update settings (--json, "
+        u"--automatic, --offline, --inactive-minutes, --window)\n"
+        u"  schedule        Install updates tonight, when the device isn't in use "
+        u"(--cancel, --status, --json)\n"
+        u"  run-scheduled   Install system updates if the device isn't in use (system "
+        u"timers; --tonight)\n"
+        u"  run-user        Install your updates or notify about them (user timers; "
+        u"--tonight)"_s);
     parser.addHelpOption();
     parser.addPositionalArgument(u"command"_s, u"The command to run."_s);
     parser.addOptions({
