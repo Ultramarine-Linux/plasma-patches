@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ultramarine_office_installer\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-31 22:46-0600\n"
+"POT-Creation-Date: 2026-11-02 12:30-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,12 +18,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: office-installer/installerdialog.cpp:518
+#: office-installer/installerdialog.cpp:520
 msgctxt "@info %1 is an office suite"
 msgid "%1 could not be installed."
 msgstr ""
 
-#: office-installer/installerdialog.cpp:519
+#: office-installer/installerdialog.cpp:521
 msgctxt "@info %1 is an office suite, %2 the installer's error"
 msgid "%1 could not be installed: %2"
 msgstr ""
@@ -41,7 +41,7 @@ msgstr ""
 msgid "Documents to open once an office suite is installed."
 msgstr ""
 
-#: office-installer/installerdialog.cpp:48
+#: office-installer/installerdialog.cpp:50
 msgctxt "@item:inlistbox install source"
 msgid "Flatpak"
 msgstr ""
@@ -50,37 +50,37 @@ msgstr ""
 msgid "Focused on compatibility with Microsoft Office documents"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:341
+#: office-installer/installerdialog.cpp:343
 msgctxt "@action:button"
 msgid "Install"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:318
+#: office-installer/installerdialog.cpp:320
 msgctxt "@title:window"
 msgid "Install an Office Suite"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:63
+#: office-installer/installerdialog.cpp:65
 msgid ""
 "Install an office suite to open documents, spreadsheets and presentations"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:60
+#: office-installer/installerdialog.cpp:62
 msgid "Install an office suite to open this document"
 msgid_plural "Install an office suite to open these %1 documents"
 msgstr[0] ""
 msgstr[1] ""
 
-#: office-installer/installerdialog.cpp:57
+#: office-installer/installerdialog.cpp:59
 msgid "Install an office suite to open “%1”."
 msgstr ""
 
-#: office-installer/installerdialog.cpp:329
+#: office-installer/installerdialog.cpp:331
 msgctxt "@label:listbox"
 msgid "Install from:"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:479
+#: office-installer/installerdialog.cpp:481
 msgctxt "@info:status %1 is an office suite"
 msgid "Installing %1…"
 msgstr ""
@@ -94,7 +94,7 @@ msgctxt "@option:radio office suite"
 msgid "LibreOffice"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:364
+#: office-installer/installerdialog.cpp:366
 msgctxt "@title"
 msgid "No Office Suite Installed"
 msgstr ""
@@ -104,17 +104,17 @@ msgctxt "@option:radio office suite"
 msgid "ONLYOFFICE"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:528
+#: office-installer/installerdialog.cpp:530
 msgctxt "@info:status %1 is an office suite"
 msgid "Opening %1…"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:50
+#: office-installer/installerdialog.cpp:52
 msgctxt "@item:inlistbox install source"
 msgid "RPM"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:211
+#: office-installer/installerdialog.cpp:213
 msgctxt "@info:status office suite"
 msgid "Recommended"
 msgstr ""
@@ -123,6 +123,6 @@ msgstr ""
 msgid "The full-featured LibreOffice suite"
 msgstr ""
 
-#: office-installer/installerdialog.cpp:418
+#: office-installer/installerdialog.cpp:420
 msgid "This can take a few minutes. You may be asked to authenticate."
 msgstr ""

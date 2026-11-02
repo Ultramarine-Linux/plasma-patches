@@ -8,25 +8,25 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kcm_ultramarine_location\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 16:01-0700\n"
+"POT-Creation-Date: 2026-11-02 12:15-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: kcm-location/ui/main.qml:44
-msgctxt "@option:check"
+#: kcm-location/ui/main.qml:85
+msgctxt "@info"
 msgid "Allow apps to request your approximate location"
 msgstr ""
 
-#: kcm-location/location.cpp:143
+#: kcm-location/location.cpp:144
 msgid "Authentication was cancelled or failed. No changes were made."
 msgstr ""
 
-#: kcm-location/location.cpp:145
+#: kcm-location/location.cpp:146
 msgid "Could not change location services: %1"
 msgstr ""
 
@@ -34,35 +34,72 @@ msgstr ""
 msgid "Could not read the state of location services: %1"
 msgstr ""
 
-#: kcm-location/ui/main.qml:96
+#: kcm-location/ui/main.qml:121
+msgctxt "@info"
+msgid "Every user on this computer."
+msgstr ""
+
+#: kcm-location/ui/main.qml:104
+msgctxt "@info"
+msgid "How it works"
+msgstr ""
+
+#: kcm-location/ui/main.qml:137
 msgctxt "@info:placeholder"
 msgid "Install the geoclue2 package to let apps request your location."
 msgstr ""
 
-#: kcm-location/ui/main.qml:60
+#: kcm-location/ui/main.qml:69
+msgctxt "@info"
+msgid "Let apps know roughly where you are"
+msgstr ""
+
+#: kcm-location/ui/main.qml:83
 msgctxt "@option:check"
 msgid "Location Services"
 msgstr ""
 
-#: kcm-location/ui/main.qml:15
+#: kcm-location/ui/main.qml:16
 msgctxt "@title"
 msgid "Location Services"
 msgstr ""
 
-#: kcm-location/ui/main.qml:95
+#: kcm-location/ui/main.qml:136
 msgctxt "@info:placeholder"
 msgid "Location services aren't installed"
 msgstr ""
 
-#: kcm-location/ui/main.qml:79
+#: kcm-location/ui/main.qml:105
 msgctxt "@info"
-msgid "This applies to every user on this computer."
+msgid "Nearby Wi-Fi networks are searched on beaconDB to find your location."
 msgstr ""
 
-#: kcm-location/ui/main.qml:72
+#: kcm-location/ui/main.qml:113
 msgctxt "@info"
-msgid ""
-"To find your location, nearby Wi-Fi networks are looked up with beaconDB. "
-"Your location is never shared with Fyra Labs, only with the apps that ask "
-"for it, like the weather widget, Night Light or a website you visit."
+msgid "Only the apps that ask for it, like a website you visit."
+msgstr ""
+
+#: kcm-location/ui/main.qml:98
+msgctxt "@title:group"
+msgid "Privacy"
+msgstr ""
+
+#: kcm-location/ui/main.qml:84
+msgctxt "@info"
+msgid "Turning off…"
+msgstr ""
+
+#: kcm-location/ui/main.qml:84
+msgctxt "@info"
+msgid "Turning on…"
+msgstr ""
+
+#: kcm-location/ui/main.qml:120
+msgctxt "@info"
+msgid "Who it applies to"
+msgstr ""
+
+#: kcm-location/ui/main.qml:112
+msgctxt "@info"
+msgid "Who sees it"
 msgstr ""
