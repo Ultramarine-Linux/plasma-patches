@@ -21,50 +21,50 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="kcm_ultramarine" targetName="NightlyCoverage" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ExperimentalBuild" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ultramarine-office-installer" />
-      <config projectName="kcm_ultramarine" targetName="ExperimentalTest" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ultramarine-updates" />
       <config projectName="kcm_ultramarine" targetName="NightlyMemoryCheck" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ContinuousSubmit" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="NightlyUpdate" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ultramarine_office_suites" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalUpdate" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ExperimentalMemCheck" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="Continuous" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_tweaks" />
+      <config projectName="kcm_ultramarine" targetName="test_location" />
+      <config projectName="kcm_ultramarine" targetName="Experimental" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ContinuousMemCheck" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="test_updater" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates-kcm-desktop-gen" />
+      <config projectName="kcm_ultramarine" targetName="test_tweaks" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_location" />
+      <config projectName="kcm_ultramarine" targetName="ultramarine_updates_core" />
+      <config projectName="kcm_ultramarine" targetName="ContinuousTest" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="NightlyCoverage" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ExperimentalBuild" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ExperimentalTest" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ultramarine-updates" />
+      <config projectName="kcm_ultramarine" targetName="ContinuousSubmit" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="NightlyUpdate" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="test_updates" />
       <config projectName="kcm_ultramarine" targetName="uninstall" />
-      <config projectName="kcm_ultramarine" targetName="ExperimentalMemCheck" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousUpdate" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="Continuous" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalConfigure" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_tweaks" />
       <config projectName="kcm_ultramarine" targetName="ContinuousBuild" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousCoverage" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousStart" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyConfigure" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="test_location" />
       <config projectName="kcm_ultramarine" targetName="NightlySubmit" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="Experimental" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ContinuousMemCheck" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousConfigure" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="test_updater" />
       <config projectName="kcm_ultramarine" targetName="Nightly" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalSubmit" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates-kcm-desktop-gen" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalCoverage" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_tweaks-kcm-desktop-gen" />
-      <config projectName="kcm_ultramarine" targetName="test_tweaks" />
       <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_location-kcm-desktop-gen" />
       <config projectName="kcm_ultramarine" targetName="NightlyTest" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalStart" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyStart" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="test_office_installer" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_location" />
-      <config projectName="kcm_ultramarine" targetName="ultramarine_updates_core" />
       <config projectName="kcm_ultramarine" targetName="NightlyBuild" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyMemCheck" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ContinuousTest" folderName="CTestDashboardTargets" />
     </generated>
   </component>
   <component name="CMakeSettings">
@@ -74,7 +74,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6ad02a7b-f63e-47c0-8d1f-99b585e1ad4a" name="Changes" comment="oh it's onlyoffice, not openoffice. also fix test.">
-      <change beforePath="$PROJECT_DIR$/office-installer/installerdialog.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/office-installer/installerdialog.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-location/ui/main.qml" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-location/ui/main.qml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,61 +103,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="2.055950480456541" />
-      <entry key="MS500" value="5.195889379802258" />
-      <entry key="S2" value="12.905173473581401" />
-      <entry key="S5" value="21.847161968836314" />
-      <entry key="S10" value="27.59265027983913" />
-      <entry key="S30" value="32.8256341616422" />
-      <entry key="S60" value="34.360732685811975" />
-      <entry key="M2" value="35.2843291383556" />
-      <entry key="M5" value="43.458619140104496" />
-      <entry key="M10" value="83.10978045434659" />
-      <entry key="M15" value="137.02479682810463" />
-      <entry key="M30" value="297.9888225894524" />
-      <entry key="H1" value="518.6602721189115" />
-      <entry key="H2" value="757.6573939892465" />
-      <entry key="H4" value="974.7667647615217" />
-      <entry key="D1" value="1269.8781192002984" />
-      <entry key="W1" value="1337.175013953028" />
+      <entry key="MS100" value="1.003766924940328" />
+      <entry key="MS500" value="1.9465916069794011" />
+      <entry key="S2" value="3.7822282141540673" />
+      <entry key="S5" value="4.458555823452131" />
+      <entry key="S10" value="4.7211692759739385" />
+      <entry key="S30" value="6.270683765299262" />
+      <entry key="S60" value="16.089633436551573" />
+      <entry key="M2" value="38.92841462516733" />
+      <entry key="M5" value="76.91403709059574" />
+      <entry key="M10" value="126.1464257677909" />
+      <entry key="M15" value="181.48380265897492" />
+      <entry key="M30" value="344.0323221445393" />
+      <entry key="H1" value="569.8849210036874" />
+      <entry key="H2" value="815.9474805451194" />
+      <entry key="H4" value="1039.4941554285704" />
+      <entry key="D1" value="1343.4515393281672" />
+      <entry key="W1" value="1412.8105076059287" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
       <entry key="S2" value="0.0" />
-      <entry key="S5" value="3.395514971388467E-236" />
-      <entry key="S10" value="1.8426923159845124E-118" />
-      <entry key="S30" value="5.690506734032241E-40" />
-      <entry key="S60" value="2.3854783029891538E-20" />
-      <entry key="M2" value="1.5444993696952972E-10" />
-      <entry key="M5" value="1.189912684560004E-4" />
-      <entry key="M10" value="0.010908314012887594" />
-      <entry key="M15" value="0.049187720348712716" />
-      <entry key="M30" value="0.22381600502542798" />
-      <entry key="H1" value="0.5347711281938564" />
-      <entry key="H2" value="1.0435623164884023" />
-      <entry key="H4" value="1.6737589451718906" />
-      <entry key="D1" value="2.7017114476087007" />
-      <entry key="W1" value="2.954938476897471" />
+      <entry key="S5" value="6.372342107202888E-250" />
+      <entry key="S10" value="2.524349838513412E-125" />
+      <entry key="S30" value="2.9334803306709885E-42" />
+      <entry key="S60" value="1.7127405905947517E-21" />
+      <entry key="M2" value="4.138527021290016E-11" />
+      <entry key="M5" value="7.026488148170202E-5" />
+      <entry key="M10" value="0.008382416640334827" />
+      <entry key="M15" value="0.04126651272557748" />
+      <entry key="M30" value="0.2050036893486934" />
+      <entry key="H1" value="0.5118034637103922" />
+      <entry key="H2" value="1.0209066258544555" />
+      <entry key="H4" value="1.6554906346076097" />
+      <entry key="D1" value="2.696774290149932" />
+      <entry key="W1" value="2.9541664564542502" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="2.0051887822945353" />
-      <entry key="MS500" value="5.170351257780884" />
-      <entry key="S2" value="12.860110782163487" />
-      <entry key="S5" value="21.80165020586821" />
-      <entry key="S10" value="27.56081943224209" />
-      <entry key="S30" value="32.81228611166562" />
-      <entry key="S60" value="34.353659760113686" />
-      <entry key="M2" value="35.280685143059486" />
-      <entry key="M5" value="43.457093959438616" />
-      <entry key="M10" value="83.11913697294369" />
-      <entry key="M15" value="137.07213571847848" />
-      <entry key="M30" value="298.2103775245285" />
-      <entry key="H1" value="519.1929678135896" />
-      <entry key="H2" value="758.6994323754636" />
-      <entry key="H4" value="976.4395557658036" />
-      <entry key="D1" value="1272.5796249751754" />
-      <entry key="W1" value="1340.1299216357265" />
+      <entry key="MS100" value="0.9831279804799983" />
+      <entry key="MS500" value="1.9394678542237263" />
+      <entry key="S2" value="3.7790150797725697" />
+      <entry key="S5" value="4.457060345744791" />
+      <entry key="S10" value="4.720380282934454" />
+      <entry key="S30" value="6.270225097639378" />
+      <entry key="S60" value="16.088619486850142" />
+      <entry key="M2" value="38.92687810405044" />
+      <entry key="M5" value="76.9127487447865" />
+      <entry key="M10" value="126.15338094257224" />
+      <entry key="M15" value="181.52335110835784" />
+      <entry key="M30" value="344.2351657186545" />
+      <entry key="H1" value="570.3946921451828" />
+      <entry key="H2" value="816.9668729327467" />
+      <entry key="H4" value="1041.1486768945433" />
+      <entry key="D1" value="1346.1481063425758" />
+      <entry key="W1" value="1415.7646429932015" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -511,6 +512,11 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="kcm_ultramarine_location-kcm-desktop-gen" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="kcm_ultramarine_location-kcm-desktop-gen" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -682,21 +688,21 @@
       <item itemvalue="CMake Application.NightlyTest" />
       <item itemvalue="CMake Application.NightlyUpdate" />
       <item itemvalue="CMake Application.Nightly" />
-      <item itemvalue="CMake Application.kcm_ultramarine_location-kcm-desktop-gen" />
-      <item itemvalue="CMake Application.kcm_ultramarine_location" />
-      <item itemvalue="CMake Application.kcm_ultramarine_tweaks-kcm-desktop-gen" />
       <item itemvalue="CMake Application.kcm_ultramarine_tweaks" />
-      <item itemvalue="CMake Application.kcm_ultramarine_updates-kcm-desktop-gen" />
+      <item itemvalue="CMake Application.kcm_ultramarine_tweaks-kcm-desktop-gen" />
       <item itemvalue="CMake Application.kcm_ultramarine_updates" />
+      <item itemvalue="CMake Application.kcm_ultramarine_updates-kcm-desktop-gen" />
+      <item itemvalue="CMake Application.ultramarine-office-installer" />
+      <item itemvalue="CMake Application.ultramarine_office_suites" />
       <item itemvalue="CMake Application.test_location" />
       <item itemvalue="CMake Application.test_office_installer" />
       <item itemvalue="CMake Application.test_tweaks" />
       <item itemvalue="CMake Application.test_updater" />
       <item itemvalue="CMake Application.test_updates" />
-      <item itemvalue="CMake Application.ultramarine-office-installer" />
       <item itemvalue="CMake Application.ultramarine-updates" />
-      <item itemvalue="CMake Application.ultramarine_office_suites" />
       <item itemvalue="CMake Application.ultramarine_updates_core" />
+      <item itemvalue="CMake Application.kcm_ultramarine_location" />
+      <item itemvalue="CMake Application.kcm_ultramarine_location-kcm-desktop-gen" />
       <item itemvalue="CMake Application.uninstall" />
       <item itemvalue="CTest Application.All CTest" />
     </list>

@@ -45,8 +45,8 @@ KCMUtils.SimpleKCM {
             Layout.fillWidth: true
             // its width is capped by the heading's, so center the column itself too
             Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: Kirigami.Units.gridUnit
-            Layout.bottomMargin: Kirigami.Units.largeSpacing
+            Layout.topMargin: Kirigami.Units.gridUnit * 2
+            Layout.bottomMargin: Kirigami.Units.gridUnit
             spacing: Kirigami.Units.largeSpacing
 
             Kirigami.Icon {
@@ -95,30 +95,43 @@ KCMUtils.SimpleKCM {
         }
 
         FormCard.FormHeader {
+            // the default sits right on top of the card above, so give the section room to breathe
+            topPadding: Kirigami.Units.gridUnit
+            bottomPadding: Kirigami.Units.largeSpacing
             title: i18nc("@title:group", "Privacy")
         }
 
         FormCard.FormCard {
+            Layout.bottomMargin: Kirigami.Units.gridUnit
+
             FormCard.FormTextDelegate {
                 icon.name: "network-wireless"
-                text: i18nc("@info", "How it works")
-                description: i18nc("@info", "Nearby Wi-Fi networks are searched on beaconDB to find your location.")
+                text: i18nc("@info", "How?")
+                description: i18nc("@info", "Nearby Wi-Fi networks are searched on beaconDB to find your location")
+            }
+
+            FormCard.FormDelegateSeparator {}
+
+            FormCard.FormTextDelegate {
+                icon.name: "mark-location"
+                text: i18nc("@info", "What?")
+                description: i18nc("@info", "Your approximate coordinates and how accurate they are")
             }
 
             FormCard.FormDelegateSeparator {}
 
             FormCard.FormTextDelegate {
                 icon.name: "security-high"
-                text: i18nc("@info", "Who sees it")
-                description: i18nc("@info", "Only the apps that ask for it, like a website you visit.")
+                text: i18nc("@info", "Who?")
+                description: i18nc("@info", "Only the apps that ask for it, like a website you visit")
             }
 
             FormCard.FormDelegateSeparator {}
 
             FormCard.FormTextDelegate {
                 icon.name: "system-users"
-                text: i18nc("@info", "Who it applies to")
-                description: i18nc("@info", "Every user on this computer.")
+                text: i18nc("@info", "Where?")
+                description: i18nc("@info", "Your entire system")
             }
         }
     }

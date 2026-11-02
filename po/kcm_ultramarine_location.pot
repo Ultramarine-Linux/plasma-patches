@@ -34,17 +34,12 @@ msgstr ""
 msgid "Could not read the state of location services: %1"
 msgstr ""
 
-#: kcm-location/ui/main.qml:121
+#: kcm-location/ui/main.qml:109
 msgctxt "@info"
-msgid "Every user on this computer."
+msgid "How?"
 msgstr ""
 
-#: kcm-location/ui/main.qml:104
-msgctxt "@info"
-msgid "How it works"
-msgstr ""
-
-#: kcm-location/ui/main.qml:137
+#: kcm-location/ui/main.qml:150
 msgctxt "@info:placeholder"
 msgid "Install the geoclue2 package to let apps request your location."
 msgstr ""
@@ -64,22 +59,22 @@ msgctxt "@title"
 msgid "Location Services"
 msgstr ""
 
-#: kcm-location/ui/main.qml:136
+#: kcm-location/ui/main.qml:149
 msgctxt "@info:placeholder"
 msgid "Location services aren't installed"
 msgstr ""
 
-#: kcm-location/ui/main.qml:105
+#: kcm-location/ui/main.qml:110
 msgctxt "@info"
-msgid "Nearby Wi-Fi networks are searched on beaconDB to find your location."
+msgid "Nearby Wi-Fi networks are searched on beaconDB to find your location"
 msgstr ""
 
-#: kcm-location/ui/main.qml:113
+#: kcm-location/ui/main.qml:126
 msgctxt "@info"
-msgid "Only the apps that ask for it, like a website you visit."
+msgid "Only the apps that ask for it, like a website you visit"
 msgstr ""
 
-#: kcm-location/ui/main.qml:98
+#: kcm-location/ui/main.qml:101
 msgctxt "@title:group"
 msgid "Privacy"
 msgstr ""
@@ -94,12 +89,27 @@ msgctxt "@info"
 msgid "Turning on…"
 msgstr ""
 
-#: kcm-location/ui/main.qml:120
+#: kcm-location/ui/main.qml:117
 msgctxt "@info"
-msgid "Who it applies to"
+msgid "What?"
 msgstr ""
 
-#: kcm-location/ui/main.qml:112
+#: kcm-location/ui/main.qml:133
 msgctxt "@info"
-msgid "Who sees it"
+msgid "Where?"
+msgstr ""
+
+#: kcm-location/ui/main.qml:125
+msgctxt "@info"
+msgid "Who?"
+msgstr ""
+
+#: kcm-location/ui/main.qml:118
+msgctxt "@info"
+msgid "Your approximate coordinates and how accurate they are"
+msgstr ""
+
+#: kcm-location/ui/main.qml:134
+msgctxt "@info"
+msgid "Your entire system"
 msgstr ""
