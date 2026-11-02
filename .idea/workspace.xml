@@ -74,21 +74,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6ad02a7b-f63e-47c0-8d1f-99b585e1ad4a" name="Changes" comment="oh it's onlyoffice, not openoffice. also fix test.">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/cpp-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/cpp-ci.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kcm-location/location.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-location/location.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kcm-location/location.h" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-location/location.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kcm-tweaks/tweaks.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-tweaks/tweaks.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kcm-tweaks/tweaks.h" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-tweaks/tweaks.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kcm-updates/updates.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-updates/updates.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kcm-updates/updates.h" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-updates/updates.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/office-installer/installerdialog.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/office-installer/installerdialog.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_office_installer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_office_installer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_updater.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_updater.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/updater/apps.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/apps.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/updater/flatpak.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/flatpak.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/updater/plasmoid.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/plasmoid.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/updater/rpm.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/rpm.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -116,61 +102,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="2.232707914124809" />
-      <entry key="MS500" value="5.659574221110846" />
-      <entry key="S2" value="15.522918941337922" />
-      <entry key="S5" value="24.939992301882864" />
-      <entry key="S10" value="30.653545296167316" />
-      <entry key="S30" value="39.18860279499556" />
-      <entry key="S60" value="44.01263517966123" />
-      <entry key="M2" value="51.43802382720425" />
-      <entry key="M5" value="88.74031345295232" />
-      <entry key="M10" value="159.5182057266226" />
-      <entry key="M15" value="227.51444474485572" />
-      <entry key="M30" value="393.02903827403605" />
-      <entry key="H1" value="591.1410655981981" />
-      <entry key="H2" value="798.6410908856379" />
-      <entry key="H4" value="987.5680174339409" />
-      <entry key="D1" value="1244.343693749303" />
-      <entry key="W1" value="1302.7459288162893" />
+      <entry key="MS100" value="2.055950480456541" />
+      <entry key="MS500" value="5.195889379802258" />
+      <entry key="S2" value="12.905173473581401" />
+      <entry key="S5" value="21.847161968836314" />
+      <entry key="S10" value="27.59265027983913" />
+      <entry key="S30" value="32.8256341616422" />
+      <entry key="S60" value="34.360732685811975" />
+      <entry key="M2" value="35.2843291383556" />
+      <entry key="M5" value="43.458619140104496" />
+      <entry key="M10" value="83.10978045434659" />
+      <entry key="M15" value="137.02479682810463" />
+      <entry key="M30" value="297.9888225894524" />
+      <entry key="H1" value="518.6602721189115" />
+      <entry key="H2" value="757.6573939892465" />
+      <entry key="H4" value="974.7667647615217" />
+      <entry key="D1" value="1269.8781192002984" />
+      <entry key="W1" value="1337.175013953028" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
       <entry key="S2" value="0.0" />
-      <entry key="S5" value="8.096848118242999E-173" />
-      <entry key="S10" value="8.998248784203941E-87" />
-      <entry key="S30" value="2.0799489003875985E-29" />
-      <entry key="S60" value="4.560645678396342E-15" />
-      <entry key="M2" value="6.75325527312301E-8" />
-      <entry key="M5" value="0.001354581894713193" />
-      <entry key="M10" value="0.03680465215232425" />
-      <entry key="M15" value="0.1106505098444175" />
-      <entry key="M30" value="0.335690848381711" />
-      <entry key="H1" value="0.654925851010806" />
-      <entry key="H2" value="1.1548630297837392" />
-      <entry key="H4" value="1.7607551053406654" />
-      <entry key="D1" value="2.7246243724622254" />
-      <entry key="W1" value="2.95850560615239" />
+      <entry key="S5" value="3.395514971388467E-236" />
+      <entry key="S10" value="1.8426923159845124E-118" />
+      <entry key="S30" value="5.690506734032241E-40" />
+      <entry key="S60" value="2.3854783029891538E-20" />
+      <entry key="M2" value="1.5444993696952972E-10" />
+      <entry key="M5" value="1.189912684560004E-4" />
+      <entry key="M10" value="0.010908314012887594" />
+      <entry key="M15" value="0.049187720348712716" />
+      <entry key="M30" value="0.22381600502542798" />
+      <entry key="H1" value="0.5347711281938564" />
+      <entry key="H2" value="1.0435623164884023" />
+      <entry key="H4" value="1.6737589451718906" />
+      <entry key="D1" value="2.7017114476087007" />
+      <entry key="W1" value="2.954938476897471" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="2.145655277958437" />
-      <entry key="MS500" value="5.621838218965508" />
-      <entry key="S2" value="15.50036201840561" />
-      <entry key="S5" value="24.92526550796076" />
-      <entry key="S10" value="30.64438971798548" />
-      <entry key="S30" value="39.18472919585218" />
-      <entry key="S60" value="44.01047841245771" />
-      <entry key="M2" value="51.43669359017627" />
-      <entry key="M5" value="88.73982297426244" />
-      <entry key="M10" value="159.55228955768743" />
-      <entry key="M15" value="227.62205624749055" />
-      <entry key="M30" value="393.3617119632855" />
-      <entry key="H1" value="591.7936025846177" />
-      <entry key="H2" value="799.7943365605754" />
-      <entry key="H4" value="989.3277871436882" />
-      <entry key="D1" value="1247.0681159553135" />
-      <entry key="W1" value="1305.7044043357673" />
+      <entry key="MS100" value="2.0051887822945353" />
+      <entry key="MS500" value="5.170351257780884" />
+      <entry key="S2" value="12.860110782163487" />
+      <entry key="S5" value="21.80165020586821" />
+      <entry key="S10" value="27.56081943224209" />
+      <entry key="S30" value="32.81228611166562" />
+      <entry key="S60" value="34.353659760113686" />
+      <entry key="M2" value="35.280685143059486" />
+      <entry key="M5" value="43.457093959438616" />
+      <entry key="M10" value="83.11913697294369" />
+      <entry key="M15" value="137.07213571847848" />
+      <entry key="M30" value="298.2103775245285" />
+      <entry key="H1" value="519.1929678135896" />
+      <entry key="H2" value="758.6994323754636" />
+      <entry key="H4" value="976.4395557658036" />
+      <entry key="D1" value="1272.5796249751754" />
+      <entry key="W1" value="1340.1299216357265" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">

@@ -537,9 +537,8 @@ namespace OfficeInstaller {
 
         QStringList files;
         files.reserve(m_urls.size());
-        std::ranges::transform(m_urls, std::back_inserter(files), [](const QUrl &url) {
-            return url.isLocalFile() ? url.toLocalFile() : url.toString();
-        });
+        std::ranges::transform(m_urls, std::back_inserter(files),
+                               [](const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); });
         const auto [program, arguments] = launchCommand(selectedSuite(), selectedSource(), files);
         QProcess::startDetached(program, arguments);
         accept();
