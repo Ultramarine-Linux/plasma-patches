@@ -47,8 +47,7 @@ LocationState parseUnitFileState(const QString &state) {
     return LocationState::Enabled;
 }
 
-Location::Location(QObject *parent, const KPluginMetaData &metaData) :
-    KQuickConfigModule(parent, metaData) {
+Location::Location(QObject *parent, const KPluginMetaData &metaData) : KQuickConfigModule(parent, metaData) {
     // the switch applies right away, like the Tweaks KCM
     setButtons(NoAdditionalButton);
 }
@@ -127,8 +126,8 @@ void Location::callSystemd(const QString &method, const QVariantList &arguments,
     message.setArguments(arguments);
     // lets systemd ask polkit to show an authentication dialog
     message.setInteractiveAuthorizationAllowed(true);
-    const auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(message, CallTimeoutMs),
-                                                      this);
+    const auto *watcher =
+        new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(message, CallTimeoutMs), this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, next](QDBusPendingCallWatcher *call) {
         call->deleteLater();
         const QDBusMessage reply = call->reply();
