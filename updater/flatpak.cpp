@@ -4,6 +4,9 @@
 
 #include "flatpak.h"
 
+#include <algorithm>
+#include <iterator>
+
 #include "process.h"
 
 using namespace Qt::StringLiterals;
@@ -163,9 +166,9 @@ namespace UltramarineUpdates {
         const QHash<QString, QString> installed = installedFlatpakVersions(installation);
         QList<PackageUpdate> result;
         result.reserve(updates.size());
-        for (const FlatpakUpdate &update: updates) {
-            result.append(flatpakPackageUpdate(update, installation, installed));
-        }
+        std::ranges::transform(updates, std::back_inserter(result), [&](const FlatpakUpdate &update) {
+            return flatpakPackageUpdate(update, installation, installed);
+        });
         annotateFlatpakSizes(result, updates, installation);
         return result;
     }

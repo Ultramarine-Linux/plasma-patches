@@ -180,11 +180,11 @@ bool Tweaks::loading() const { return m_loading; }
 
 bool Tweaks::running() const { return m_running; }
 
-QString Tweaks::status() const { return m_status; }
+const QString &Tweaks::status() const { return m_status; }
 
-QString Tweaks::errorMessage() const { return m_errorMessage; }
+const QString &Tweaks::errorMessage() const { return m_errorMessage; }
 
-QString Tweaks::output() const { return m_output; }
+const QString &Tweaks::output() const { return m_output; }
 
 void Tweaks::refresh() {
     if (m_loading) {
@@ -316,27 +316,27 @@ void Tweaks::readChangeOutput() {
     }
 }
 
-void Tweaks::setLoading(const bool loading) {
-    if (m_loading == loading) {
+void Tweaks::setLoading(const bool value) {
+    if (m_loading == value) {
         return;
     }
-    m_loading = loading;
+    m_loading = value;
     Q_EMIT loadingChanged();
 }
 
-void Tweaks::setRunning(const bool running) {
-    if (m_running == running) {
+void Tweaks::setRunning(const bool value) {
+    if (m_running == value) {
         return;
     }
-    m_running = running;
+    m_running = value;
     Q_EMIT runningChanged();
 }
 
-void Tweaks::setStatus(const QString &status) {
-    if (m_status == status) {
+void Tweaks::setStatus(const QString &value) {
+    if (m_status == value) {
         return;
     }
-    m_status = status;
+    m_status = value;
     Q_EMIT statusChanged();
 }
 

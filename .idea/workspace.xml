@@ -21,44 +21,50 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
+      <config projectName="kcm_ultramarine" targetName="ultramarine-office-installer" />
+      <config projectName="kcm_ultramarine" targetName="NightlyMemoryCheck" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ultramarine_office_suites" />
+      <config projectName="kcm_ultramarine" targetName="ExperimentalUpdate" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ExperimentalMemCheck" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="Continuous" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_tweaks" />
+      <config projectName="kcm_ultramarine" targetName="test_location" />
+      <config projectName="kcm_ultramarine" targetName="Experimental" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="ContinuousMemCheck" folderName="CTestDashboardTargets" />
+      <config projectName="kcm_ultramarine" targetName="test_updater" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates-kcm-desktop-gen" />
+      <config projectName="kcm_ultramarine" targetName="test_tweaks" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_location" />
+      <config projectName="kcm_ultramarine" targetName="ultramarine_updates_core" />
+      <config projectName="kcm_ultramarine" targetName="ContinuousTest" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyCoverage" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalBuild" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalTest" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ultramarine-updates" />
-      <config projectName="kcm_ultramarine" targetName="NightlyMemoryCheck" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousSubmit" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyUpdate" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ExperimentalUpdate" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="test_updates" />
       <config projectName="kcm_ultramarine" targetName="uninstall" />
       <config projectName="kcm_ultramarine" targetName="ContinuousUpdate" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ExperimentalMemCheck" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="Continuous" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalConfigure" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_tweaks" />
       <config projectName="kcm_ultramarine" targetName="ContinuousBuild" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousCoverage" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousStart" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyConfigure" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlySubmit" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="Experimental" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="ContinuousConfigure" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ContinuousMemCheck" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="Nightly" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="test_updater" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalSubmit" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates-kcm-desktop-gen" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalCoverage" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_tweaks-kcm-desktop-gen" />
-      <config projectName="kcm_ultramarine" targetName="test_tweaks" />
+      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_location-kcm-desktop-gen" />
       <config projectName="kcm_ultramarine" targetName="NightlyTest" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="kcm_ultramarine_updates" />
       <config projectName="kcm_ultramarine" targetName="ExperimentalStart" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyStart" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ultramarine_updates_core" />
+      <config projectName="kcm_ultramarine" targetName="test_office_installer" />
       <config projectName="kcm_ultramarine" targetName="NightlyBuild" folderName="CTestDashboardTargets" />
       <config projectName="kcm_ultramarine" targetName="NightlyMemCheck" folderName="CTestDashboardTargets" />
-      <config projectName="kcm_ultramarine" targetName="ContinuousTest" folderName="CTestDashboardTargets" />
     </generated>
   </component>
   <component name="CMakeSettings">
@@ -67,20 +73,19 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6ad02a7b-f63e-47c0-8d1f-99b585e1ad4a" name="Changes" comment="oh it's onlyoffice, not openoffice. also fix test." />
+    <list default="true" id="6ad02a7b-f63e-47c0-8d1f-99b585e1ad4a" name="Changes" comment="oh it's onlyoffice, not openoffice. also fix test.">
+      <change beforePath="$PROJECT_DIR$/office-installer/installerdialog.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/office-installer/installerdialog.cpp" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ClangdSettings">
-    <option name="formatViaClangd" value="false" />
-  </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="cypress/pkgkit" />
+        <entry key="$PROJECT_DIR$" value="cypress/office-installer" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -97,61 +102,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.8699462591301619" />
-      <entry key="MS500" value="4.584553620503037" />
-      <entry key="S2" value="13.212826174477323" />
-      <entry key="S5" value="24.572769686861857" />
-      <entry key="S10" value="32.023024182989104" />
-      <entry key="S30" value="38.84843704115973" />
-      <entry key="S60" value="40.87938702208016" />
-      <entry key="M2" value="43.4276706277454" />
-      <entry key="M5" value="66.47599082864797" />
-      <entry key="M10" value="124.79263584447119" />
-      <entry key="M15" value="184.94035056601078" />
-      <entry key="M30" value="324.70621121149327" />
-      <entry key="H1" value="482.6030499717373" />
-      <entry key="H2" value="652.228402333705" />
-      <entry key="H4" value="811.5206759066444" />
-      <entry key="D1" value="1030.420596298665" />
-      <entry key="W1" value="1080.2532478035878" />
+      <entry key="MS100" value="2.055950480456541" />
+      <entry key="MS500" value="5.195889379802258" />
+      <entry key="S2" value="12.905173473581401" />
+      <entry key="S5" value="21.847161968836314" />
+      <entry key="S10" value="27.59265027983913" />
+      <entry key="S30" value="32.8256341616422" />
+      <entry key="S60" value="34.360732685811975" />
+      <entry key="M2" value="35.2843291383556" />
+      <entry key="M5" value="43.458619140104496" />
+      <entry key="M10" value="83.10978045434659" />
+      <entry key="M15" value="137.02479682810463" />
+      <entry key="M30" value="297.9888225894524" />
+      <entry key="H1" value="518.6602721189115" />
+      <entry key="H2" value="757.6573939892465" />
+      <entry key="H4" value="974.7667647615217" />
+      <entry key="D1" value="1269.8781192002984" />
+      <entry key="W1" value="1337.175013953028" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
-      <entry key="S2" value="3.23412006710901E-266" />
-      <entry key="S5" value="6.366525100309286E-107" />
-      <entry key="S10" value="7.979050758272669E-54" />
-      <entry key="S30" value="1.998252703778573E-18" />
-      <entry key="S60" value="1.41359566488389E-9" />
-      <entry key="M2" value="3.7597814629096445E-5" />
-      <entry key="M5" value="0.016984980043315494" />
-      <entry key="M10" value="0.13032646174323673" />
-      <entry key="M15" value="0.2570632599958534" />
-      <entry key="M30" value="0.5116615679758187" />
-      <entry key="H1" value="0.8085628452932079" />
-      <entry key="H2" value="1.283190993135024" />
-      <entry key="H4" value="1.8560059676368381" />
-      <entry key="D1" value="2.748653777140581" />
-      <entry key="W1" value="2.962219034504589" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="3.395514971388467E-236" />
+      <entry key="S10" value="1.8426923159845124E-118" />
+      <entry key="S30" value="5.690506734032241E-40" />
+      <entry key="S60" value="2.3854783029891538E-20" />
+      <entry key="M2" value="1.5444993696952972E-10" />
+      <entry key="M5" value="1.189912684560004E-4" />
+      <entry key="M10" value="0.010908314012887594" />
+      <entry key="M15" value="0.049187720348712716" />
+      <entry key="M30" value="0.22381600502542798" />
+      <entry key="H1" value="0.5347711281938564" />
+      <entry key="H2" value="1.0435623164884023" />
+      <entry key="H4" value="1.6737589451718906" />
+      <entry key="D1" value="2.7017114476087007" />
+      <entry key="W1" value="2.954938476897471" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.8290697300871903" />
-      <entry key="MS500" value="4.5629050543570155" />
-      <entry key="S2" value="13.196559740740502" />
-      <entry key="S5" value="24.559931501491818" />
-      <entry key="S10" value="32.014439125134345" />
-      <entry key="S30" value="38.844900987767794" />
-      <entry key="S60" value="40.877510496844" />
-      <entry key="M2" value="43.426524547385874" />
-      <entry key="M5" value="66.49133347003603" />
-      <entry key="M10" value="124.9206009898939" />
-      <entry key="M15" value="185.19478787794012" />
-      <entry key="M30" value="325.21533081292176" />
-      <entry key="H1" value="483.4096584298997" />
-      <entry key="H2" value="653.5102859765891" />
-      <entry key="H4" value="813.3758861821323" />
-      <entry key="D1" value="1033.1690863768893" />
-      <entry key="W1" value="1083.2154424576509" />
+      <entry key="MS100" value="2.0051887822945353" />
+      <entry key="MS500" value="5.170351257780884" />
+      <entry key="S2" value="12.860110782163487" />
+      <entry key="S5" value="21.80165020586821" />
+      <entry key="S10" value="27.56081943224209" />
+      <entry key="S30" value="32.81228611166562" />
+      <entry key="S60" value="34.353659760113686" />
+      <entry key="M2" value="35.280685143059486" />
+      <entry key="M5" value="43.457093959438616" />
+      <entry key="M10" value="83.11913697294369" />
+      <entry key="M15" value="137.07213571847848" />
+      <entry key="M30" value="298.2103775245285" />
+      <entry key="H1" value="519.1929678135896" />
+      <entry key="H2" value="758.6994323754636" />
+      <entry key="H4" value="976.4395557658036" />
+      <entry key="D1" value="1272.5796249751754" />
+      <entry key="W1" value="1340.1299216357265" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -171,32 +176,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;CidrDebugProfileConversion&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHELLCHECK.PATH&quot;: &quot;/home/cypress/.local/share/JetBrains/CLion2026.2/Shell Script/shellcheck&quot;,
-    &quot;cf.advertisement.text.overridden&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;ctest.advertisement.all.test.configuration.is.created&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;cypress/office-installer&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/cypress/kde/src/plasma-workspace&quot;,
-    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.C++&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CidrDebugProfileConversion": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "SHELLCHECK.PATH": "/home/cypress/.local/share/JetBrains/CLion2026.2/Shell Script/shellcheck",
+    "cf.advertisement.text.overridden": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "ctest.advertisement.all.test.configuration.is.created": "true",
+    "git-widget-placeholder": "cypress/location-services",
+    "last_opened_file_path": "/home/cypress/kde/src/plasma-workspace",
+    "node.js.detected.package.jshint": "true",
+    "node.js.selected.package.jshint": "",
+    "nodejs_package_manager_path": "npm",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "preferences.sourceCode.C++"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/.github" />
@@ -205,6 +211,26 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.Continuous">
+    <configuration default="true" type="CMakeBoostTestRunConfigurationType" factoryName="Boost Test" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" TEST_MODE="SUITE_TEST">
+      <method v="2">
+        <option name="BeforeTestRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeCatchTestRunConfigurationType" factoryName="Catch Test" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" TEST_MODE="SUITE_TEST">
+      <method v="2">
+        <option name="BeforeTestRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeDoctestTestRunConfigurationType" factoryName="doctest Test" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" TEST_MODE="SUITE_TEST">
+      <method v="2">
+        <option name="BeforeTestRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeGoogleTestRunConfigurationType" factoryName="Google Test" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" TEST_MODE="SUITE_TEST">
+      <method v="2">
+        <option name="BeforeTestRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Continuous" type="CMakeRunConfiguration" factoryName="Application" folderName="CTestDashboardTargets" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="Continuous" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -485,6 +511,16 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration name="kcm_ultramarine_location-kcm-desktop-gen" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="kcm_ultramarine_location-kcm-desktop-gen" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="kcm_ultramarine_location" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="kcm_ultramarine_location" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="kcm_ultramarine_tweaks-kcm-desktop-gen" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="kcm_ultramarine_tweaks-kcm-desktop-gen" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -525,6 +561,16 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration name="test_location" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="test_location" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="kcm_ultramarine" RUN_TARGET_NAME="test_location">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_office_installer" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="test_office_installer" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="kcm_ultramarine" RUN_TARGET_NAME="test_office_installer">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="test_tweaks" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="test_tweaks" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="kcm_ultramarine" RUN_TARGET_NAME="test_tweaks">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -555,12 +601,22 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration name="ultramarine-office-installer" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="ultramarine-office-installer" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="kcm_ultramarine" RUN_TARGET_NAME="ultramarine-office-installer">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="ultramarine-updates" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="ultramarine-updates" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="kcm_ultramarine" RUN_TARGET_NAME="ultramarine-updates">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="ultramarine-updates" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="ultramarine-updates" CONFIG_NAME="RelWithDebInfo" RUN_TARGET_PROJECT_NAME="kcm_ultramarine" RUN_TARGET_NAME="ultramarine-updates">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ultramarine_office_suites" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="kcm_ultramarine" TARGET_NAME="ultramarine_office_suites" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -630,19 +686,33 @@
       <item itemvalue="CMake Application.kcm_ultramarine_tweaks-kcm-desktop-gen" />
       <item itemvalue="CMake Application.kcm_ultramarine_updates" />
       <item itemvalue="CMake Application.kcm_ultramarine_updates-kcm-desktop-gen" />
+      <item itemvalue="CMake Application.ultramarine-office-installer" />
+      <item itemvalue="CMake Application.ultramarine_office_suites" />
+      <item itemvalue="CMake Application.test_location" />
+      <item itemvalue="CMake Application.test_office_installer" />
       <item itemvalue="CMake Application.test_tweaks" />
       <item itemvalue="CMake Application.test_updater" />
       <item itemvalue="CMake Application.test_updates" />
       <item itemvalue="CMake Application.ultramarine-updates" />
       <item itemvalue="CMake Application.ultramarine_updates_core" />
+      <item itemvalue="CMake Application.kcm_ultramarine_location" />
+      <item itemvalue="CMake Application.kcm_ultramarine_location-kcm-desktop-gen" />
       <item itemvalue="CMake Application.uninstall" />
       <item itemvalue="CTest Application.All CTest" />
     </list>
   </component>
-  <component name="SelectedDebugProfileService"><![CDATA[{
-  "profileIdByStamp": [],
-  "modificationCount": 30
-}]]></component>
+  <component name="SelectedDebugProfileService">{
+  &quot;profileIdByStamp&quot;: [
+    {
+      &quot;first&quot;: {
+        &quot;##RUN_CONFIGURATION##&quot;: &quot;CMake Application.Continuous&quot;,
+        &quot;cmake&quot;: &quot;CMakeBuildProfile:Debug&quot;
+      },
+      &quot;second&quot;: &quot;7c3ae889-72b0-4ffe-8370-842f4bf0f11e&quot;
+    }
+  ],
+  &quot;modificationCount&quot;: 39
+}</component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="6ad02a7b-f63e-47c0-8d1f-99b585e1ad4a" name="Changes" comment="" />

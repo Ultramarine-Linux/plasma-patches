@@ -5,6 +5,7 @@
 
 #include <KLocalizedString>
 #include <algorithm>
+#include <numeric>
 #include <utility>
 
 #include <QDBusConnection>
@@ -88,19 +89,13 @@ int UpdatesModel::countExcluding(const QString &backend) const {
 }
 
 qint64 UpdatesModel::totalDownloadSize() const {
-    qint64 total = 0;
-    for (const UpdateItem &item: m_updates) {
-        total += item.downloadSize;
-    }
-    return total;
+    return std::accumulate(m_updates.cbegin(), m_updates.cend(), qint64{0},
+                           [](const qint64 total, const UpdateItem &item) { return total + item.downloadSize; });
 }
 
 qint64 UpdatesModel::totalInstalledSizeChange() const {
-    qint64 total = 0;
-    for (const UpdateItem &item: m_updates) {
-        total += item.installedSizeChange;
-    }
-    return total;
+    return std::accumulate(m_updates.cbegin(), m_updates.cend(), qint64{0},
+                           [](const qint64 total, const UpdateItem &item) { return total + item.installedSizeChange; });
 }
 
 void UpdatesModel::clear() {
@@ -138,9 +133,9 @@ bool Updates::running() const { return m_running; }
 
 bool Updates::scheduling() const { return m_scheduling; }
 
-QString Updates::status() const { return m_status; }
+const QString &Updates::status() const { return m_status; }
 
-QString Updates::errorMessage() const { return m_errorMessage; }
+const QString &Updates::errorMessage() const { return m_errorMessage; }
 
 QString Updates::distributionVersion() {
     QFile osRelease(QStringLiteral("/etc/os-release"));
@@ -164,7 +159,7 @@ int Updates::installableCount() const {
 
 UpdatesModel *Updates::updates() { return &m_updates; }
 
-QString Updates::technicalInformation() const { return m_technicalInformation; }
+const QString &Updates::technicalInformation() const { return m_technicalInformation; }
 
 bool Updates::automaticUpdates() const { return m_upgradeSettings.automatic; }
 
@@ -347,11 +342,11 @@ void Updates::refreshSchedule() {
               });
 }
 
-void Updates::setScheduling(const bool scheduling) {
-    if (m_scheduling == scheduling) {
+void Updates::setScheduling(const bool value) {
+    if (m_scheduling == value) {
         return;
     }
-    m_scheduling = scheduling;
+    m_scheduling = value;
     Q_EMIT schedulingChanged();
 }
 
@@ -410,7 +405,7 @@ bool Updates::restartRequired() const { return m_restartState.required; }
 
 bool Updates::offlinePending() const { return m_restartState.offlinePending; }
 
-QString Updates::stagedVersion() const { return m_restartState.stagedVersion; }
+const QString &Updates::stagedVersion() const { return m_restartState.stagedVersion; }
 
 void Updates::restart() {
     const QDBusMessage message =
@@ -571,14 +566,14 @@ void Updates::readProcessOutput() {
 
 void Updates::parseListing(const QString &output) {
     QString technical;
-    RestartState restart;
-    for (const QList<UpdateItem> parsedUpdates = parseUpdateListing(output, &technical, nullptr, &restart);
+    RestartState restartState;
+    for (const QList<UpdateItem> parsedUpdates = parseUpdateListing(output, &technical, nullptr, &restartState);
          const UpdateItem &item: parsedUpdates) {
         m_updates.addUpdate(item);
     }
     setTechnicalInformation(technical);
-    if (restart != m_restartState) {
-        m_restartState = restart;
+    if (restartState != m_restartState) {
+        m_restartState = restartState;
         Q_EMIT restartStateChanged();
         // installableCount depends on offlinePending
         Q_EMIT updateCountChanged();
@@ -778,11 +773,11 @@ void Updates::finishOperation(const bool success, const QString &message) {
     setStatus(message);
 }
 
-void Updates::setStatus(const QString &status) {
-    if (m_status == status) {
+void Updates::setStatus(const QString &value) {
+    if (m_status == value) {
         return;
     }
-    m_status = status;
+    m_status = value;
     Q_EMIT statusChanged();
 }
 

@@ -6,6 +6,8 @@
 
 #include <QTest>
 
+#include <algorithm>
+
 #include "suites.h"
 
 using namespace Qt::StringLiterals;
@@ -14,12 +16,8 @@ using namespace OfficeInstaller;
 namespace {
     Suite suiteWithFlatpak(const QString &flatpakId) {
         const QList<Suite> all = suites();
-        for (const Suite &suite: all) {
-            if (suite.flatpakId == flatpakId) {
-                return suite;
-            }
-        }
-        return {};
+        const auto suite = std::ranges::find(all, flatpakId, &Suite::flatpakId);
+        return suite == all.end() ? Suite{} : *suite;
     }
 
     class OfficeInstallerTest : public QObject {

@@ -22,8 +22,10 @@
 #include <QTimer>
 #include <QXmlStreamReader>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <iterator>
 #include <utility>
 
 #include <unistd.h>
@@ -227,9 +229,9 @@ namespace UltramarineUpdates {
         }
         QList<PackageUpdate> updates;
         updates.reserve(entries->size());
-        for (const KNSCore::Entry &entry: *entries) {
-            updates.append(plasmoidPackageUpdate(plasmoidEntry(entry), readFile));
-        }
+        std::ranges::transform(*entries, std::back_inserter(updates), [](const KNSCore::Entry &entry) {
+            return plasmoidPackageUpdate(plasmoidEntry(entry), readFile);
+        });
         return updates;
     }
 
@@ -249,7 +251,7 @@ namespace UltramarineUpdates {
             say(u"Updating widget %1 to %2"_s.arg(entry.name(), entry.updateVersion()));
             QEventLoop loop;
             QString failure;
-            KNSCore::Transaction *transaction = KNSCore::Transaction::installLatest(&engine, entry);
+            const KNSCore::Transaction *transaction = KNSCore::Transaction::installLatest(&engine, entry);
             QObject::connect(transaction, &KNSCore::Transaction::signalErrorCode, &loop,
                              [&failure](const KNSCore::ErrorCode::ErrorCode, const QString &message) {
                                  if (failure.isEmpty()) {

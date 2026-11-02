@@ -95,13 +95,13 @@ public:
     [[nodiscard]] bool running() const;
 
     /// Returns the latest progress line from the running operation.
-    [[nodiscard]] QString status() const;
+    [[nodiscard]] const QString &status() const;
 
     /// Returns the current error shown in the UI banner.
-    [[nodiscard]] QString errorMessage() const;
+    [[nodiscard]] const QString &errorMessage() const;
 
     /// Returns the full output of the last tweak operation.
-    [[nodiscard]] QString output() const;
+    [[nodiscard]] const QString &output() const;
 
     /// Reloads the tweak list from um.
     Q_INVOKABLE void refresh();
@@ -130,9 +130,9 @@ private:
     void changeFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void readChangeOutput();
 
-    void setLoading(bool loading);
-    void setRunning(bool running);
-    void setStatus(const QString &status);
+    void setLoading(bool value);
+    void setRunning(bool value);
+    void setStatus(const QString &value);
     void setErrorMessage(const QString &message);
 
     TweaksModel m_tweaks;

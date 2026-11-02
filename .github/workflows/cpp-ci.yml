@@ -5,6 +5,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "kcm-location/**"
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
@@ -16,6 +17,7 @@ name: Plasma KCM CI
       - "justfile"
       - ".clang-format"
       - ".clang-tidy"
+      - "cppcheck-kf6.cfg"
       - ".github/workflows/cpp-ci.yml"
     branches:
       - main
@@ -23,6 +25,7 @@ name: Plasma KCM CI
     paths:
       - "kcm-tweaks/**"
       - "kcm-updates/**"
+      - "kcm-location/**"
       - "updater/**"
       - "common/**"
       - "dgpu-launch/**"
@@ -34,6 +37,7 @@ name: Plasma KCM CI
       - "justfile"
       - ".clang-format"
       - ".clang-tidy"
+      - "cppcheck-kf6.cfg"
       - ".github/workflows/cpp-ci.yml"
 
 permissions:
@@ -54,6 +58,8 @@ jobs:
       test-command: ctest --test-dir build --output-on-failure
       # Cppcheck treats CMake's generated Qt moc files as normal C++, which
       # emits false #error diagnostics from Qt's intentional QObject checks.
-      # --inline-suppr honors `// cppcheck-suppress` comments for other false positives
-      cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen*
+      # --inline-suppr honors `// cppcheck-suppress` comments for other false positives.
+      # The qt and KF6 libraries teach it Q_SLOTS, K_PLUGIN_CLASS_WITH_JSON and friends,
+      # otherwise it reports unknownMacro and skips analyzing those files entirely
+      cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen* --library=qt --library=cppcheck-kf6.cfg
       packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel gettext

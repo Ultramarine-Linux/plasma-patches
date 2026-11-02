@@ -193,10 +193,10 @@ public:
     [[nodiscard]] bool scheduling() const;
 
     /// Returns the current operation status.
-    [[nodiscard]] QString status() const;
+    [[nodiscard]] const QString &status() const;
 
     /// Returns the current error shown in the UI banner.
-    [[nodiscard]] QString errorMessage() const;
+    [[nodiscard]] const QString &errorMessage() const;
 
     /// Returns the Fedora release version.
     [[nodiscard]] static QString distributionVersion();
@@ -212,7 +212,7 @@ public:
     UpdatesModel *updates();
 
     /// Returns the complete technical update information.
-    [[nodiscard]] QString technicalInformation() const;
+    [[nodiscard]] const QString &technicalInformation() const;
 
     /// Returns whether updates install automatically ("Let your device decide").
     [[nodiscard]] bool automaticUpdates() const;
@@ -269,7 +269,7 @@ public:
     [[nodiscard]] bool offlinePending() const;
 
     /// Returns the system version after restarting, if known.
-    [[nodiscard]] QString stagedVersion() const;
+    [[nodiscard]] const QString &stagedVersion() const;
 
     /// Starts an update check.
     Q_INVOKABLE void refresh();
@@ -342,7 +342,7 @@ private:
     void startProcess(const QString &program, const QStringList &arguments, Operation operation);
 
     /// Updates the user-facing operation status.
-    void setStatus(const QString &status);
+    void setStatus(const QString &value);
 
     /// Updates the technical information shown in the details dialog.
     void setTechnicalInformation(const QString &information);
@@ -375,7 +375,7 @@ private:
     /// reloads whether Apply Tonight is scheduled; only the latest request's reply is used
     void refreshSchedule();
 
-    void setScheduling(bool scheduling);
+    void setScheduling(bool value);
 
     [[nodiscard]] bool isSaveNeeded() const override;
     [[nodiscard]] bool isDefaults() const override;

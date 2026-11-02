@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.29)
 
 set(QT_MIN_VERSION "6.5.0")
 set(KF6_MIN_VERSION "6.0.0")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_LINKER_TYPE LLD)
 
 project(kcm_ultramarine)
 
@@ -72,6 +73,7 @@ target_compile_definitions(kcm_common INTERFACE
 add_subdirectory(updater)
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)
+add_subdirectory(kcm-location)
 add_subdirectory(dgpu-launch)
 add_subdirectory(office-installer)
 

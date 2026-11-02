@@ -713,14 +713,14 @@ void UpdaterTest::readyToInstall() {
     constexpr std::chrono::seconds idle = 45min;
 
     struct Case {
-        const char *name;
+        const char *name = nullptr;
         Settings settings;
-        bool tonight;
-        bool inUse;
-        std::chrono::seconds inactive;
-        bool installed;
+        bool tonight = false;
+        bool inUse = false;
+        std::chrono::seconds inactive{};
+        bool installed = false;
         QDateTime now;
-        bool want;
+        bool want = false;
     };
     const QList<Case> cases{
         {"idle long enough", automatic, false, false, idle, false, noon, true},
