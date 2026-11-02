@@ -25,7 +25,9 @@
 #include <QSysInfo>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <cstdint>
+#include <iterator>
 
 #include "launch.h"
 
@@ -534,9 +536,10 @@ namespace OfficeInstaller {
         }
 
         QStringList files;
-        for (const QUrl &url: std::as_const(m_urls)) {
-            files.append(url.isLocalFile() ? url.toLocalFile() : url.toString());
-        }
+        files.reserve(m_urls.size());
+        std::ranges::transform(m_urls, std::back_inserter(files), [](const QUrl &url) {
+            return url.isLocalFile() ? url.toLocalFile() : url.toString();
+        });
         const auto [program, arguments] = launchCommand(selectedSuite(), selectedSource(), files);
         QProcess::startDetached(program, arguments);
         accept();

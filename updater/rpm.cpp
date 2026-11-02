@@ -6,6 +6,9 @@
 
 #include <QStandardPaths>
 
+#include <algorithm>
+#include <iterator>
+
 #include "apps.h"
 #include "process.h"
 
@@ -99,9 +102,7 @@ namespace UltramarineUpdates {
                                          u"%{name}.%{arch}\t%{downloadsize}\t%{installsize}\n"_s}));
 
             QStringList arguments{u"-q"_s, u"--qf"_s, u"%{NAME}.%{ARCH}\t%{SIZE}\n"_s};
-            for (const PackageUpdate &update: std::as_const(updates)) {
-                arguments.append(update.id);
-            }
+            std::ranges::transform(updates, std::back_inserter(arguments), &PackageUpdate::id);
             // Install-only packages (kernels) can be installed several times; the
             // line for the last one wins, which is close enough for an estimate.
             const QHash<QString, UpgradeSize> installed = parseTabSizes(localeIndependentOutput(u"rpm"_s, arguments));

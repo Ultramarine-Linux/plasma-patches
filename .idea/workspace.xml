@@ -74,7 +74,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6ad02a7b-f63e-47c0-8d1f-99b585e1ad4a" name="Changes" comment="oh it's onlyoffice, not openoffice. also fix test.">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/cpp-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/cpp-ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-location/location.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-location/location.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-location/location.h" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-location/location.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-tweaks/tweaks.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-tweaks/tweaks.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-tweaks/tweaks.h" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-tweaks/tweaks.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-updates/updates.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-updates/updates.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kcm-updates/updates.h" beforeDir="false" afterPath="$PROJECT_DIR$/kcm-updates/updates.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/office-installer/installerdialog.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/office-installer/installerdialog.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_office_installer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_office_installer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_updater.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_updater.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/updater/apps.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/apps.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/updater/flatpak.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/flatpak.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/updater/plasmoid.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/plasmoid.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/updater/rpm.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/updater/rpm.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,61 +116,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.7891720459846785" />
-      <entry key="MS500" value="2.6762205542445754" />
-      <entry key="S2" value="5.0804456845761035" />
-      <entry key="S5" value="8.650563667291234" />
-      <entry key="S10" value="10.876390472934371" />
-      <entry key="S30" value="12.839435166276688" />
-      <entry key="S60" value="13.71368619066775" />
-      <entry key="M2" value="19.39589704890932" />
-      <entry key="M5" value="57.496414914442575" />
-      <entry key="M10" value="128.96557338405177" />
-      <entry key="M15" value="197.09064739588626" />
-      <entry key="M30" value="362.0829128092608" />
-      <entry key="H1" value="558.820168059395" />
-      <entry key="H2" value="764.8458075835006" />
-      <entry key="H4" value="952.5643805543477" />
-      <entry key="D1" value="1207.7656834054708" />
-      <entry key="W1" value="1265.8091133609807" />
+      <entry key="MS100" value="2.232707914124809" />
+      <entry key="MS500" value="5.659574221110846" />
+      <entry key="S2" value="15.522918941337922" />
+      <entry key="S5" value="24.939992301882864" />
+      <entry key="S10" value="30.653545296167316" />
+      <entry key="S30" value="39.18860279499556" />
+      <entry key="S60" value="44.01263517966123" />
+      <entry key="M2" value="51.43802382720425" />
+      <entry key="M5" value="88.74031345295232" />
+      <entry key="M10" value="159.5182057266226" />
+      <entry key="M15" value="227.51444474485572" />
+      <entry key="M30" value="393.02903827403605" />
+      <entry key="H1" value="591.1410655981981" />
+      <entry key="H2" value="798.6410908856379" />
+      <entry key="H4" value="987.5680174339409" />
+      <entry key="D1" value="1244.343693749303" />
+      <entry key="W1" value="1302.7459288162893" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
       <entry key="S2" value="0.0" />
-      <entry key="S5" value="3.350963868428744E-170" />
-      <entry key="S10" value="1.8305638116243483E-85" />
-      <entry key="S30" value="5.677994369360664E-29" />
-      <entry key="S60" value="7.535246757313578E-15" />
-      <entry key="M2" value="8.680579909956265E-8" />
-      <entry key="M5" value="0.001497681605245277" />
-      <entry key="M10" value="0.03869989904487195" />
-      <entry key="M15" value="0.11441724747364546" />
-      <entry key="M30" value="0.3413567852357284" />
-      <entry key="H1" value="0.6604297861106596" />
-      <entry key="H2" value="1.1597055570401253" />
-      <entry key="H4" value="1.7644428089071311" />
-      <entry key="D1" value="2.725574613453654" />
-      <entry key="W1" value="2.958652985481811" />
+      <entry key="S5" value="8.096848118242999E-173" />
+      <entry key="S10" value="8.998248784203941E-87" />
+      <entry key="S30" value="2.0799489003875985E-29" />
+      <entry key="S60" value="4.560645678396342E-15" />
+      <entry key="M2" value="6.75325527312301E-8" />
+      <entry key="M5" value="0.001354581894713193" />
+      <entry key="M10" value="0.03680465215232425" />
+      <entry key="M15" value="0.1106505098444175" />
+      <entry key="M30" value="0.335690848381711" />
+      <entry key="H1" value="0.654925851010806" />
+      <entry key="H2" value="1.1548630297837392" />
+      <entry key="H4" value="1.7607551053406654" />
+      <entry key="D1" value="2.7246243724622254" />
+      <entry key="W1" value="2.95850560615239" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.7503950675607458" />
-      <entry key="MS500" value="2.664017830856124" />
-      <entry key="S2" value="5.074392296855741" />
-      <entry key="S5" value="8.646343943244833" />
-      <entry key="S10" value="10.873717374156323" />
-      <entry key="S30" value="12.838378139435976" />
-      <entry key="S60" value="13.713115347097533" />
-      <entry key="M2" value="19.395374028335013" />
-      <entry key="M5" value="57.4962857740488" />
-      <entry key="M10" value="129.00160958270902" />
-      <entry key="M15" value="197.20205165501645" />
-      <entry key="M30" value="362.42126525498793" />
-      <entry key="H1" value="559.4782205323987" />
-      <entry key="H2" value="766.0039047566064" />
-      <entry key="H4" value="954.3278437650524" />
-      <entry key="D1" value="1210.4910570900595" />
-      <entry key="W1" value="1268.767736445107" />
+      <entry key="MS100" value="2.145655277958437" />
+      <entry key="MS500" value="5.621838218965508" />
+      <entry key="S2" value="15.50036201840561" />
+      <entry key="S5" value="24.92526550796076" />
+      <entry key="S10" value="30.64438971798548" />
+      <entry key="S30" value="39.18472919585218" />
+      <entry key="S60" value="44.01047841245771" />
+      <entry key="M2" value="51.43669359017627" />
+      <entry key="M5" value="88.73982297426244" />
+      <entry key="M10" value="159.55228955768743" />
+      <entry key="M15" value="227.62205624749055" />
+      <entry key="M30" value="393.3617119632855" />
+      <entry key="H1" value="591.7936025846177" />
+      <entry key="H2" value="799.7943365605754" />
+      <entry key="H4" value="989.3277871436882" />
+      <entry key="D1" value="1247.0681159553135" />
+      <entry key="W1" value="1305.7044043357673" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -176,32 +190,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;CidrDebugProfileConversion&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHELLCHECK.PATH&quot;: &quot;/home/cypress/.local/share/JetBrains/CLion2026.2/Shell Script/shellcheck&quot;,
-    &quot;cf.advertisement.text.overridden&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;ctest.advertisement.all.test.configuration.is.created&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;cypress/location-services&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/cypress/kde/src/plasma-workspace&quot;,
-    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.C++&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CidrDebugProfileConversion": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "SHELLCHECK.PATH": "/home/cypress/.local/share/JetBrains/CLion2026.2/Shell Script/shellcheck",
+    "cf.advertisement.text.overridden": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "ctest.advertisement.all.test.configuration.is.created": "true",
+    "git-widget-placeholder": "cypress/location-services",
+    "last_opened_file_path": "/home/cypress/kde/src/plasma-workspace",
+    "node.js.detected.package.jshint": "true",
+    "node.js.selected.package.jshint": "",
+    "nodejs_package_manager_path": "npm",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "preferences.sourceCode.C++"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/.github" />

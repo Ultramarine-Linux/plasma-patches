@@ -9,6 +9,7 @@
 #include <QXmlStreamReader>
 
 #include <algorithm>
+#include <iterator>
 
 #include "process.h"
 #include "rpm.h"
@@ -253,9 +254,7 @@ namespace UltramarineUpdates {
     void annotateRpmApps(QList<PackageUpdate> &updates) {
         QStringList nameArchs;
         nameArchs.reserve(updates.size());
-        for (const PackageUpdate &update: std::as_const(updates)) {
-            nameArchs.append(update.id);
-        }
+        std::ranges::transform(updates, std::back_inserter(nameArchs), &PackageUpdate::id);
         const QHash<QString, AppFiles> appFiles = rpmAppFilesFor(nameArchs);
         for (PackageUpdate &update: updates) {
             const auto files = appFiles.constFind(update.id);

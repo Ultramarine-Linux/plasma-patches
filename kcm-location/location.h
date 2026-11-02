@@ -55,7 +55,7 @@ public:
     [[nodiscard]] bool busy() const;
 
     /// returns the current error shown in the UI banner
-    [[nodiscard]] QString errorMessage() const;
+    [[nodiscard]] const QString &errorMessage() const;
 
     /// reads geoclue.service's state again, called when the page is shown
     void load() override;
@@ -82,8 +82,8 @@ private:
     void changeFinished();
 
     void setState(LocationState state);
-    void setLoading(bool loading);
-    void setBusy(bool busy);
+    void setLoading(bool value);
+    void setBusy(bool value);
     void setErrorMessage(const QString &message);
 
     LocationState m_state = LocationState::Unavailable;

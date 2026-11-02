@@ -60,7 +60,7 @@ bool Location::loading() const { return m_loading; }
 
 bool Location::busy() const { return m_busy; }
 
-QString Location::errorMessage() const { return m_errorMessage; }
+const QString &Location::errorMessage() const { return m_errorMessage; }
 
 void Location::load() {
     if (m_loading) {
@@ -162,19 +162,19 @@ void Location::setState(const LocationState state) {
     Q_EMIT stateChanged();
 }
 
-void Location::setLoading(const bool loading) {
-    if (m_loading == loading) {
+void Location::setLoading(const bool value) {
+    if (m_loading == value) {
         return;
     }
-    m_loading = loading;
+    m_loading = value;
     Q_EMIT loadingChanged();
 }
 
-void Location::setBusy(const bool busy) {
-    if (m_busy == busy) {
+void Location::setBusy(const bool value) {
+    if (m_busy == value) {
         return;
     }
-    m_busy = busy;
+    m_busy = value;
     Q_EMIT busyChanged();
 }
 
