@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# The update backend: listing, installing, automatic updates and Apply Tonight.
+# the update backend: listing, installing, automatic updates and Apply Tonight.
 # The library is shared by the helper and the tests.
 add_library(ultramarine_updates_core STATIC
         process.cpp
@@ -21,7 +21,7 @@ add_library(ultramarine_updates_core STATIC
 )
 
 target_include_directories(ultramarine_updates_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-# Notifications share the KCM's catalog, so there's one Weblate component for updates.
+# notifications share the KCM's catalog, so there's one Weblate component for updates
 target_compile_definitions(ultramarine_updates_core PRIVATE TRANSLATION_DOMAIN="kcm_ultramarine_updates")
 target_link_libraries(ultramarine_updates_core
         PUBLIC
@@ -35,7 +35,7 @@ add_executable(ultramarine-updates main.cpp)
 target_compile_definitions(ultramarine-updates PRIVATE TRANSLATION_DOMAIN="kcm_ultramarine_updates")
 target_link_libraries(ultramarine-updates PRIVATE ultramarine_updates_core)
 
-# Everything the helper needs at runtime is in this component, so a development
+# everything the helper needs at runtime is in this component, so a development
 # build can install just the backend: cmake --install build --component ultramarine-updates
 set(_component COMPONENT ultramarine-updates)
 
@@ -52,11 +52,11 @@ foreach (_file
     configure_file(${_data}/${_file}.in ${_generated}/${_file} @ONLY)
 endforeach ()
 
-# polkit only reads actions from /usr/share/polkit-1/actions.
+# polkit only reads actions from /usr/share/polkit-1/actions
 install(FILES ${_generated}/org.ultramarine.updates.policy
         DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/actions ${_component})
 
-# The system timer has an [Install] section; Ultramarine's presets enable it.
+# the system timer has an [Install] section, and Ultramarine's presets enable it
 install(FILES ${_generated}/ultramarine-updates-automatic.service ${_data}/ultramarine-updates-automatic.timer
         DESTINATION ${SYSTEMD_SYSTEM_UNIT_DIR} ${_component})
 

@@ -147,7 +147,7 @@ void TweaksModel::setBusyId(const QString &id) {
 
 Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
     KQuickManagedConfigModule(parent, metaData), m_tweaks(this) {
-    // Tweaks are applied immediately through um, not through the Apply button.
+    // tweaks are applied immediately through um, not through the Apply button
     setButtons(NoAdditionalButton);
 
     connect(&m_listProcess, &QProcess::finished, this, &Tweaks::listFinished);
@@ -188,7 +188,7 @@ const QString &Tweaks::output() const { return m_output; }
 
 void Tweaks::refresh() {
     if (m_loading) {
-        // the list being loaded may predate a change; load it again once it's done
+        // the list being loaded may predate a change, so load it again once it's done
         m_reloadPending = true;
         return;
     }
@@ -242,11 +242,11 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     setRunning(true);
     setStatus(progressMessage);
 
-    // --yes skips um's terminal prompt; the KCM shows its own confirmation first.
+    // --yes skips um's terminal prompt. The KCM shows its own confirmation first.
     const QStringList umArguments =
         QStringList{QStringLiteral("tweaks")} + arguments + QStringList{QStringLiteral("--yes"), id};
-    // um escalates through pkexec itself when it isn't run from a terminal; there is no
-    // Cancel, since once the tweak runs as root, signals from this unprivileged process fail
+    // um escalates through pkexec itself when it isn't run from a terminal. There is no
+    // Cancel, since once the tweak runs as root, signals from this unprivileged process fail.
     m_changeProcess.start(um, umArguments);
 }
 
@@ -262,7 +262,7 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
 
     QList<TweakItem> items;
     if (exitStatus != QProcess::NormalExit || exitCode != 0 || !parseTweaksOutput(stdOut, &items)) {
-        // Older um releases have no --json flag; point that out rather than showing a parse error.
+        // older um releases have no --json flag, so point that out rather than showing a parse error
         if (stdErr.contains(QLatin1String("flag provided but not defined"))) {
             setErrorMessage(i18n("This version of um is too old to manage tweaks from System Settings."));
         } else {
@@ -286,7 +286,7 @@ void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitS
         setErrorMessage(i18n("The tweak could not be changed (exit code %1). See the output for details.", exitCode));
     }
 
-    // Always reload: um records state only after a playbook succeeds.
+    // always reload: um records state only after a playbook succeeds
     refresh();
 }
 
@@ -298,10 +298,10 @@ void Tweaks::readChangeOutput() {
     m_output += text;
     Q_EMIT outputChanged();
 
-    // The status shows the last meaningful line.
+    // the status shows the last meaningful line
     for (const QStringList lines = text.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
          const QString &rawLine: lines | std::views::reverse) {
-        // Ansible pads headers like "TASK [name] ****" with asterisks; drop the padding.
+        // Ansible pads headers like "TASK [name] ****" with asterisks, so drop the padding
         QString line = rawLine.trimmed();
         while (line.endsWith(QLatin1Char('*'))) {
             line.chop(1);

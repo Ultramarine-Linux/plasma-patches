@@ -47,7 +47,7 @@ void TweaksTest::parsesAndGroupsTweaks() {
     QCOMPARE(tweaks.at(1).id, QStringLiteral("zz"));
     QVERIFY(tweaks.at(1).enabled);
     QCOMPARE(tweaks.at(2).id, QStringLiteral("once"));
-    // A missing description falls back to the ID.
+    // a missing description falls back to the ID
     QCOMPARE(tweaks.at(2).description, QStringLiteral("once"));
     QCOMPARE(tweaks.at(3).type, QStringLiteral("script"));
 }

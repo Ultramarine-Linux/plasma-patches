@@ -195,7 +195,7 @@ namespace UltramarineUpdates {
             *error = u"could not create %1"_s.arg(directory);
             return false;
         }
-        // mkpath uses the caller's umask, which pkexec keeps; users must be able to read the settings
+        // mkpath uses the caller's umask, which pkexec keeps, and users must be able to read the settings
         if (created) {
             QFile::setPermissions(directory,
                                   QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |
@@ -211,7 +211,7 @@ namespace UltramarineUpdates {
             *error = u"%1: %2"_s.arg(path, file.errorString());
             return false;
         }
-        // QSaveFile's temporary file is private; the KCM and user timers must read it.
+        // QSaveFile's temporary file is private, but the KCM and user timers must read it
         QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
         return true;
     }

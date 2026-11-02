@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Claims the office formats, so documents open here while no office suite is
+# claims the office formats, so documents open here while no office suite is
 # installed. Formats that are also plain text (CSV, RTF, flat ODF) are left to
 # text editors. When a suite is installed, this sorts after it: KDE breaks ties
 # by desktop file name, and org.ultramarine comes after com.collaboraoffice,

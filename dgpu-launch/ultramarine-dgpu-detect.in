@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-# The environment overrides are for tests.
+# the environment overrides are for tests
 link=${ULTRAMARINE_DGPU_LINK:-@DGPU_RUNTIME_LINK@}
 target=@DGPU_ACTION_FILE@
 drm=${ULTRAMARINE_DGPU_DRM_DIR:-/sys/class/drm}
@@ -28,7 +28,7 @@ default_found=0
 other_discrete=0
 
 for card in "$drm"/card[0-9]*; do
-    # Skip connectors (card0-DP-1) and anything without a backing device.
+    # skip connectors (card0-DP-1) and anything without a backing device
     [[ ${card##*/} == *-* ]] && continue
     [[ -e $card/device ]] || continue
 

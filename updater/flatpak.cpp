@@ -46,8 +46,8 @@ namespace UltramarineUpdates {
         if (!system) {
             result.source += u" [%1]"_s.arg(installation);
         }
-        // The same app ID can appear for several branches (runtime extensions)
-        // and in both installations, so qualify the ID.
+        // the same app ID can appear for several branches (runtime extensions)
+        // and in both installations, so qualify the ID
         result.id = update.appId + "//"_L1 + update.branch;
         if (!system) {
             result.id += u'@' + installation;
@@ -58,13 +58,13 @@ namespace UltramarineUpdates {
         result.backend = u"flatpak"_s;
         result.oldVersion = installed.value(update.appId + u'/' + update.branch);
         result.newVersion = update.version;
-        // Flatpak apps export their icon under their application ID.
+        // Flatpak apps export their icon under their application ID
         result.icon = update.appId;
         return result;
     }
 
     qint64 parseSISize(QString size) {
-        // GLib separates the number and unit with a non-breaking space.
+        // GLib separates the number and unit with a non-breaking space
         size.replace(QChar(0x00a0), u' ');
         size = size.trimmed();
         const qsizetype space = size.indexOf(u' ');
@@ -72,7 +72,7 @@ namespace UltramarineUpdates {
             return 0;
         }
         bool ok = false;
-        // QString::toDouble always uses the C locale, so "1,1" fails as it should.
+        // QString::toDouble always uses the C locale, so "1,1" fails as it should
         const double value = size.left(space).toDouble(&ok);
         if (!ok) {
             return 0;
@@ -105,7 +105,7 @@ namespace UltramarineUpdates {
     }
 
     namespace {
-        /// Maps "appID/branch" to the installed version for one installation.
+        /// maps "appID/branch" to the installed version for one installation
         QHash<QString, QString> installedFlatpakVersions(const QString &installation) {
             QString output;
             if (!commandOutput(u"flatpak"_s,
@@ -124,8 +124,8 @@ namespace UltramarineUpdates {
             return versions;
         }
 
-        /// Fills in sizes for Flatpak updates. Flatpak reports the full download
-        /// size; with static deltas the actual download can be smaller.
+        /// fills in sizes for Flatpak updates. Flatpak reports the full download
+        /// size, but with static deltas the actual download can be smaller.
         void annotateFlatpakSizes(QList<PackageUpdate> &updates, const QList<FlatpakUpdate> &refs,
                                   const QString &installation) {
             if (updates.isEmpty()) {

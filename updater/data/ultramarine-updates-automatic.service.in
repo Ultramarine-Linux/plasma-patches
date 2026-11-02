@@ -5,7 +5,7 @@ Description=Install updates automatically when the device isn't in use
 Documentation=https://github.com/Ultramarine-Linux/plasma-patches
 Wants=network-online.target
 After=network-online.target
-# The helper checks AC power itself, so tonight's timers behave the same.
+# the helper checks AC power itself, so tonight's timers behave the same
 
 [Service]
 Type=oneshot

@@ -12,8 +12,8 @@
 namespace UltramarineUpdates {
 
     /**
-     * an exclusive, non-blocking flock(2) on a lock file, held until destroyed
-     * one lock covers the system's updates (as root), another each user's
+     * an exclusive, non-blocking flock(2) on a lock file, held until destroyed.
+     * One lock covers the system's updates (as root), another each user's.
      */
     class InstallLock {
     public:

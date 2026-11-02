@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// Tests for the office suite installer's suite list and commands (office-installer/).
+// tests for the office suite installer's suite list and commands (office-installer/)
 
 #include <QTest>
 

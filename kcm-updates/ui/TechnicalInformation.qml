@@ -12,7 +12,7 @@ import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
 import org.kde.kcmutils as KCMUtils
 
-// Every pending update with its full source and versions.
+// every pending update with its full source and versions
 KCMUtils.ScrollViewKCM {
     id: page
 
@@ -28,7 +28,7 @@ KCMUtils.ScrollViewKCM {
         }
     }
 
-    // Qt Quick has no clipboard API; copy through a hidden text field.
+    // Qt Quick has no clipboard API, so copy through a hidden text field
     TextEdit {
         id: clipboardHelper
         visible: false
@@ -52,7 +52,7 @@ KCMUtils.ScrollViewKCM {
         delegate: QQC2.ItemDelegate {
             id: delegate
 
-            // ItemDelegate already has an "icon" property, so read the roles through model.
+            // ItemDelegate already has an "icon" property, so read the roles through model
             required property var model
 
             width: ListView.view.width

@@ -19,14 +19,14 @@ class QStackedWidget;
 
 namespace OfficeInstaller {
 
-    /// Asks which office suite to install, installs it and opens the documents with it.
+    /// asks which office suite to install, installs it and opens the documents with it
     class InstallerDialog : public QDialog {
         Q_OBJECT
 
     public:
         explicit InstallerDialog(const QList<QUrl> &urls, QWidget *parent = nullptr);
 
-        /// Ignored while installing: interrupting flatpak or PackageKit could leave a partial install.
+        /// ignored while installing: interrupting flatpak or PackageKit could leave a partial install
         void reject() override;
 
     private:
@@ -59,7 +59,7 @@ namespace OfficeInstaller {
         QDialogButtonBox *m_buttons;
 
         QProcess *m_process = nullptr;
-        /// The installer's last line of output, shown while installing and on failure.
+        /// the installer's last line of output, shown while installing and on failure
         QString m_lastLine;
     };
 

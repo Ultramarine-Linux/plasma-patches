@@ -3,8 +3,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Runs ultramarine-dgpu-detect against fake /sys/class/drm trees, using a
-# fake udevadm that reports the switcheroo-discrete-gpu tag.
+# runs ultramarine-dgpu-detect against fake /sys/class/drm trees, using a
+# fake udevadm that reports the switcheroo-discrete-gpu tag
 set -euo pipefail
 
 detect=$1
@@ -56,7 +56,7 @@ expect() {
     local got=hidden
     if "$detect" --check >/dev/null; then got=shown; fi
 
-    # Without --check it makes or removes the link. Start from a stale link.
+    # without --check it makes or removes the link. Start from a stale link.
     mkdir -p "${link%/*}"
     ln -sfn /nonexistent "$link"
     "$detect"

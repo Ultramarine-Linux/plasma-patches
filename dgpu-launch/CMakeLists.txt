@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # "Launch Using Dedicated Graphics Card" in the app launchers,
-# only on hybrid GPU systems (including laptops with an eGPU plugged in)
+# only on hybrid GPU systems (including laptops with an eGPU plugged in),
 # see docs/dgpu-launch.md
 set(_component COMPONENT ultramarine-dgpu-launch)
 
@@ -17,7 +17,7 @@ endif ()
 set(SYSTEMCTL_EXECUTABLE "/usr/bin/systemctl" CACHE FILEPATH "systemctl, run from the udev rule")
 set(UDEVADM_EXECUTABLE "/usr/bin/udevadm" CACHE FILEPATH "udevadm")
 
-# The real action file lives outside plasma/kickeractions. Plasma only sees it
+# the real action file lives outside plasma/kickeractions. Plasma only sees it
 # through the symlink chain kickeractions -> /run -> this file, and the /run
 # link only exists on hybrid systems.
 set(DGPU_ACTION_FILE "${KDE_INSTALL_FULL_DATADIR}/ultramarine/ultramarine-dgpu-launch.desktop")
@@ -36,7 +36,7 @@ install(FILES ${_generated}/90-ultramarine-dgpu.rules DESTINATION ${UDEV_RULES_D
 install(FILES ${_generated}/ultramarine-dgpu-detect.service DESTINATION ${SYSTEMD_SYSTEM_UNIT_DIR} ${_component})
 install(FILES ${_data}/ultramarine-dgpu-launch.desktop DESTINATION ${KDE_INSTALL_DATADIR}/ultramarine ${_component})
 
-# Dangling until ultramarine-dgpu-detect creates the /run link. Plasma lists
+# dangling until ultramarine-dgpu-detect creates the /run link. Plasma lists
 # kickeractions with QDir::Files, which skips broken symlinks.
 file(MAKE_DIRECTORY ${_generated}/kickeractions)
 file(CREATE_LINK ${DGPU_RUNTIME_LINK} ${_generated}/kickeractions/ultramarine-dgpu-launch.desktop SYMBOLIC)

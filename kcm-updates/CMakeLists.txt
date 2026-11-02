@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Named kcm_ultramarine_* to avoid colliding with Discover's kcm_updates plugin.
+# named kcm_ultramarine_* to avoid colliding with Discover's kcm_updates plugin.
 # kcmutils_add_qml_kcm installs the plugin into plasma/kcms/systemsettings.
 kcmutils_add_qml_kcm(kcm_ultramarine_updates
         SOURCES

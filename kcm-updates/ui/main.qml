@@ -16,16 +16,16 @@ KCMUtils.SimpleKCM {
 
     title: i18nc("@title", "Updates")
 
-    // Number of updates listed under "Software to Be Updated".
+    // number of updates listed under "Software to Be Updated"
     readonly property int shownUpdates: 5
     readonly property bool hasUpdates: kcm.updateCount > 0
     // RPM updates waiting for a restart are still listed, but Apply has nothing left to do for them
     readonly property bool canApply: kcm.installableCount > 0
     readonly property real labelColumnWidth: Kirigami.Units.gridUnit * 9
 
-    // Every row of "Software to Be Updated" has the same height, and the list
+    // every row of "Software to Be Updated" has the same height, and the list
     // always reserves room for shownUpdates rows, so the page doesn't move
-    // while updates load or when there are only a few.
+    // while updates load or when there are only a few
     readonly property real updateRowHeight: Math.max(Kirigami.Units.iconSizes.medium,
                                                      defaultMetrics.height + smallMetrics.height)
 
@@ -39,7 +39,7 @@ KCMUtils.SimpleKCM {
         font: Kirigami.Theme.smallFont
     }
 
-    // "500 MB", like the design (SI units, as package managers report them).
+    // "500 MB", like the design (SI units, as package managers report them)
     function formatSize(bytes) {
         return Qt.locale().formattedDataSize(Math.abs(bytes), 0, Locale.DataSizeSIFormat);
     }
@@ -73,7 +73,7 @@ KCMUtils.SimpleKCM {
                                 : i18ncp("@info", "%1 update available", "%1 updates available", kcm.updateCount);
     }
 
-    // Updates are checked when the page opens; F5 checks again.
+    // updates are checked when the page opens, and F5 checks again
     Shortcut {
         sequences: [StandardKey.Refresh]
         enabled: !kcm.running
@@ -100,8 +100,8 @@ KCMUtils.SimpleKCM {
         }
     }
 
-    // SimpleKCM stretches its content to the page width; keep the design's
-    // narrow, centered column inside it.
+    // SimpleKCM stretches its content to the page width, so keep the design's
+    // narrow, centered column inside it
     Item {
         implicitHeight: content.implicitHeight
 
@@ -117,8 +117,8 @@ KCMUtils.SimpleKCM {
             }
 
             // offline updates install while restarting (Plasma's logout screen offers
-            // "Install Updates and Restart"); in image mode, a new system image is
-            // staged and takes over when restarting
+            // "Install Updates and Restart"). In image mode, a new system image is
+            // staged and takes over when restarting.
             Kirigami.InlineMessage {
                 Layout.fillWidth: true
                 visible: kcm.restartRequired
@@ -136,7 +136,7 @@ KCMUtils.SimpleKCM {
                 }
             }
 
-            // --- Pending updates -------------------------------------------------
+            // --- pending updates -------------------------------------------------
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.gridUnit * 2
@@ -150,7 +150,7 @@ KCMUtils.SimpleKCM {
                     RowLayout {
                         spacing: Kirigami.Units.largeSpacing
 
-                        // Release badge, e.g. "45".
+                        // release badge, e.g. "45"
                         Rectangle {
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 3
                             Layout.preferredHeight: Kirigami.Units.gridUnit * 3
@@ -209,7 +209,7 @@ KCMUtils.SimpleKCM {
                         QQC2.Button {
                             text: kcm.scheduledTonight ? i18nc("@action:button", "Don’t Apply Tonight")
                                                        : i18nc("@action:button install updates tonight", "Apply Tonight")
-                            // A plain crescent; the non-symbolic weather icon is a full moon.
+                            // a plain crescent, since the non-symbolic weather icon is a full moon
                             icon.name: kcm.scheduledTonight ? "dialog-cancel" : "weather-clear-night-symbolic"
                             enabled: !kcm.running && !kcm.scheduling && (root.canApply || kcm.scheduledTonight)
                             onClicked: kcm.scheduledTonight ? kcm.cancelTonight() : kcm.applyTonight()
@@ -246,7 +246,7 @@ KCMUtils.SimpleKCM {
                             running: visible
                         }
 
-                        // Kept small: a full PlaceholderMessage would dwarf the list.
+                        // kept small: a full PlaceholderMessage would dwarf the list
                         RowLayout {
                             anchors.centerIn: parent
                             visible: !kcm.running && !root.hasUpdates
@@ -274,7 +274,7 @@ KCMUtils.SimpleKCM {
                             anchors.right: parent.right
                             spacing: Kirigami.Units.largeSpacing
 
-                            // Desktop apps and widgets come first, see parseUpdateListing().
+                            // desktop apps and widgets come first, see parseUpdateListing()
                             Repeater {
                                 model: kcm.updates
 
@@ -289,7 +289,7 @@ KCMUtils.SimpleKCM {
                                     required property string oldVersion
                                     required property string newVersion
 
-                                    // RPM versions are "epoch:version-release"; people care about the version.
+                                    // RPM versions are "epoch:version-release", but people care about the version
                                     function shortVersion(v) {
                                         if (backend !== "rpm") {
                                             return v;
@@ -297,8 +297,8 @@ KCMUtils.SimpleKCM {
                                         const noEpoch = v.includes(":") ? v.substring(v.indexOf(":") + 1) : v;
                                         return noEpoch.includes("-") ? noEpoch.substring(0, noEpoch.lastIndexOf("-")) : noEpoch;
                                     }
-                                    // Image versions (44.20261030.0) are too long for both to fit;
-                                    // the new one matters. Technical Information has both.
+                                    // image versions (44.20261030.0) are too long for both to fit.
+                                    // The new one matters. Technical Information has both.
                                     readonly property string fromVersion: backend === "bootc" || backend === "rpm-ostree"
                                         ? "" : shortVersion(oldVersion)
                                     readonly property string toVersion: shortVersion(newVersion)
@@ -328,7 +328,7 @@ KCMUtils.SimpleKCM {
                                         QQC2.Label {
                                             Layout.fillWidth: true
                                             // Flatpak doesn't always report versions, and release-only RPM
-                                            // updates (1.0-1 → 1.0-2) have the same short version.
+                                            // updates (1.0-1 → 1.0-2) have the same short version
                                             text: updateRow.fromVersion.length > 0 && updateRow.fromVersion !== updateRow.toVersion
                                                 ? i18nc("@info %1 source, %2 old version, %3 new version", "%1 - %2 → %3",
                                                         updateRow.sourceLabel, updateRow.fromVersion, updateRow.toVersion)
@@ -345,7 +345,7 @@ KCMUtils.SimpleKCM {
                     }
 
                     QQC2.Label {
-                        // Hidden with opacity so the space stays reserved.
+                        // hidden with opacity so the space stays reserved
                         opacity: kcm.updateCount > root.shownUpdates ? 1 : 0
                         text: i18ncp("@info %1 is a number of updates", "and <b>%1</b> More", "and <b>%1</b> More",
                                     Math.max(0, kcm.updateCount - root.shownUpdates))
@@ -382,7 +382,7 @@ KCMUtils.SimpleKCM {
                 Layout.fillWidth: true
             }
 
-            // --- Settings (saved with System Settings' Apply button) -------------
+            // --- settings (saved with System Settings' Apply button) -------------
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2

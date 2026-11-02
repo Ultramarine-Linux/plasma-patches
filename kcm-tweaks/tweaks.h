@@ -14,7 +14,7 @@
 struct TweakItem {
     QString id;
     QString description;
-    /// One of "toggle", "oneshot" or "script", as reported by um.
+    /// one of "toggle", "oneshot" or "script", as reported by um
     QString type;
     QString stability;
     QString warning;
@@ -22,7 +22,7 @@ struct TweakItem {
 };
 
 /**
- * Parses the JSON emitted by `um tweaks list --json`. Tweaks are grouped by type
+ * parses the JSON emitted by `um tweaks list --json`. Tweaks are grouped by type
  * (toggles, then one-time tweaks, then scripts) and sorted by description.
  * Returns false and leaves @p tweaks untouched if the output is not valid.
  */
@@ -33,7 +33,7 @@ class TweaksModel final : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    // Model roles start at Qt::UserRole (256), so 16 bits are enough.
+    // model roles start at Qt::UserRole (256), so 16 bits are enough
     enum Roles : std::uint16_t {
         IdRole = Qt::UserRole + 1,
         DescriptionRole,
@@ -44,27 +44,27 @@ public:
         BusyRole,
     };
 
-    /// Creates the model that exposes the available tweaks to QML.
+    /// creates the model that exposes the available tweaks to QML
     explicit TweaksModel(QObject *parent = nullptr);
 
     [[nodiscard]] int rowCount(const QModelIndex &parent) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
-    /// Returns the number of tweaks in the model.
+    /// returns the number of tweaks in the model
     [[nodiscard]] int count() const;
 
-    /// Replaces every tweak in the model.
+    /// replaces every tweak in the model
     void setTweaks(QList<TweakItem> tweaks);
 
-    /// Returns the tweak with @p id, or nullptr if there is none.
+    /// returns the tweak with @p id, or nullptr if there is none
     [[nodiscard]] const TweakItem *find(const QString &id) const;
 
-    /// Marks the tweak with @p id as the one being changed, clearing any other.
+    /// marks the tweak with @p id as the one being changed, clearing any other
     void setBusyId(const QString &id);
 
 Q_SIGNALS:
-    /// Emitted when the number of tweaks changes.
+    /// emitted when the number of tweaks changes
     void countChanged();
 
 private:
@@ -82,34 +82,34 @@ class Tweaks : public KQuickManagedConfigModule {
     Q_PROPERTY(QString output READ output NOTIFY outputChanged)
 
 public:
-    /// Creates the Ultramarine tweaks configuration module.
+    /// creates the Ultramarine tweaks configuration module
     explicit Tweaks(QObject *parent, const KPluginMetaData &metaData);
 
-    /// Returns the model containing the available tweaks.
+    /// returns the model containing the available tweaks
     TweaksModel *tweaks();
 
-    /// Returns whether the tweak list is being loaded.
+    /// returns whether the tweak list is being loaded
     [[nodiscard]] bool loading() const;
 
-    /// Returns whether a tweak is being enabled, disabled or run.
+    /// returns whether a tweak is being enabled, disabled or run
     [[nodiscard]] bool running() const;
 
-    /// Returns the latest progress line from the running operation.
+    /// returns the latest progress line from the running operation
     [[nodiscard]] const QString &status() const;
 
-    /// Returns the current error shown in the UI banner.
+    /// returns the current error shown in the UI banner
     [[nodiscard]] const QString &errorMessage() const;
 
-    /// Returns the full output of the last tweak operation.
+    /// returns the full output of the last tweak operation
     [[nodiscard]] const QString &output() const;
 
-    /// Reloads the tweak list from um.
+    /// reloads the tweak list from um
     Q_INVOKABLE void refresh();
 
-    /// Enables or disables a toggle tweak, or applies a oneshot tweak.
+    /// enables or disables a toggle tweak, or applies a oneshot tweak
     Q_INVOKABLE void setTweakEnabled(const QString &id, bool enabled);
 
-    /// Runs a script tweak.
+    /// runs a script tweak
     Q_INVOKABLE void runTweak(const QString &id);
 
     /// clears the error message, for example when the user dismisses it
@@ -123,7 +123,7 @@ Q_SIGNALS:
     void outputChanged();
 
 private:
-    /// Starts a privileged um invocation for tweak @p id.
+    /// starts a privileged um invocation for tweak @p id
     void startChange(const QString &id, const QStringList &arguments, const QString &progressMessage);
 
     void listFinished(int exitCode, QProcess::ExitStatus exitStatus);
@@ -143,6 +143,6 @@ private:
     QString m_output;
     bool m_loading = false;
     bool m_running = false;
-    /// refresh() was called while loading; reload once the current load finishes
+    /// refresh() was called while loading, so reload once the current load finishes
     bool m_reloadPending = false;
 };

@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Started by 90-ultramarine-dgpu.rules on GPU add/remove, including coldplug at boot.
+# started by 90-ultramarine-dgpu.rules on GPU add/remove, including coldplug at boot
 [Unit]
 Description=Show the Plasma dedicated GPU launch action on hybrid GPU systems
 After=systemd-udev-trigger.service
 
 [Service]
 Type=oneshot
-# Wait for udev to finish the event that started us, so its tags are in the database.
+# wait for udev to finish the event that started us, so its tags are in the database
 ExecStartPre=-@UDEVADM_EXECUTABLE@ settle --timeout=10
 ExecStart=@DGPU_DETECT_EXECUTABLE@
 RuntimeDirectory=ultramarine-dgpu-launch

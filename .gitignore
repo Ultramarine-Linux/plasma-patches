@@ -1,23 +1,23 @@
-# Prerequisites
+# prerequisites
 *.d
 
-# Compiled Object files
+# compiled object files
 *.slo
 *.lo
 *.o
 *.obj
 
-# Precompiled Headers
+# precompiled headers
 *.gch
 *.pch
 
-# Linker files
+# linker files
 *.ilk
 
-# Debugger Files
+# debugger files
 *.pdb
 
-# Compiled Dynamic libraries
+# compiled dynamic libraries
 *.so
 *.dylib
 *.dll
@@ -28,18 +28,18 @@
 *.mod
 *.smod
 
-# Compiled Static libraries
+# compiled static libraries
 *.lai
 *.la
 *.a
 *.lib
 
-# Executables
+# executables
 *.exe
 *.out
 *.app
 
-# Build directories
+# build directories
 build/
 Build/
 build-*/
@@ -53,7 +53,7 @@ Makefile
 install_manifest.txt
 compile_commands.json
 
-# Temporary files
+# temporary files
 *.tmp
 *.log
 *.bak

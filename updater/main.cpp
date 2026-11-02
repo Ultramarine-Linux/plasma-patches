@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// ultramarine-updates: the backend of the Ultramarine Updates KCM
+// ultramarine-updates: the backend of the Ultramarine Updates KCM.
 //
-// the KCM runs it as the logged-in user; commands that need root run their
+// the KCM runs it as the logged-in user. Commands that need root run their
 // system part as a child through pkexec (no terminal: a polkit prompt) or sudo
 // (from a terminal), and only then the user's own part (user Flatpaks, Nix
-// profile, Plasma widgets) as the user
+// profile, Plasma widgets) as the user.
 
 #include <KLocalizedString>
 
@@ -33,7 +33,7 @@ using namespace UltramarineUpdates;
 
 namespace {
 
-    /// Environment forwarded through sudo (pkexec always clears it).
+    /// environment forwarded through sudo (pkexec always clears it)
     const QStringList forwardedEnvironment{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
 
     void print(const QString &text) {
@@ -53,10 +53,10 @@ namespace {
     /**
      * runs `<this helper> @p arguments` as root and returns its exit code: pkexec
      * exits with 126 if the prompt is dismissed and 127 if authorization fails,
-     * which the KCM checks for; the polkit actions match our exact path and the
-     * command (argv[1]), so @p arguments must start with the command; pkexec runs
+     * which the KCM checks for. The polkit actions match our exact path and the
+     * command (argv[1]), so @p arguments must start with the command. pkexec runs
      * it with a clean environment, so wrapping the helper in `env` would stop the
-     * actions from applying
+     * actions from applying.
      */
     int runAsRoot(const QStringList &arguments) {
         const QString self = QCoreApplication::applicationFilePath();
@@ -125,7 +125,7 @@ namespace {
                              qPrintable(response.offlineError));
             }
         }
-        // Only fail when nothing could be queried at all.
+        // only fail when nothing could be queried at all
         return !response.errors.isEmpty() && response.updates.isEmpty() ? 1 : 0;
     }
 
@@ -138,7 +138,7 @@ namespace {
                 return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
             }
             // system updates first: if authentication is canceled (or they fail),
-            // nothing is installed; pkexec's exit codes are passed on
+            // nothing is installed, and pkexec's exit codes are passed on
             if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
                 return exitCode;
             }
@@ -173,13 +173,13 @@ namespace {
             parser.isSet(u"inactive-minutes"_s) || parser.isSet(u"window"_s);
         QString error;
         if (changing) {
-            // ULTRAMARINE_UPDATES_CONFIG points at a development file; escalating
-            // would drop it (pkexec clears the environment) and change the real settings.
+            // ULTRAMARINE_UPDATES_CONFIG points at a development file, and escalating
+            // would drop it (pkexec clears the environment) and change the real settings
             if (geteuid() != 0 && qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG")) {
                 return runAsRoot(commandLine(command, parser));
             }
             Settings settings;
-            // Broken settings are replaced instead of getting stuck on them.
+            // broken settings are replaced instead of getting stuck on them
             loadSettings(&settings, &error);
             const auto readBool = [&parser](const QString &name, bool *value) {
                 if (!parser.isSet(name)) {
@@ -252,7 +252,7 @@ namespace {
         QString error;
         if (geteuid() != 0) {
             // the system's timer first: if authentication is canceled, nothing
-            // changes; then the user's own updates, in their user manager
+            // changes. Then the user's own updates, in their user manager.
             if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
                 return exitCode;
             }

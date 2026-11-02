@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Offers to install an office suite when an office document is opened and none
+# offers to install an office suite when an office document is opened and none
 # is installed. See docs/office-installer.md.
 set(_component COMPONENT ultramarine-office-installer)
 
 set(OFFICE_INSTALLER_EXECUTABLE "${CMAKE_INSTALL_PREFIX}/libexec/ultramarine-office-installer"
         CACHE FILEPATH "Path the office suite installer is installed to")
 
-# The suite list is shared with the tests.
+# the suite list is shared with the tests
 add_library(ultramarine_office_suites STATIC suites.cpp)
 target_include_directories(ultramarine_office_suites PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(ultramarine_office_suites PRIVATE TRANSLATION_DOMAIN="ultramarine_office_installer")

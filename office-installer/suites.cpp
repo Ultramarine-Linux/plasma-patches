@@ -55,7 +55,7 @@ namespace OfficeInstaller {
     Command installCommand(const Suite &suite, const Source source) {
         switch (source) {
         case Source::Flatpak:
-            // flatpak and PackageKit authorize through polkit, which prompts in the session.
+            // flatpak and PackageKit authorize through polkit, which prompts in the session
             return {.program = u"flatpak"_s,
                     .arguments = {u"install"_s, u"--system"_s, u"--noninteractive"_s, u"-y"_s, u"flathub"_s,
                                   suite.flatpakId}};
@@ -71,7 +71,7 @@ namespace OfficeInstaller {
             if (files.isEmpty()) {
                 return {u"flatpak"_s, {u"run"_s, suite.flatpakId}};
             }
-            // Gives the sandbox access to the files through the document portal.
+            // gives the sandbox access to the files through the document portal
             return {.program = u"flatpak"_s,
                     .arguments = QStringList{u"run"_s, u"--file-forwarding"_s, suite.flatpakId, u"@@"_s} + files +
                         QStringList{u"@@"_s}};

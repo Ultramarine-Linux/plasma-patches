@@ -6,7 +6,7 @@ multi-ecosystem-groups:
       interval: weekly
 
 updates:
-  # Maintain GitHub Actions
+  # maintain GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     patterns:

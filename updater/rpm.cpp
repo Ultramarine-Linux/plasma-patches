@@ -20,10 +20,10 @@ namespace UltramarineUpdates {
         QList<RpmUpdate> updates;
         for (const QStringList lines = output.split(u'\n'); const QString &line: lines) {
             if (line.trimmed().startsWith("Obsoleting"_L1)) {
-                // Everything after this header lists obsoleted packages, not upgrades.
+                // everything after this header lists obsoleted packages, not upgrades
                 break;
             }
-            // Continuation lines (wrapped or obsoleted entries) are indented.
+            // continuation lines (wrapped or obsoleted entries) are indented
             if (line.isEmpty() || line.front() == u' ' || line.front() == u'\t') {
                 continue;
             }
@@ -89,13 +89,13 @@ namespace UltramarineUpdates {
             return parseRpmInstalled(output);
         }
 
-        /// Fills in sizes for RPM updates: download size and install size of the
-        /// new package from dnf, minus the size of the installed one.
+        /// fills in sizes for RPM updates: download size and install size of the
+        /// new package from dnf, minus the size of the installed one
         void annotateRpmSizes(QList<PackageUpdate> &updates) {
             if (updates.isEmpty()) {
                 return;
             }
-            // dnf5's --queryformat doesn't interpret escapes, so pass real tabs/newlines.
+            // dnf5's --queryformat doesn't interpret escapes, so pass real tabs/newlines
             const QHash<QString, UpgradeSize> upgrades = parseTabSizes(
                 localeIndependentOutput(u"dnf"_s,
                                         {u"repoquery"_s, u"--upgrades"_s, u"--latest-limit=1"_s, u"--queryformat"_s,
@@ -103,7 +103,7 @@ namespace UltramarineUpdates {
 
             QStringList arguments{u"-q"_s, u"--qf"_s, u"%{NAME}.%{ARCH}\t%{SIZE}\n"_s};
             std::ranges::transform(updates, std::back_inserter(arguments), &PackageUpdate::id);
-            // Install-only packages (kernels) can be installed several times; the
+            // install-only packages (kernels) can be installed several times. The
             // line for the last one wins, which is close enough for an estimate.
             const QHash<QString, UpgradeSize> installed = parseTabSizes(localeIndependentOutput(u"rpm"_s, arguments));
 

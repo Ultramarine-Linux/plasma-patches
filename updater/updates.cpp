@@ -75,7 +75,7 @@ namespace UltramarineUpdates {
 
         QString error;
         if (isImageMode()) {
-            // dnf exists in bootc images, but can't update the image.
+            // dnf exists in bootc images, but can't update the image
             const ImageState image = imageState(&error);
             collect(u"image"_s, image.update ? QList<PackageUpdate>{*image.update} : QList<PackageUpdate>{}, error);
             response.restartRequired = image.staged;
@@ -123,7 +123,7 @@ namespace UltramarineUpdates {
                 return false;
             }
         }
-        // `nix profile upgrade` doesn't prompt.
+        // `nix profile upgrade` doesn't prompt
         if (canManageNixProfile()) {
             if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
                 *error = u"Nix profile upgrade failed (exit code %1)"_s.arg(exitCode);
@@ -142,7 +142,7 @@ namespace UltramarineUpdates {
     bool applySystem(const bool assumeYes, const bool offline, bool *updated, QString *error) {
         *updated = false;
         if (isImageMode()) {
-            // The new image is always staged for the next boot, so offline doesn't apply.
+            // the new image is always staged for the next boot, so offline doesn't apply
             if (!upgradeImage(error)) {
                 return false;
             }
@@ -163,8 +163,8 @@ namespace UltramarineUpdates {
                         : u"Another offline update is already scheduled (%1 exists)"_s.arg(PackageKitPaths().trigger);
                     return false;
                 }
-                // into PackageKit's cache, which then prepares the update from
-                // the same metadata and packages; dnf (as root) uses cachedir
+                // download into PackageKit's cache, which then prepares the update from
+                // the same metadata and packages. dnf (as root) uses cachedir.
                 arguments.append(u"--downloadonly"_s);
                 if (const QString cacheDir = packageKitCacheDir(); !cacheDir.isEmpty()) {
                     arguments.append(u"--setopt=cachedir="_s + cacheDir);

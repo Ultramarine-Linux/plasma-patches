@@ -36,16 +36,16 @@ using namespace std::chrono_literals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// The configuration of Plasma's "Get New Widgets" dialog. Its registry is named after it.
+        /// the configuration of Plasma's "Get New Widgets" dialog. Its registry is named after it.
         constexpr auto knsrc = "plasmoids.knsrc";
 
-        /// How long to wait for the KDE Store before giving up.
+        /// how long to wait for the KDE Store before giving up
         constexpr auto listTimeout = 2min;
-        /// Per widget: downloading and installing a widget is quick.
+        /// per widget: downloading and installing a widget is quick
         constexpr auto installTimeout = 10min;
 
         /**
-         * Sets up KNewStuff for a command line program.
+         * sets up KNewStuff for a command line program.
          *
          * KNewStuff's jobs hold QEventLoopLockers, and QCoreApplication quits all
          * event loops when the last one is released, ending our waits early.
@@ -67,7 +67,7 @@ namespace UltramarineUpdates {
                 [](KNSCore::Question *question) { question->setResponse(KNSCore::Question::CancelResponse); });
         }
 
-        /// Runs @p loop until it quits or @p timeout passes. Returns false on timeout.
+        /// runs @p loop until it quits or @p timeout passes. Returns false on timeout.
         bool runLoop(QEventLoop &loop, const std::chrono::milliseconds timeout) {
             bool timedOut = false;
             QTimer timer;
@@ -81,7 +81,7 @@ namespace UltramarineUpdates {
             return !timedOut;
         }
 
-        /// Loads the KDE Store providers. KNewStuff only searches providers it has loaded.
+        /// loads the KDE Store providers. KNewStuff only searches providers it has loaded.
         bool initEngine(KNSCore::EngineBase &engine, QString *error) {
             prepareKNewStuff();
             QEventLoop loop;
@@ -107,7 +107,7 @@ namespace UltramarineUpdates {
             return true;
         }
 
-        /// Searches for updateable widgets. KNewStuff compares the registry with the store.
+        /// searches for updateable widgets. KNewStuff compares the registry with the store.
         std::optional<KNSCore::Entry::List> updateableEntries(KNSCore::EngineBase &engine, QString *error) {
             QEventLoop loop;
             QString failure;
@@ -191,11 +191,11 @@ namespace UltramarineUpdates {
         update.kind = QString::fromLatin1(Kind::Addon);
         update.oldVersion = entry.version;
         update.newVersion = entry.updateVersion;
-        // The store has no icon names, only screenshots; the widget's own icon is
+        // the store has no icon names, only screenshots. The widget's own icon is
         // in its package. "plasma" stands in for widgets without one.
         update.icon = u"plasma"_s;
         for (const QString &file: entry.installedFiles) {
-            // KNewStuff may record directories as "path/*".
+            // KNewStuff may record directories as "path/*"
             QString directory = file;
             if (directory.endsWith("/*"_L1)) {
                 directory.chop(2);
@@ -236,7 +236,7 @@ namespace UltramarineUpdates {
     }
 
     bool upgradePlasmoids(QString *error) {
-        // Destroying the engine writes the registry, so the updates aren't listed again.
+        // destroying the engine writes the registry, so the updates aren't listed again
         KNSCore::EngineBase engine;
         if (!initEngine(engine, error)) {
             return false;

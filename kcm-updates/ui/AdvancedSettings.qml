@@ -9,13 +9,13 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kcmutils as KCMUtils
 
-// Saved together with the main page through System Settings' Apply button.
+// saved together with the main page through System Settings' Apply button
 KCMUtils.SimpleKCM {
     id: page
 
     title: i18nc("@title", "Advanced Update Settings")
 
-    // Half-hour steps, shown in the locale's time format.
+    // half-hour steps, shown in the locale's time format
     readonly property var timeChoices: {
         const choices = [];
         for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
@@ -122,7 +122,7 @@ KCMUtils.SimpleKCM {
         QQC2.CheckBox {
             Kirigami.FormData.label: i18nc("@label", "System updates:")
             text: i18nc("@option:check", "Install while restarting")
-            // System images always take effect when restarting.
+            // system images always take effect when restarting
             enabled: !kcm.imageMode
             checked: kcm.imageMode || kcm.offlineUpdates
             onToggled: kcm.offlineUpdates = checked

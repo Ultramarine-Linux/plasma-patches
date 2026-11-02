@@ -30,12 +30,12 @@ KCMUtils.ScrollViewKCM {
         case "beta": return i18nc("@info tweak stability", "Beta");
         case "":
         case "stable": return "";
-        // Levels added to um later still get a label, just untranslated.
+        // levels added to um later still get a label, just untranslated
         default: return stability;
         }
     }
 
-    // Ask before anything that cannot be cleanly undone or that um flags as risky.
+    // ask before anything that cannot be cleanly undone or that um flags as risky
     function request(tweakId, description, type, stability, warning, enable) {
         const risky = warning.length > 0 || (stability.length > 0 && stability !== "stable");
         if (enable && (risky || type !== "toggle")) {
@@ -118,7 +118,7 @@ KCMUtils.ScrollViewKCM {
             required property bool busy
 
             width: ListView.view.width
-            // Toggling happens through the controls only; the row itself is not a button.
+            // toggling happens through the controls only. The row itself is not a button.
             down: false
             hoverEnabled: false
 
@@ -147,7 +147,7 @@ KCMUtils.ScrollViewKCM {
                     toolTipText: delegate.warning
                 }
 
-                // A tweak type added to um after this KCM was written: list it, but don't guess how to apply it.
+                // a tweak type added to um after this KCM was written: list it, but don't guess how to apply it
                 QQC2.Label {
                     visible: !root.knownTypes.includes(delegate.type)
                     text: i18nc("@info", "Use “um tweaks” in a terminal")
@@ -167,7 +167,7 @@ KCMUtils.ScrollViewKCM {
                     checked: delegate.tweakEnabled
                     onToggled: {
                         const wanted = checked;
-                        // Keep showing the real state until um reports the change succeeded.
+                        // keep showing the real state until um reports the change succeeded
                         checked = Qt.binding(() => delegate.tweakEnabled);
                         root.request(delegate.tweakId, delegate.description, delegate.type,
                                      delegate.stability, delegate.warning, wanted);
@@ -278,7 +278,7 @@ KCMUtils.ScrollViewKCM {
                 text: kcm.output
                 font.family: "monospace"
                 wrapMode: TextEdit.Wrap
-                // Follow the output while an operation is running.
+                // follow the output while an operation is running
                 onTextChanged: cursorPosition = length
             }
         }

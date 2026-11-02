@@ -77,7 +77,7 @@ KCMUtils.SimpleKCM {
                 id: toggle
 
                 // as the only row in its card, the hover tint lights up the whole card, which reads as
-                // a different card rather than feedback. Pressing and keyboard focus still show
+                // a different card rather than feedback. Pressing and keyboard focus still show.
                 hoverEnabled: false
                 icon.name: "find-location"
                 text: i18nc("@option:check", "Location Services")

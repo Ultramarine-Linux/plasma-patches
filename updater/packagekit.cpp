@@ -216,9 +216,9 @@ namespace UltramarineUpdates {
         std::fflush(stdout);
         // a running packagekitd keeps the repository metadata it loaded, so a
         // (not forced) refresh rereads it from the cache dnf just updated,
-        // without downloading anything; then PackageKit finds the packages dnf
+        // without downloading anything. Then PackageKit finds the packages dnf
         // downloaded, records them and links /system-update to them, and it doesn't
-        // trigger anything if it finds no updates
+        // trigger anything if it finds no updates.
         return run({u"--no-color"_s, u"refresh"_s}) &&
             run({u"--yes"_s, u"--no-color"_s, u"offline-update"_s, u"prepare"_s});
     }

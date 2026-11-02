@@ -31,19 +31,19 @@ namespace UltramarineUpdates {
     namespace {
         const auto tonightTimer = u"ultramarine-updates-tonight"_s;
         const auto tonightUserTimer = u"ultramarine-updates-tonight-user"_s;
-        // Without an update window, "tonight" means 22:00-06:00.
+        // without an update window, "tonight" means 22:00-06:00
         const auto tonightDefaultStart = u"22:00"_s;
         const auto tonightDefaultEnd = u"06:00"_s;
-        // Tonight's timers check every 5 minutes, like the automatic ones, and stop
+        // tonight's timers check every 5 minutes, like the automatic ones, and stop
         // once the updates are installed. If the device is in use all night, they
         // try again the next night.
         const auto pollCalendar = u"*:0/5"_s;
 
-        /// How often updates install at most.
+        /// how often updates install at most
         constexpr std::chrono::seconds installInterval = 20h;
-        /// How often "Ask me" checks for updates and notifies.
+        /// how often "Ask me" checks for updates and notifies
         constexpr std::chrono::seconds notifyInterval = 24h;
-        /// How often image mode systems look for a new image.
+        /// how often image mode systems look for a new image
         constexpr std::chrono::seconds imageCheckInterval = 6h;
         /// how long to wait after a failed install (often no network) before trying again
         constexpr std::chrono::seconds retryInterval = 1h;
@@ -62,10 +62,10 @@ namespace UltramarineUpdates {
             return capture(u"systemctl"_s, arguments).exitCode;
         }
 
-        /// (Re)creates a transient timer running this helper with @p arguments.
+        /// (re)creates a transient timer running this helper with @p arguments
         bool scheduleTransientTimer(const bool userManager, const QString &unit, const QStringList &arguments,
                                     QString *error) {
-            // Replace an existing schedule; it's fine if there is none.
+            // replace an existing schedule. It's fine if there is none.
             systemctl(userManager, {u"stop"_s, unit + ".timer"_L1});
             systemctl(userManager, {u"reset-failed"_s, unit + ".service"_L1});
 
@@ -90,7 +90,7 @@ namespace UltramarineUpdates {
             return entry ? QString::fromLocal8Bit(entry->pw_name) : QString();
         }
 
-        /// Shows a notification if updates are available, at most once a day.
+        /// shows a notification if updates are available, at most once a day.
         /// "Open Updates" opens System Settings > Updates.
         void notifyPendingUpdates(const QDateTime &now) {
             const QString checked = userStateDir() + "/last-update-check"_L1;
@@ -109,7 +109,7 @@ namespace UltramarineUpdates {
                 say(u"%1 updates are available."_s.arg(count));
                 return;
             }
-            // notify-send waits for an action or for the notification to close.
+            // notify-send waits for an action or for the notification to close
             const CommandResult result =
                 capture(notifySend,
                         {u"--app-name="_s + i18n("Updates"), u"--icon=system-software-update"_s,
@@ -121,7 +121,7 @@ namespace UltramarineUpdates {
         }
 
         /**
-         * Image mode: has bootc (or rpm-ostree) look for a new image, which needs
+         * image mode: has bootc (or rpm-ostree) look for a new image, which needs
          * root. Without this, the KCM and notifications, which run as the user,
          * would only see updates someone checked for by hand.
          */
@@ -146,7 +146,7 @@ namespace UltramarineUpdates {
             if (within(checked, imageCheckInterval, now)) {
                 return;
             }
-            // Failures (usually no network) are retried on the next run.
+            // failures (usually no network) are retried on the next run
             if (QString error; !checkImageUpdate(&error)) {
                 warn(error);
                 return;
@@ -159,9 +159,9 @@ namespace UltramarineUpdates {
         /**
          * runs @p install for a timer once it's ready, unless an install is already
          * running or the last one failed less than retryInterval ago: tonight's
-         * timers poll every 5 minutes, and a failure shouldn't retry all night
-         * remembers the time of a successful install in @p installedPath, and
-         * sets @p installed if it installed
+         * timers poll every 5 minutes, and a failure shouldn't retry all night.
+         * Remembers the time of a successful install in @p installedPath, and
+         * sets @p installed if it installed.
          */
         bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
                               const QDateTime &now, const std::function<bool(QString *)> &install, bool *installed,
@@ -169,7 +169,7 @@ namespace UltramarineUpdates {
             *installed = false;
             InstallLock lock(lockPath);
             if (QString lockError; lock.tryLock(&lockError) != InstallLock::Result::Acquired) {
-                // busy: a manual install or the other timer is running; it'll be retried
+                // busy: a manual install or the other timer is running, so it'll be retried
                 if (!lockError.isEmpty()) {
                     *error = lockError;
                     return false;
@@ -284,7 +284,7 @@ namespace UltramarineUpdates {
             return false;
         }
         const QDateTime now = QDateTime::currentDateTime();
-        // Also with automatic updates off, so "Ask me" notifies about new images.
+        // also with automatic updates off, so "Ask me" notifies about new images
         checkForImageUpdate(now);
         if (!tonight && !settings.automatic) {
             return true;

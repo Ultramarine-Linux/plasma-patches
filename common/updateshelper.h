@@ -14,12 +14,12 @@
 #define ULTRAMARINE_UPDATES_EXECUTABLE "/usr/libexec/ultramarine-updates"
 #endif
 
-/// The update helper (updater/) behind the Updates KCM.
+/// the update helper (updater/) behind the Updates KCM
 namespace UpdatesHelper {
 
     /**
-     * Returns the absolute path to the helper, preferring the configured install
-     * path so its polkit action (which matches on the exact path) applies.
+     * returns the absolute path to the helper, preferring the configured install
+     * path so its polkit action (which matches on the exact path) applies
      */
     inline QString executable() {
         if (auto configured = QStringLiteral(ULTRAMARINE_UPDATES_EXECUTABLE); QFileInfo(configured).isExecutable()) {

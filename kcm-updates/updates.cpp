@@ -237,7 +237,7 @@ bool Updates::scheduledTonight() const { return m_scheduledTonight; }
 QDateTime Updates::scheduledTime() const { return m_scheduledTime; }
 
 bool Updates::isSaveNeeded() const {
-    // the helper rejects an empty window; AdvancedSettings.qml points it out
+    // the helper rejects an empty window, and AdvancedSettings.qml points it out
     return m_upgradeSettings.isValid() && m_upgradeSettings != m_savedUpgradeSettings;
 }
 
@@ -299,7 +299,7 @@ void Updates::save() {
                       setErrorMessage(detail.isEmpty() ? i18n("The settings could not be saved.")
                                                        : i18n("The settings could not be saved: %1", detail));
                   }
-                  // Keeps Apply enabled if saving failed.
+                  // keeps Apply enabled if saving failed
                   settingsChanged();
               });
 }
@@ -397,7 +397,7 @@ qint64 Updates::downloadSize() const { return m_updates.totalDownloadSize(); }
 qint64 Updates::installedSizeChange() const { return m_updates.totalInstalledSizeChange(); }
 
 bool Updates::imageMode() {
-    // The update helper decides the same way.
+    // the update helper decides the same way
     return QFile::exists(QStringLiteral("/run/ostree-booted"));
 }
 
@@ -463,8 +463,8 @@ void Updates::applyUpdates() {
         return;
     }
     // the helper runs the system part through pkexec first and only then updates the
-    // user's Flatpaks, Nix profile and widgets as us; once it runs as root, it can't be
-    // stopped from here, so there is no Cancel
+    // user's Flatpaks, Nix profile and widgets as us. Once it runs as root, it can't be
+    // stopped from here, so there is no Cancel.
     startProcess(helper, {QStringLiteral("apply"), QStringLiteral("--yes")}, Operation::Install);
 }
 
@@ -484,7 +484,7 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
     const QByteArray stdErr = std::exchange(m_processStderr, {});
     const bool normalExit = exitStatus == QProcess::NormalExit;
 
-    // only stderr is logged; stdout is the (large) update listing or progress output
+    // only stderr is logged, since stdout is the (large) update listing or progress output
     if (const QString errors = QString::fromLocal8Bit(stdErr).trimmed(); !errors.isEmpty()) {
         qWarning().noquote() << "kcm-updates: ultramarine-updates:" << errors;
     }
@@ -551,7 +551,7 @@ void Updates::readProcessOutput() {
     const QByteArray stdErr = m_process.readAllStandardError();
     m_processStdout += stdOut;
     m_processStderr += stdErr;
-    // a refresh's listing is parsed once the process exits; installs show their latest line
+    // a refresh's listing is parsed once the process exits, while installs show their latest line
     if (m_operation != Operation::Install || (stdOut.isEmpty() && stdErr.isEmpty())) {
         return;
     }
@@ -631,15 +631,15 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         item.appId = object.value(QStringLiteral("app_id")).toString();
         item.downloadSize = object.value(QStringLiteral("download_size")).toInteger();
         item.installedSizeChange = object.value(QStringLiteral("installed_size_change")).toInteger();
-        // Runtimes have no meaningful icon of their own. Listings without a
-        // kind, so their icons are kept as is.
+        // runtimes have no meaningful icon of their own, and anything without
+        // an icon gets the generic one too
         if (item.icon.isEmpty() || item.kind == QLatin1String("runtime")) {
             item.icon = QStringLiteral("package-x-generic");
         }
         result.append(std::move(item));
     }
 
-    // Show what people recognize first: desktop apps and widgets, then packages, then runtimes.
+    // show what people recognize first: desktop apps and widgets, then packages, then runtimes
     const auto rank = [](const UpdateItem &item) {
         if (item.kind == QLatin1String("app")) {
             return 0;

@@ -3,8 +3,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Extract KI18n strings to one POT per KCM (and the office suite installer). Weblate writes translations to
-# po/<locale>/<domain>.po; KI18N_INSTALL(po) compiles and installs those files.
+# extract KI18n strings to one POT per KCM (and the office suite installer). Weblate writes translations to
+# po/<locale>/<domain>.po. KI18N_INSTALL(po) compiles and installs those files.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -22,7 +22,7 @@ keywords=(
 
 extract_domain() {
     local domain="$1"
-    # Space-separated C++ sources.
+    # space-separated C++ sources
     read -r -a cpp_sources <<<"$2"
     shift 2
     local cpp_pot="$workdir/${domain}-cpp.pot"
@@ -40,7 +40,7 @@ extract_domain() {
         --output="po/${domain}.pot"
 }
 
-# The update helper's notifications share the Updates KCM's catalog.
+# the update helper's notifications share the Updates KCM's catalog
 extract_domain kcm_ultramarine_updates \
     "kcm-updates/updates.cpp updater/schedule.cpp" \
     kcm-updates/ui/main.qml \

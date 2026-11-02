@@ -5,12 +5,12 @@ Description=Install updates automatically when the device isn't in use
 Documentation=https://github.com/Ultramarine-Linux/plasma-patches
 
 [Timer]
-# The helper tracks how long no one has used the device and only installs once
+# the helper tracks how long no one has used the device and only installs once
 # that exceeds the configured time, at most once a day. Checks are cheap and quiet.
 OnBootSec=5min
 OnUnitActiveSec=5min
 AccuracySec=1min
 
 [Install]
-# Enabled by the distribution's systemd presets.
+# enabled by the distribution's systemd presets
 WantedBy=timers.target

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// Tests for the update helper's parsers and decisions (updater/).
+// tests for the update helper's parsers and decisions (updater/)
 
 #include <QDir>
 #include <QFile>
@@ -172,7 +172,7 @@ void UpdaterTest::parsesMetainfo() {
                        .icon = u"firefox"_s,
                        .desktopIds = {u"org.mozilla.firefox.desktop"_s}}));
 
-    // Legacy: type="desktop", no <launchable>, ID already ends in .desktop.
+    // legacy: type="desktop", no <launchable>, ID already ends in .desktop
     info =
         parseMetainfo(R"(<component type="desktop"><id>org.kde.dolphin.desktop</id><name>Dolphin</name></component>)");
     QVERIFY(info);
@@ -222,7 +222,7 @@ void UpdaterTest::resolvesAppsFromMetainfo() {
         {u"/usr/share/applications/sbctl-helper.desktop"_s, u"[Desktop Entry]\nType=Application\nName=Helper"_s},
     });
 
-    // Name and ID from metainfo, icon from the launchable desktop file.
+    // name and ID from metainfo, icon from the launchable desktop file
     const AppFiles dolphin{.metainfo = {u"/usr/share/metainfo/org.kde.dolphin.plugin.xml"_s,
                                         u"/usr/share/metainfo/org.kde.dolphin.appdata.xml"_s},
                            .desktop = {},
@@ -232,7 +232,7 @@ void UpdaterTest::resolvesAppsFromMetainfo() {
     QCOMPARE(*app,
              (AppInfo{.id = u"org.kde.dolphin.desktop"_s, .name = u"Dolphin"_s, .icon = u"system-file-manager"_s}));
 
-    // Metainfo that isn't a desktop application wins over a stray launcher.
+    // metainfo that isn't a desktop application wins over a stray launcher
     const AppFiles sbctl{.metainfo = {u"/usr/share/metainfo/dev.linderud.sbctl.metainfo.xml"_s},
                          .desktop = {u"/usr/share/applications/sbctl-helper.desktop"_s},
                          .applicationsDir = {}};
@@ -356,7 +356,7 @@ void UpdaterTest::parsesNixProfileListV3() {
     },"version":3})",
                                                                             nullptr);
     QVERIFY(got);
-    // Store-path installs and inactive entries can't be upgraded.
+    // store-path installs and inactive entries can't be upgraded
     QCOMPARE(got->size(), 2);
     QCOMPARE(got->at(0).name, u"btop"_s);
     QCOMPARE(got->at(1).name, u"flox"_s);
@@ -418,10 +418,10 @@ void UpdaterTest::nixUpdateFor() {
     want.newVersion = u"1.19.0-ga6a3147"_s;
     QCOMPARE(*update, want);
 
-    // Same store paths: nothing to upgrade.
+    // same store paths: nothing to upgrade
     QVERIFY(!UltramarineUpdates::nixUpdateFor(
         element, {.error = false, .name = {}, .version = {}, .outPaths = {u"/nix/store/a-flox-1.17.0-g486737b"_s}}));
-    // A rebuild without a version bump still counts; the version falls back to the name.
+    // a rebuild without a version bump still counts, and the version falls back to the name
     update = UltramarineUpdates::nixUpdateFor(element,
                                               {.error = false,
                                                .name = u"flox-1.17.0-g486737b"_s,
@@ -482,7 +482,7 @@ void UpdaterTest::parsesImageStatus() {
     QCOMPARE(state.update->backend, u"bootc"_s);
     QCOMPARE(state.update->source, u"Image (ostree-image-signed:docker://ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
 
-    // No cached update, or it's what's booted: nothing to install.
+    // no cached update, or it's what's booted: nothing to install
     QVERIFY(!parseRpmOstreeState(R"({"deployments":[{"booted":true,"checksum":"abc"}],"cached-update":null})", {},
                                  u"bootc"_s)
                  .update);
@@ -491,7 +491,7 @@ void UpdaterTest::parsesImageStatus() {
                              {}, u"bootc"_s)
              .update);
 
-    // The cached update is already the pending deployment: restart to finish.
+    // the cached update is already the pending deployment: restart to finish
     state = parseRpmOstreeState(R"({"deployments":[
         {"booted":false,"staged":true,"checksum":"def","version":"44.20261020.0"},
         {"booted":true,"checksum":"abc","version":"44.20261001.0"}],
@@ -503,7 +503,7 @@ void UpdaterTest::parsesImageStatus() {
 }
 
 void UpdaterTest::parsesBootcState() {
-    // Abridged `bootc status --format=json`: cachedUpdate is per boot entry.
+    // abridged `bootc status --format=json`: cachedUpdate is per boot entry
     const auto host = [](const QString &staged, const QString &cachedUpdate) {
         return uR"({"apiVersion":"org.containers.bootc/v1","kind":"BootcHost",
             "spec":{"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"}},
@@ -529,23 +529,23 @@ void UpdaterTest::parsesBootcState() {
     QCOMPARE(state.update->newVersion, u"44.20261020.0"_s);
     QCOMPARE(state.update->source, u"Image (ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
 
-    // Nothing found yet.
+    // nothing found yet
     state = parseBootcState(host(u"null"_s, u"null"_s), {});
     QVERIFY(!state.update);
     QVERIFY(!state.staged);
 
-    // Staged: no longer an update, but needs a restart.
+    // staged: no longer an update, but needs a restart
     state = parseBootcState(host(stagedEntry(false), newer), {});
     QVERIFY(!state.update);
     QVERIFY(state.staged);
     QCOMPARE(state.stagedVersion, u"44.20261020.0"_s);
 
-    // Download-only stages aren't applied when restarting.
+    // download-only stages aren't applied when restarting
     state = parseBootcState(host(stagedEntry(true), newer), {});
     QVERIFY(state.update);
     QVERIFY(!state.staged);
 
-    // A newer image than the staged one.
+    // a newer image than the staged one
     state = parseBootcState(host(stagedEntry(false), uR"({"image":{"image":"x","transport":"registry"},
         "version":"44.20261030.0","imageDigest":"sha256:cccc"})"_s),
                             {});
@@ -553,7 +553,7 @@ void UpdaterTest::parsesBootcState() {
     QCOMPARE(state.update->newVersion, u"44.20261030.0"_s);
     QVERIFY(state.staged);
 
-    // Images without a version are shown by digest.
+    // images without a version are shown by digest
     state = parseBootcState(host(u"null"_s, uR"({"image":{"image":"localhost/um-env","transport":"containers-storage"},
         "imageDigest":"sha256:0123456789abcdef"})"_s),
                             {});
@@ -605,7 +605,7 @@ void UpdaterTest::plasmoidUpdate() {
     QCOMPARE(update.newVersion, u"v8.0.0"_s);
     QCOMPARE(update.icon, u"desktop"_s);
 
-    // Without a readable package (or an icon in it), a generic Plasma icon.
+    // without a readable package (or an icon in it), a generic Plasma icon
     update = plasmoidPackageUpdate(entry, fakeFiles({}));
     QCOMPARE(update.icon, u"plasma"_s);
 
@@ -621,7 +621,7 @@ void UpdaterTest::settingsRoundTrip() {
 
     Settings got;
     QString error;
-    // A missing file gives the defaults.
+    // a missing file gives the defaults
     QVERIFY(loadSettings(&got, &error));
     QCOMPARE(got, Settings{});
 
@@ -632,7 +632,7 @@ void UpdaterTest::settingsRoundTrip() {
     QCOMPARE(got, want);
     QVERIFY(QFile::permissions(path) & QFile::ReadOther);
 
-    // Missing keys keep their defaults.
+    // missing keys keep their defaults
     QFile file(path);
     QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
     file.write(R"({"offline": true})");
@@ -753,7 +753,7 @@ void UpdaterTest::sessionInUse() {
                                                            u"Id=7\nName=admin\nClass=user\nType=tty\nActive=yes\n"
                                                            u"IdleHint=no\nLockedHint=no\n"_s);
     QCOMPARE(sessions.size(), 4);
-    // A locked graphical session, a user manager and an inactive session don't count.
+    // a locked graphical session, a user manager and an inactive session don't count
     QVERIFY(!UltramarineUpdates::sessionInUse(sessions, u"cypress"_s));
     const std::optional<LoginSession> admin = UltramarineUpdates::sessionInUse(sessions);
     QVERIFY(admin);
@@ -775,7 +775,7 @@ void UpdaterTest::timestamps() {
     QVERIFY(writeTimestamp(stamp, now.addSecs(-30 * 60LL), nullptr));
     QVERIFY(within(stamp, 1h, now));
     QVERIFY(!within(stamp, 10min, now));
-    // A stamp from the future (clock changes) doesn't block forever.
+    // a stamp from the future (clock changes) doesn't block forever
     QVERIFY(writeTimestamp(stamp, now.addSecs(60 * 60LL), nullptr));
     QVERIFY(!within(stamp, 24h, now));
 }
@@ -790,7 +790,7 @@ void UpdaterTest::activityTracker() {
         QCOMPARE(tracker.inactiveFor(false, minutesLater(minutes)),
                  std::chrono::seconds(std::chrono::minutes(minutes)));
     }
-    // Using the device resets the count.
+    // using the device resets the count
     QCOMPARE(tracker.inactiveFor(true, minutesLater(30)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(35)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(40)), std::chrono::seconds(5min));
@@ -924,7 +924,7 @@ void UpdaterTest::parsesOfflineResults() {
     QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=true\nRole=update-packages\n"
                                       "Packages=tree;2.2.1-1.fc45;x86_64;updates,\n"),
              QString());
-    // GKeyFile escapes; the error code without details
+    // GKeyFile escapes, and the error code without details
     QCOMPARE(
         parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\nErrorDetails=\\sa\\\\b\\tc\n"),
         u"a\\b\tc"_s);

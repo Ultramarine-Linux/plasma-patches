@@ -139,9 +139,9 @@ void UpdatesTest::listsAppsFirst() {
     QCOMPARE(updates.at(2).icon, QStringLiteral("desktop"));
     QCOMPARE(updates.at(0).appId, QStringLiteral("org.mozilla.firefox"));
     QCOMPARE(updateSourceLabel(updates.at(1)), QStringLiteral("Flatpak"));
-    // Runtimes never get their own icon, even if the helper reports one.
+    // runtimes never get their own icon, even if the helper reports one
     QCOMPARE(updates.at(6).icon, QStringLiteral("package-x-generic"));
-    // No icon reported: fall back to the generic one.
+    // no icon reported: fall back to the generic one
     QCOMPARE(updates.at(4).icon, QStringLiteral("package-x-generic"));
 }
 
@@ -157,7 +157,7 @@ void UpdatesTest::parsesRestartState() {
     QVERIFY(restart.required);
     QCOMPARE(restart.stagedVersion, QStringLiteral("44.20261020.0"));
 
-    // Image updates are labelled as system updates.
+    // image updates are labeled as system updates
     const auto updates = parseUpdateListing(QStringLiteral(
         R"({"updates":[{"id":"image:system","name":"Ultramarine Linux","backend":"bootc","kind":"package"}]})"));
     QCOMPARE(updateSourceLabel(updates.at(0)), QStringLiteral("System"));
@@ -223,7 +223,7 @@ void UpdatesTest::upgradeSettingsDefaults() {
     QVERIFY(changed == defaults);
     changed.windowEnd = changed.windowStart;
     QVERIFY(changed != defaults);
-    // an equal start and end only matters once the window is used; the helper rejects it then
+    // an equal start and end only matters once the window is used, since the helper rejects it then
     QVERIFY(changed.isValid());
     changed.windowEnabled = true;
     QVERIFY(!changed.isValid());
@@ -249,12 +249,12 @@ void UpdatesTest::parsesUpgradeSettings() {
         QStringList({QStringLiteral("settings"), QStringLiteral("--automatic=true"), QStringLiteral("--offline=false"),
                      QStringLiteral("--inactive-minutes=15"), QStringLiteral("--window=22:00-06:30")}));
 
-    // An empty window means any time.
+    // an empty window means any time
     QVERIFY(parseUpgradeSettings(R"({"window_start":"","window_end":""})", &settings));
     QVERIFY(!settings.windowEnabled);
     QCOMPARE(upgradeSettingsArguments(settings).constLast(), QStringLiteral("--window="));
 
-    // Missing keys keep the defaults.
+    // missing keys keep the defaults
     QVERIFY(parseUpgradeSettings("{}", &settings));
     QVERIFY(settings == UpgradeSettings{});
     QVERIFY(!parseUpgradeSettings("Automatic updates: true", &settings));

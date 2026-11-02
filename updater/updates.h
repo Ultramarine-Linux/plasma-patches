@@ -9,7 +9,7 @@
 #include <QString>
 
 /**
- * Lists and installs updates for an Ultramarine system: RPM packages (dnf) or
+ * lists and installs updates for an Ultramarine system: RPM packages (dnf) or
  * the bootc image, Flatpaks (system and user installations), Nix (Determinate
  * Nix itself and the user's `nix profile`) and Plasma widgets from the KDE Store.
  *
@@ -19,41 +19,41 @@
  * ListResponse::errors without hiding the others.
  *
  * applyUser() updates what belongs to the invoking user and must run as that
- * user; applySystem() updates the rest and needs root.
+ * user. applySystem() updates the rest and needs root.
  */
 namespace UltramarineUpdates {
 
-    /// Update kinds, so frontends can show desktop apps before libraries and runtimes.
+    /// update kinds, so frontends can show desktop apps before libraries and runtimes
     namespace Kind {
-        /// A desktop application.
+        /// a desktop application
         inline constexpr auto App = "app";
-        /// An add-on to the desktop, like a Plasma widget.
+        /// an add-on to the desktop, like a Plasma widget
         inline constexpr auto Addon = "addon";
-        /// A Flatpak runtime or extension.
+        /// a Flatpak runtime or extension
         inline constexpr auto Runtime = "runtime";
-        /// Any other package (libraries, CLI tools, addons, ...).
+        /// any other package (libraries, CLI tools, addons, ...)
         inline constexpr auto Package = "package";
     } // namespace Kind
 
     struct PackageUpdate {
-        /// Uniquely identifies the update: "name.arch" for RPMs, the qualified
+        /// uniquely identifies the update: "name.arch" for RPMs, the qualified
         /// application ID for Flatpaks, "nix:<name>" for Nix, "plasmoid:<store ID>"
-        /// for Plasma widgets.
+        /// for Plasma widgets
         QString id;
-        /// The app name for desktop apps, otherwise the package or Flatpak name.
+        /// the app name for desktop apps, otherwise the package or Flatpak name
         QString name;
         QString source;
-        /// The package manager handling the update: "rpm", "bootc", "rpm-ostree",
-        /// "flatpak", "nix" or "plasmoid".
+        /// the package manager handling the update: "rpm", "bootc", "rpm-ostree",
+        /// "flatpak", "nix" or "plasmoid"
         QString backend;
-        /// One of Kind::App, Kind::Addon, Kind::Runtime or Kind::Package.
+        /// one of Kind::App, Kind::Addon, Kind::Runtime or Kind::Package
         QString kind;
-        /// The AppStream component ID for apps, when known.
+        /// the AppStream component ID for apps, when known
         QString appId;
-        /// Download size in bytes, 0 if unknown. For Flatpaks it's the full size;
-        /// static deltas can make the actual download smaller.
+        /// download size in bytes, 0 if unknown. For Flatpaks it's the full size,
+        /// but static deltas can make the actual download smaller.
         qint64 downloadSize = 0;
-        /// How much more (or, if negative, less) disk space the update uses once
+        /// how much more (or, if negative, less) disk space the update uses once
         /// installed, in bytes. 0 if unknown.
         qint64 installedSizeChange = 0;
         QString oldVersion;
@@ -67,16 +67,16 @@ namespace UltramarineUpdates {
 
     struct ListResponse {
         QList<PackageUpdate> updates;
-        /// Sources that could not be queried. Updates from the others are still reported.
+        /// sources that could not be queried. Updates from the others are still reported.
         QStringList errors;
         /// whether installed system updates take effect only after restarting:
         /// image mode systems with a staged image, or a pending offline update
         bool restartRequired = false;
         /// whether RPM updates are scheduled to install while restarting
-        /// (`/system-update` links to PackageKit's prepared update); they're
-        /// still listed as updates
+        /// (`/system-update` links to PackageKit's prepared update). They're
+        /// still listed as updates.
         bool offlinePending = false;
-        /// The version the system runs after restarting, if known.
+        /// the version the system runs after restarting, if known
         QString stagedVersion;
         /// why the last offline update failed while restarting, if it did
         QString offlineError;
@@ -84,21 +84,21 @@ namespace UltramarineUpdates {
         [[nodiscard]] QJsonObject toJson() const;
     };
 
-    /// Collects updates from every available source.
+    /// collects updates from every available source
     ListResponse listUpdates();
 
     /**
-     * Updates user-installation Flatpaks, the user's Nix profile and Plasma
+     * updates user-installation Flatpaks, the user's Nix profile and Plasma
      * widgets. Must run as the user: after escalating, flatpak, nix and KNewStuff
      * would only see root's (empty) installation, profile and widgets.
      */
     bool applyUser(bool assumeYes, QString *error);
 
     /**
-     * updates system packages, system Flatpaks and Nix itself, needs root; with
+     * updates system packages, system Flatpaks and Nix itself, and needs root. With
      * @p offline, dnf downloads the RPM updates and PackageKit prepares them to
-     * install during the next restart (see packagekit.h); sets @p updated to
-     * whether any package manager was found
+     * install during the next restart (see packagekit.h). Sets @p updated to
+     * whether any package manager was found.
      */
     bool applySystem(bool assumeYes, bool offline, bool *updated, QString *error);
 

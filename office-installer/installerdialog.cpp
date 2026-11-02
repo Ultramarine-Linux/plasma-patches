@@ -65,7 +65,7 @@ namespace OfficeInstaller {
             return i18n("Install an office suite to open documents, spreadsheets and presentations");
         }
 
-        /// The documents' type icon if they're all the same type, or a generic document icon.
+        /// the documents' type icon if they're all the same type, or a generic document icon
         QIcon documentIcon(const QList<QUrl> &urls) {
             QSet<QString> iconNames;
             for (const QUrl &url: urls) {
@@ -81,7 +81,7 @@ namespace OfficeInstaller {
             return QIcon::fromTheme(u"x-office-document"_s);
         }
 
-        /// Flatpak's architecture name for this machine.
+        /// Flatpak's architecture name for this machine
         QString flatpakArch() {
             QString arch = QSysInfo::currentCpuArchitecture();
             if (arch == "arm64"_L1) {
@@ -91,7 +91,7 @@ namespace OfficeInstaller {
         }
 
         /**
-         * The suite's icon. Flatpak keeps Flathub's app icons with its AppStream
+         * the suite's icon. Flatpak keeps Flathub's app icons with its AppStream
          * data, so the icons are there before anything is installed. Falls back
          * to a generic document icon if the AppStream data hasn't been fetched.
          */
@@ -119,7 +119,7 @@ namespace OfficeInstaller {
             return QIcon::fromTheme(u"x-office-document"_s);
         }
 
-        /// A suite in the list: its icon, name and a "Recommended" badge, with the description under them.
+        /// a suite in the list: its icon, name and a "Recommended" badge, with the description under them
         class SuiteDelegate : public QStyledItemDelegate {
         public:
             explicit SuiteDelegate(QListView *view) : QStyledItemDelegate(view), m_view(view) {}
@@ -131,13 +131,13 @@ namespace OfficeInstaller {
                 const QPoint origin = opt.rect.topLeft();
                 const QPalette::ColorGroup group =
                     (opt.state & QStyle::State_Active) ? QPalette::Active : QPalette::Inactive;
-                // The inactive highlight is grey, which would hide the selection when the dialog isn't focused.
+                // the inactive highlight is gray, which would hide the selection when the dialog isn't focused
                 const QColor accent = opt.palette.color(QPalette::Active, QPalette::Highlight);
 
                 painter->save();
                 painter->setRenderHint(QPainter::Antialiasing);
 
-                // A tinted card with an accent border, like Kirigami's, so the text keeps its own colors.
+                // a tinted card with an accent border, like Kirigami's, so the text keeps its own colors
                 const QRectF card = QRectF(opt.rect).adjusted(0.5, 0.5, -0.5, -0.5);
                 const qreal cardRadius = opt.fontMetrics.height() / 3.0;
                 if (opt.state & QStyle::State_Selected) {
@@ -154,7 +154,7 @@ namespace OfficeInstaller {
                     painter->drawRoundedRect(card, cardRadius, cardRadius);
                 }
 
-                // initStyleOption() has the icon: no QVariant::value<QIcon>(), which some clangd versions reject.
+                // initStyleOption() has the icon: no QVariant::value<QIcon>(), which some clangd versions reject
                 opt.icon.paint(painter, geometry.icon.translated(origin));
 
                 painter->setPen(opt.palette.color(group, QPalette::Text));
@@ -163,7 +163,7 @@ namespace OfficeInstaller {
                                   index.data(Qt::DisplayRole).toString());
 
                 if (geometry.badge.isValid()) {
-                    // The accent is only the outline: accent-colored text on a tint is hard to read.
+                    // the accent is only the outline: accent-colored text on a tint is hard to read
                     const QRectF badge = QRectF(geometry.badge.translated(origin)).adjusted(0.5, 0.5, -0.5, -0.5);
                     QColor fill = accent;
                     fill.setAlphaF(0.15);
@@ -186,12 +186,12 @@ namespace OfficeInstaller {
             [[nodiscard]] QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
                 QStyleOptionViewItem opt = option;
                 initStyleOption(&opt, index);
-                // QListView pads items by its spacing on every side.
+                // QListView pads items by its spacing on every side
                 const int width = m_view->viewport()->width() - 2 * m_view->spacing();
                 return {width, layout(opt, index, width).height};
             }
 
-            /// The height of @p index's card when it's @p width wide.
+            /// the height of @p index's card when it's @p width wide
             [[nodiscard]] int heightForWidth(const QModelIndex &index, const int width) const {
                 QStyleOptionViewItem opt;
                 opt.initFrom(m_view);
@@ -252,7 +252,7 @@ namespace OfficeInstaller {
             QListView *m_view;
         };
 
-        /// Grows to fit its cards, so there's no empty space under them.
+        /// grows to fit its cards, so there's no empty space under them
         class SuiteList : public QListWidget {
         public:
             explicit SuiteList(QWidget *parent) : QListWidget(parent) {
@@ -303,7 +303,7 @@ namespace OfficeInstaller {
             return label;
         }
 
-        /// Flatpak and PackageKit redraw progress with carriage returns and colors.
+        /// Flatpak and PackageKit redraw progress with carriage returns and colors
         QString cleanLine(QString line) {
             static const QRegularExpression escapes(u"\x1b\\[[0-9;?]*[A-Za-z]"_s);
             line.remove(escapes);
@@ -325,7 +325,7 @@ namespace OfficeInstaller {
         layout->addWidget(m_pages, 1);
         layout->addSpacing(fontMetrics().height() / 2);
 
-        // The source sits next to the buttons, out of the way: Flathub is the default.
+        // the source sits next to the buttons, out of the way: Flathub is the default
         auto *sourceLayout = new QHBoxLayout(m_sourceRow);
         sourceLayout->setContentsMargins({});
         auto *sourceCaption = new QLabel(i18nc("@label:listbox", "Install from:"), m_sourceRow);
@@ -348,7 +348,7 @@ namespace OfficeInstaller {
 
         updateSources();
         setMinimumWidth(fontMetrics().averageCharWidth() * 70);
-        // The suite list's height depends on its width, so size the dialog for the width it opens at.
+        // the suite list's height depends on its width, so size the dialog for the width it opens at
         const int width = std::max(minimumWidth(), QDialog::sizeHint().width());
         resize(width, QWidget::heightForWidth(width));
     }
@@ -383,7 +383,7 @@ namespace OfficeInstaller {
         m_suiteList->setItemDelegate(new SuiteDelegate(m_suiteList));
         m_suiteList->setSelectionMode(QAbstractItemView::SingleSelection);
         m_suiteList->setResizeMode(QListView::Adjust);
-        // Cards on the window background, not rows in a white box.
+        // cards on the window background, not rows in a white box
         m_suiteList->setFrameShape(QFrame::NoFrame);
         m_suiteList->viewport()->setAutoFillBackground(false);
         m_suiteList->setSpacing(fontMetrics().height() / 6);
@@ -393,7 +393,7 @@ namespace OfficeInstaller {
         m_suiteList->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         m_suiteList->setCurrentRow(0);
         connect(m_suiteList, &QListWidget::currentRowChanged, this, &InstallerDialog::updateSources);
-        // Ctrl+click would leave nothing selected.
+        // Ctrl+click would leave nothing selected
         connect(m_suiteList, &QListWidget::itemSelectionChanged, this, [this] {
             if (m_suiteList->selectedItems().isEmpty() && m_suiteList->currentItem()) {
                 m_suiteList->currentItem()->setSelected(true);
@@ -408,7 +408,7 @@ namespace OfficeInstaller {
 
     QWidget *InstallerDialog::createProgressPage() {
         auto *page = new QWidget(this);
-        // The choice page sets the dialog's size; this one fits in it.
+        // the choice page sets the dialog's size, and this one fits in it
         page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         auto *layout = new QVBoxLayout(page);
         layout->addStretch();
@@ -447,11 +447,11 @@ namespace OfficeInstaller {
     void InstallerDialog::updateSources() const {
         m_sourceBox->clear();
         for (const Source source: sources(selectedSuite(), m_imageBased)) {
-            // Stored as an int: a custom enum in a QVariant needs Qt to derive its name from
-            // __PRETTY_FUNCTION__, which breaks in some clangd versions.
+            // stored as an int: a custom enum in a QVariant needs Qt to derive its name from
+            // __PRETTY_FUNCTION__, which breaks in some clangd versions
             m_sourceBox->addItem(sourceName(source), static_cast<int>(source));
         }
-        // Nothing to choose for Flathub-only suites, so just say where it comes from.
+        // nothing to choose for Flathub-only suites, so just say where it comes from
         const bool choice = m_sourceBox->count() > 1;
         m_sourceBox->setVisible(choice);
         m_sourceLabel->setVisible(!choice);
@@ -529,7 +529,7 @@ namespace OfficeInstaller {
     void InstallerDialog::openDocuments() {
         m_progressTitle->setText(i18nc("@info:status %1 is an office suite", "Opening %1…", selectedSuite().name));
         m_progressDetail->clear();
-        // Pick up the new suite's desktop files, so it opens like any other app.
+        // pick up the new suite's desktop files, so it opens like any other app
         KSycoca::self()->ensureCacheValid();
         if (openWithInstalledApps(m_urls, this, [this] { accept(); })) {
             return;

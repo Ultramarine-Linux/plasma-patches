@@ -20,7 +20,7 @@ build:
 translations:
     ./Messages.sh
 
-# run cppcheck with the same checks as CI; suppress only false positives in generated Qt moc files
+# run cppcheck with the same checks as CI, suppressing only false positives in generated Qt moc files
 cppcheck: build
     cppcheck -j2 --project={{ build_dir }}/compile_commands.json \
         --enable=warning,style,performance,portability \
@@ -49,7 +49,7 @@ clean:
     rm -rf {{ build_dir }} {{ build_dir }}-user compile_commands.json
 
 # --- testing the update helper ------------------------------------------------
-# The Updates KCM runs ultramarine-updates from its install path, and its polkit
+# the Updates KCM runs ultramarine-updates from its install path, and its polkit
 # action matches that exact path, so the helper must be installed system-wide.
 # The automatic update timer isn't enabled (Ultramarine's presets do that for the RPM):
 # sudo systemctl enable --now ultramarine-updates-automatic.timer. The user timer starts
@@ -76,13 +76,13 @@ helper *args: build
     {{ build_dir }}/bin/ultramarine-updates {{ args }}
 
 # --- testing against a development build of umcli ---------------------------
-# The Tweaks KCM needs a um with `--json` support at /usr/bin/um, its tweak data in
+# the Tweaks KCM needs a um with `--json` support at /usr/bin/um, its tweak data in
 # /usr/share/um, and umcli's polkit action. pkexec clears the environment, so
-# UM_DATA can't point the privileged half at a checkout; install it like the RPM does.
+# UM_DATA can't point the privileged half at a checkout. Install it like the RPM does.
 
 umcli_dir := "../umcli"
 
-# build umcli and install it system-wide like the umcli RPM (run as your user; uses sudo)
+# build umcli and install it system-wide like the umcli RPM (run as your user, uses sudo)
 dev-um-install:
     cd {{ umcli_dir }} && go build -o /tmp/um-dev-build .
     sudo install -Dm0755 /tmp/um-dev-build /usr/bin/um

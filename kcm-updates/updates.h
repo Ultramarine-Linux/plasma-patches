@@ -16,35 +16,35 @@
 
 struct UpdateItem {
     QString name;
-    /// Full source as reported by the update helper, e.g. "RPM (updates)" or "Flatpak (flathub)".
+    /// full source as reported by the update helper, e.g. "RPM (updates)" or "Flatpak (flathub)"
     QString source;
     QString oldVersion;
     QString newVersion;
     QString icon;
-    /// Download size in bytes, 0 if unknown.
+    /// download size in bytes, 0 if unknown
     qint64 downloadSize = 0;
-    /// Change in disk usage once installed, in bytes (negative if it shrinks), 0 if unknown.
+    /// change in disk usage once installed, in bytes (negative if it shrinks), 0 if unknown
     qint64 installedSizeChange = 0;
     /// "app", "addon", "package" or "runtime". Apps are listed first, then add-ons.
     QString kind;
-    /// Package manager: "rpm", "bootc", "rpm-ostree", "flatpak", "nix" or "plasmoid".
+    /// package manager: "rpm", "bootc", "rpm-ostree", "flatpak", "nix" or "plasmoid"
     QString backend;
-    /// AppStream ID for apps, when known.
+    /// AppStream ID for apps, when known
     QString appId;
 };
 
-/// Returns the short source shown under each update, e.g. "System" for RPMs.
+/// returns the short source shown under each update, e.g. "System" for RPMs
 QString updateSourceLabel(const UpdateItem &item);
 
-/// System-wide automatic update settings, as stored by `ultramarine-updates settings`.
+/// system-wide automatic update settings, as stored by `ultramarine-updates settings`
 struct UpgradeSettings {
-    /// "Let your device decide" (true) or "Ask me" (false).
+    /// "Let your device decide" (true) or "Ask me" (false)
     bool automatic = true;
-    /// Install system updates while restarting instead of on the running system.
+    /// install system updates while restarting instead of on the running system
     bool offline = false;
-    /// Install once no one has used the device for this long.
+    /// install once no one has used the device for this long
     int inactiveMinutes = 30;
-    /// Only install between windowStart and windowEnd (minutes after midnight).
+    /// only install between windowStart and windowEnd (minutes after midnight)
     bool windowEnabled = false;
     int windowStart = 60;
     int windowEnd = 5 * 60;
@@ -55,17 +55,17 @@ struct UpgradeSettings {
     bool operator==(const UpgradeSettings &) const = default;
 };
 
-/// Parses `ultramarine-updates settings --json`. Returns false if the output isn't valid.
+/// parses `ultramarine-updates settings --json`. Returns false if the output isn't valid.
 bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings);
 
-/// Returns the `ultramarine-updates settings` arguments that save @p settings.
+/// returns the `ultramarine-updates settings` arguments that save @p settings
 QStringList upgradeSettingsArguments(const UpgradeSettings &settings);
 
-/// Parses `ultramarine-updates schedule --status --json` into whether Apply Tonight is
-/// scheduled and when it next runs (Unix time, 0 if unknown).
+/// parses `ultramarine-updates schedule --status --json` into whether Apply Tonight is
+/// scheduled and when it next runs (Unix time, 0 if unknown)
 bool parseScheduleStatus(const QByteArray &json, bool *scheduled, qint64 *next);
 
-/// Installed updates that are waiting for a restart, from the update listing.
+/// installed updates that are waiting for a restart, from the update listing
 struct RestartState {
     /// restarting finishes installed updates: a staged system image, or offline updates
     bool required = false;
@@ -78,8 +78,8 @@ struct RestartState {
 };
 
 /**
- * Parses the JSON update listing emitted by `ultramarine-updates list --json`. Desktop
- * apps come first, then add-ons (Plasma widgets), then other packages, then runtimes; the helper's order is kept
+ * parses the JSON update listing emitted by `ultramarine-updates list --json`. Desktop
+ * apps come first, then add-ons (Plasma widgets), then other packages, then runtimes. The helper's order is kept
  * otherwise. Sources the helper could not query are returned in @p errors, and whether
  * a restart finishes installed updates in @p restart, if given.
  */
@@ -89,7 +89,7 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
 /**
  * returns the error to show once `ultramarine-updates list --json` exited with @p exitCode
  * (-1 if it crashed): why the last offline update failed, the sources it could not
- * query, or why checking failed; empty if there is nothing to report
+ * query, or why checking failed. Empty if there is nothing to report.
  */
 QString refreshErrorMessage(int exitCode, const QByteArray &stdOut, const QByteArray &stdErr);
 
@@ -98,7 +98,7 @@ class UpdatesModel final : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    // Model roles start at Qt::UserRole (256), so 16 bits are enough.
+    // model roles start at Qt::UserRole (256), so 16 bits are enough
     enum Roles : std::uint16_t {
         NameRole = Qt::UserRole + 1,
         SourceRole,
@@ -113,40 +113,40 @@ public:
         InstalledSizeChangeRole,
     };
 
-    /// Creates the model that exposes pending updates to QML.
+    /// creates the model that exposes pending updates to QML
     explicit UpdatesModel(QObject *parent = nullptr);
 
     /**
-     * Returns the number of top-level update entries.
+     * returns the number of top-level update entries
      */
     [[nodiscard]] int rowCount(const QModelIndex &parent) const override;
 
-    /// Returns the requested update value for a model index.
+    /// returns the requested update value for a model index
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
 
-    /// Returns the names of the roles exposed to QML.
+    /// returns the names of the roles exposed to QML
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
-    /// Returns the number of updates in the model.
+    /// returns the number of updates in the model
     [[nodiscard]] int count() const;
 
-    /// Returns the number of updates that aren't from @p backend.
+    /// returns the number of updates that aren't from @p backend
     [[nodiscard]] int countExcluding(const QString &backend) const;
 
-    /// Returns the sum of all download sizes, in bytes.
+    /// returns the sum of all download sizes, in bytes
     [[nodiscard]] qint64 totalDownloadSize() const;
 
-    /// Returns the sum of all installed size changes, in bytes.
+    /// returns the sum of all installed size changes, in bytes
     [[nodiscard]] qint64 totalInstalledSizeChange() const;
 
-    /// Removes all updates from the model.
+    /// removes all updates from the model
     void clear();
 
-    /// Adds one update to the model.
+    /// adds one update to the model
     void addUpdate(UpdateItem item);
 
 Q_SIGNALS:
-    /// Emitted when the number of updates changes.
+    /// emitted when the number of updates changes
     void countChanged();
 
 private:
@@ -182,51 +182,51 @@ class Updates : public KQuickManagedConfigModule {
 
 public:
     /**
-     * Creates the Fedora updates configuration module.
+     * creates the Fedora updates configuration module
      */
     explicit Updates(QObject *parent, const KPluginMetaData &metaData);
 
-    /// Returns whether an update operation is running.
+    /// returns whether an update operation is running
     [[nodiscard]] bool running() const;
 
     /// returns whether Apply Tonight is being scheduled or canceled
     [[nodiscard]] bool scheduling() const;
 
-    /// Returns the current operation status.
+    /// returns the current operation status
     [[nodiscard]] const QString &status() const;
 
-    /// Returns the current error shown in the UI banner.
+    /// returns the current error shown in the UI banner
     [[nodiscard]] const QString &errorMessage() const;
 
-    /// Returns the Fedora release version.
+    /// returns the Fedora release version
     [[nodiscard]] static QString distributionVersion();
 
-    /// Returns the number of available updates.
+    /// returns the number of available updates
     [[nodiscard]] int updateCount() const;
 
-    /// Returns the number of updates Apply would install. RPM updates that are already
+    /// returns the number of updates Apply would install. RPM updates that are already
     /// downloaded and install while restarting (offline updates) are listed but don't count.
     [[nodiscard]] int installableCount() const;
 
-    /// Returns the model containing available updates.
+    /// returns the model containing available updates
     UpdatesModel *updates();
 
-    /// Returns the complete technical update information.
+    /// returns the complete technical update information
     [[nodiscard]] const QString &technicalInformation() const;
 
-    /// Returns whether updates install automatically ("Let your device decide").
+    /// returns whether updates install automatically ("Let your device decide")
     [[nodiscard]] bool automaticUpdates() const;
     void setAutomaticUpdates(bool automatic);
 
-    /// Returns whether system updates are installed while restarting.
+    /// returns whether system updates are installed while restarting
     [[nodiscard]] bool offlineUpdates() const;
     void setOfflineUpdates(bool offline);
 
-    /// How long no one must have used the device before updates install.
+    /// how long no one must have used the device before updates install
     [[nodiscard]] int inactiveMinutes() const;
     void setInactiveMinutes(int minutes);
 
-    /// Optional time window for installing updates (minutes after midnight).
+    /// optional time window for installing updates (minutes after midnight)
     [[nodiscard]] bool windowEnabled() const;
     void setWindowEnabled(bool enabled);
     [[nodiscard]] int windowStart() const;
@@ -236,99 +236,99 @@ public:
     /// returns false if the window starts and ends at the same time
     [[nodiscard]] bool windowValid() const;
 
-    /// Returns whether Apply Tonight is scheduled, and when it next runs.
+    /// returns whether Apply Tonight is scheduled, and when it next runs
     [[nodiscard]] bool scheduledTonight() const;
     [[nodiscard]] QDateTime scheduledTime() const;
 
-    /// Loads the settings and Apply Tonight state from the update helper.
+    /// loads the settings and Apply Tonight state from the update helper
     void load() override;
 
-    /// Saves the settings through the update helper, which asks for authentication.
+    /// saves the settings through the update helper, which asks for authentication
     void save() override;
 
-    /// Resets the settings to the defaults (not saved until Apply).
+    /// resets the settings to the defaults (not saved until Apply)
     void defaults() override;
 
-    /// Returns the total download size of all updates, in bytes.
+    /// returns the total download size of all updates, in bytes
     [[nodiscard]] qint64 downloadSize() const;
 
-    /// Returns the total change in disk usage of all updates, in bytes.
+    /// returns the total change in disk usage of all updates, in bytes
     [[nodiscard]] qint64 installedSizeChange() const;
 
     /**
-     * Returns whether this is an image mode (bootc) system. Its system updates are
+     * returns whether this is an image mode (bootc) system. Its system updates are
      * new images, which are always staged and take effect when restarting, so the
      * offline update setting doesn't apply.
      */
     [[nodiscard]] static bool imageMode();
 
-    /// Returns whether installed updates take effect after restarting.
+    /// returns whether installed updates take effect after restarting
     [[nodiscard]] bool restartRequired() const;
 
     /// returns whether system updates install the next time the device restarts
     [[nodiscard]] bool offlinePending() const;
 
-    /// Returns the system version after restarting, if known.
+    /// returns the system version after restarting, if known
     [[nodiscard]] const QString &stagedVersion() const;
 
-    /// Starts an update check.
+    /// starts an update check
     Q_INVOKABLE void refresh();
 
     /**
-     * installs every listed update now; the helper asks for authentication and does the
+     * installs every listed update now. The helper asks for authentication and does the
      * system part first (staged for the next restart with offline updates or in image
-     * mode), then updates the user's Flatpaks, Nix profile and Plasma widgets
+     * mode), then updates the user's Flatpaks, Nix profile and Plasma widgets.
      */
     Q_INVOKABLE void applyUpdates();
 
     /// schedules all updates to install tonight while the device isn't in use
     Q_INVOKABLE void applyTonight();
 
-    /// Cancels Apply Tonight.
+    /// cancels Apply Tonight
     Q_INVOKABLE void cancelTonight();
 
-    /// Asks to restart through Plasma's logout screen, so work can be saved first.
+    /// asks to restart through Plasma's logout screen, so work can be saved first
     Q_INVOKABLE void restart();
 
     /// clears the error message, for example when the user dismisses it
     Q_INVOKABLE void clearError();
 
 Q_SIGNALS:
-    /// Emitted when an update operation starts or stops.
+    /// emitted when an update operation starts or stops
     void runningChanged();
 
     /// emitted when Apply Tonight starts or stops being scheduled or canceled
     void schedulingChanged();
 
-    /// Emitted when the operation status changes.
+    /// emitted when the operation status changes
     void statusChanged();
 
-    /// Emitted when the error banner text changes.
+    /// emitted when the error banner text changes
     void errorMessageChanged();
 
-    /// Emitted when the number of available updates changes.
+    /// emitted when the number of available updates changes
     void updateCountChanged();
 
-    /// Emitted when the automatic update settings change.
+    /// emitted when the automatic update settings change
     void settingsValuesChanged();
 
-    /// Emitted when Apply Tonight is scheduled or cancelled.
+    /// emitted when Apply Tonight is scheduled or canceled
     void scheduleChanged();
 
-    /// Emitted when technical update information changes.
+    /// emitted when technical update information changes
     void technicalInformationChanged();
 
-    /// Emitted when updates start or stop waiting for a restart.
+    /// emitted when updates start or stop waiting for a restart
     void restartStateChanged();
 
 private Q_SLOTS:
-    /// Handles completion of the active update process.
+    /// handles completion of the active update process
     void processFinished(int exitCode, QProcess::ExitStatus exitStatus);
 
-    /// Handles errors reported while starting an update process.
+    /// handles errors reported while starting an update process
     void processError(QProcess::ProcessError error);
 
-    /// Reads and dispatches output from the active update process.
+    /// reads and dispatches output from the active update process
     void readProcessOutput();
 
 private:
@@ -338,19 +338,19 @@ private:
         Install,
     };
 
-    /// Starts one backend process and records its operation type.
+    /// starts one backend process and records its operation type
     void startProcess(const QString &program, const QStringList &arguments, Operation operation);
 
-    /// Updates the user-facing operation status.
+    /// updates the user-facing operation status
     void setStatus(const QString &value);
 
-    /// Updates the technical information shown in the details dialog.
+    /// updates the technical information shown in the details dialog
     void setTechnicalInformation(const QString &information);
 
-    /// Completes an operation and updates its final status.
+    /// completes an operation and updates its final status
     void finishOperation(bool success, const QString &message);
 
-    /// Parses the helper's structured update listing.
+    /// parses the helper's structured update listing
     void parseListing(const QString &output);
 
     QProcess m_process;
@@ -364,15 +364,15 @@ private:
     QString m_technicalInformation;
     Operation m_operation = Operation::None;
     bool m_running = false;
-    /// Runs the update helper with @p arguments and calls @p done when it exits (exit
+    /// runs the update helper with @p arguments and calls @p done when it exits (exit
     /// code -1 if it couldn't start). The helper escalates through pkexec if needed.
     void runHelper(const QStringList &arguments,
                    const std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> &done);
 
-    /// Shows @p message in the error banner.
+    /// shows @p message in the error banner
     void setErrorMessage(const QString &message);
 
-    /// reloads whether Apply Tonight is scheduled; only the latest request's reply is used
+    /// reloads whether Apply Tonight is scheduled. Only the latest request's reply is used.
     void refreshSchedule();
 
     void setScheduling(bool value);

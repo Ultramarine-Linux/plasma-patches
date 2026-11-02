@@ -23,7 +23,7 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// A short, recognizable label for an image without a version: its digest or checksum.
+        /// a short, recognizable label for an image without a version: its digest or checksum
         QString shortId(QString id) {
             if (const qsizetype colon = id.indexOf(u':'); colon >= 0) {
                 id = id.mid(colon + 1); // "sha256:..."
@@ -84,7 +84,7 @@ namespace UltramarineUpdates {
     }
 
     bool isUmEnvImage(const QString &image) {
-        // `um env` switches the system to localhost/um-env, built FROM the real image.
+        // `um env` switches the system to localhost/um-env, built FROM the real image
         QString name = image;
         if (name.startsWith("localhost/"_L1)) {
             name = name.mid(10);
@@ -102,7 +102,7 @@ namespace UltramarineUpdates {
         const QString stagedDigest = stagedImage.value("imageDigest"_L1).toString();
 
         ImageState state;
-        // A download-only stage stays locked until `bootc upgrade` unlocks it.
+        // a download-only stage stays locked until `bootc upgrade` unlocks it
         if (!staged.isEmpty() && !staged.value("downloadOnly"_L1).toBool() && stagedDigest != bootedDigest) {
             state.staged = true;
             state.stagedVersion = versionOf(stagedImage, u"imageDigest"_s);
@@ -120,7 +120,7 @@ namespace UltramarineUpdates {
 
     ImageState parseRpmOstreeState(const QByteArray &json, const QString &name, const QString &backend) {
         const QJsonObject root = QJsonDocument::fromJson(json).object();
-        // Upgrades stage a deployment that's finalized when shutting down. A
+        // upgrades stage a deployment that's finalized when shutting down. A
         // deployment that isn't staged but comes before the booted one is a rollback.
         QJsonObject booted;
         QJsonObject pending;
@@ -207,7 +207,7 @@ namespace UltramarineUpdates {
     }
 
     ImageState imageState(QString *error) {
-        // Neither tool checks the registry here: that needs root and happens in
+        // neither tool checks the registry here: that needs root and happens in
         // checkImageUpdate() (or before installing). We report what they already found.
         const QString name = osName();
         if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
@@ -242,8 +242,8 @@ namespace UltramarineUpdates {
             const CommandResult status = capture(bootc, {u"status"_s, u"--format=json"_s});
             const std::optional<BootcStatus> parsed = parseBootcStatus(status.out);
             if (parsed && isUmEnvImage(parsed->image)) {
-                // The local derivation has no registry to check; `um env update`
-                // pulls the new base image when installing.
+                // the local derivation has no registry to check, since `um env update`
+                // pulls the new base image when installing
                 return true;
             }
             if (parsed && !parsed->image.isEmpty()) {
@@ -260,7 +260,7 @@ namespace UltramarineUpdates {
             *error = u"neither bootc nor rpm-ostree is installed"_s;
             return false;
         }
-        // Exits with 77 when there's no update.
+        // exits with 77 when there's no update
         if (const CommandResult result = capture(rpmOstree, {u"upgrade"_s, u"--check"_s});
             !result.started || (result.exitCode != 0 && result.exitCode != 77)) {
             *error = u"rpm-ostree upgrade --check failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
@@ -274,7 +274,7 @@ namespace UltramarineUpdates {
             const CommandResult status = capture(bootc, {u"status"_s, u"--format=json"_s});
             const std::optional<BootcStatus> parsed = parseBootcStatus(status.out);
             if (parsed && isUmEnvImage(parsed->image)) {
-                // Rebuilds the derivation on top of the new base image, then runs bootc.
+                // rebuilds the derivation on top of the new base image, then runs bootc
                 const QString um = QStandardPaths::findExecutable(u"um"_s);
                 if (um.isEmpty()) {
                     *error = u"this system uses um env, but um is not installed"_s;
@@ -296,7 +296,7 @@ namespace UltramarineUpdates {
                 return true;
             }
         }
-        // Not tracking a bootc image (or no bootc): a classic rpm-ostree system.
+        // not tracking a bootc image (or no bootc): a classic rpm-ostree system
         const QString rpmOstree = QStandardPaths::findExecutable(u"rpm-ostree"_s);
         if (rpmOstree.isEmpty()) {
             *error = u"neither bootc nor rpm-ostree is installed"_s;

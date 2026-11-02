@@ -21,21 +21,21 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// Where the Determinate installer puts nix. It isn't always on PATH: GUI
+        /// where the Determinate installer puts nix. It isn't always on PATH: GUI
         /// sessions may not source /etc/profile.d/nix.sh, and pkexec resets the environment.
         const auto nixDefaultProfileBin = u"/nix/var/nix/profiles/default/bin/nix"_s;
-        /// Where the Determinate installer puts determinate-nixd.
+        /// where the Determinate installer puts determinate-nixd
         const auto determinateNixdPath = u"/usr/local/bin/determinate-nixd"_s;
 
         /**
-         * Evaluates the packages `nix profile upgrade` would install, without
+         * evaluates the packages `nix profile upgrade` would install, without
          * building or changing anything. Elements are passed through the
          * environment so nothing has to be escaped into Nix syntax.
          */
         const auto nixUpdatesExpr = uR"nix(
 let
   elements = builtins.fromJSON (builtins.getEnv "ULTRAMARINE_UPDATES_NIX_ELEMENTS");
-  # Missing attributes can't be caught with tryEval, so walk the path safely.
+  # missing attributes can't be caught with tryEval, so walk the path safely
   getPath = root: path: builtins.foldl' (a: k: if a != null && builtins.isAttrs a && a ? ${k} then a.${k} else null) root path;
   resolve = e:
     let
@@ -99,7 +99,7 @@ map resolve elements
         } else if (value.isArray()) {
             for (const QJsonArray array = value.toArray(); const auto &item: array) {
                 NixProfileElement element = parseElement(item.toObject());
-                // Older profiles have no names; nix named them after the attribute.
+                // older profiles have no names, so nix named them after the attribute
                 element.name = element.attrPath.split(u'.').constLast();
                 elements.append(element);
             }
@@ -110,7 +110,7 @@ map resolve elements
             return std::nullopt;
         }
 
-        // Packages installed from a store path have no flake to upgrade from.
+        // packages installed from a store path have no flake to upgrade from
         elements.removeIf([](const NixProfileElement &e) {
             return e.originalUrl.isEmpty() || e.attrPath.isEmpty() || (e.active.has_value() && !*e.active);
         });
@@ -224,8 +224,8 @@ map resolve elements
             });
         }
 
-        // --impure is needed to resolve unlocked flake references; nix's
-        // tarball-ttl decides when they are fetched again, like dnf's metadata expiry.
+        // --impure is needed to resolve unlocked flake references, and nix's
+        // tarball-ttl decides when they are fetched again, like dnf's metadata expiry
         QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
         environment.insert(u"ULTRAMARINE_UPDATES_NIX_ELEMENTS"_s,
                            QString::fromUtf8(QJsonDocument(inputs).toJson(QJsonDocument::Compact)));
