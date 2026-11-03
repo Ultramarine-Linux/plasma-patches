@@ -61,5 +61,8 @@ jobs:
       # --inline-suppr honors `// cppcheck-suppress` comments for other false positives.
       # The qt and KF6 libraries teach it Q_SLOTS, K_PLUGIN_CLASS_WITH_JSON and friends,
       # otherwise it reports unknownMacro and skips analyzing those files entirely.
-      cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen* --library=qt --library=cppcheck-kf6.cfg
-      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel gettext
+      # cppcheck writes SARIF to stderr, but the reusable workflow only redirects stdout to
+      # build/cppcheck.sarif. --output-file puts the report there. With --quiet nothing else
+      # goes to stdout, so the redirect only truncates the file first.
+      cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen* --library=qt --library=cppcheck-kf6.cfg --output-file=build/cppcheck.sarif
+      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel flatpak-devel gettext lld

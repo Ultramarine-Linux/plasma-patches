@@ -66,6 +66,7 @@ namespace UltramarineUpdates {
         ListResponse response;
         const auto collect = [&response](const QString &source, const QList<PackageUpdate> &updates,
                                          const QString &error) {
+            ++response.queriedSources;
             if (!error.isEmpty()) {
                 response.errors.append(u"%1: %2"_s.arg(source, error));
                 return;
@@ -112,42 +113,27 @@ namespace UltramarineUpdates {
         return response;
     }
 
-    bool applyUser(const bool assumeYes, QString *error) {
-        if (const QString flatpak = QStandardPaths::findExecutable(u"flatpak"_s); !flatpak.isEmpty()) {
-            QStringList arguments{u"update"_s, u"--user"_s};
-            if (assumeYes) {
-                arguments.append(u"--noninteractive"_s);
-            }
-            if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
-                *error = u"Flatpak user update failed (exit code %1)"_s.arg(exitCode);
-                return false;
-            }
-        }
-        // `nix profile upgrade` doesn't prompt
-        if (canManageNixProfile()) {
-            if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
-                *error = u"Nix profile upgrade failed (exit code %1)"_s.arg(exitCode);
-                return false;
-            }
-        }
-        if (canManagePlasmoids()) {
-            if (QString plasmoidError; !upgradePlasmoids(&plasmoidError)) {
-                *error = u"Plasma widget update failed: %1"_s.arg(plasmoidError);
-                return false;
-            }
-        }
-        return true;
-    }
+    namespace {
+        /// collects what failed, so one failing package manager doesn't stop the others
+        class Failures {
+        public:
+            void add(const QString &message) { m_messages.append(message); }
 
-    bool applySystem(const bool assumeYes, const bool offline, bool *updated, QString *error) {
-        *updated = false;
-        if (isImageMode()) {
-            // the new image is always staged for the next boot, so offline doesn't apply
-            if (!upgradeImage(error)) {
+            /// true if nothing failed, otherwise sets @p error to every failure, one per line
+            bool report(QString *error) const {
+                if (m_messages.isEmpty()) {
+                    return true;
+                }
+                *error = m_messages.join(u'\n');
                 return false;
             }
-            *updated = true;
-        } else if (const QString dnf = QStandardPaths::findExecutable(u"dnf"_s); !dnf.isEmpty()) {
+
+        private:
+            QStringList m_messages;
+        };
+
+        /// "dnf upgrade" (or its --downloadonly part), false with @p error if it can't or didn't work
+        bool upgradeRpms(const QString &dnf, const bool assumeYes, const bool offline, QString *error) {
             QStringList arguments{u"upgrade"_s, u"--refresh"_s};
             if (offline) {
                 // checked first, so nothing is downloaded for nothing
@@ -177,9 +163,49 @@ namespace UltramarineUpdates {
                 *error = u"RPM update failed (exit code %1)"_s.arg(exitCode);
                 return false;
             }
-            // dnf has finished (and released its locks) before PackageKit starts
-            if (offline && !prepareOfflineUpdate(error)) {
-                return false;
+            // dnf has finished (and released its locks) before PackageKit starts.
+            // Only prepared if the download worked, so it never installs a partial download.
+            return !offline || prepareOfflineUpdate(error);
+        }
+    } // namespace
+
+    bool applyUser(const bool assumeYes, QString *error) {
+        Failures failures;
+        if (const QString flatpak = QStandardPaths::findExecutable(u"flatpak"_s); !flatpak.isEmpty()) {
+            QStringList arguments{u"update"_s, u"--user"_s};
+            if (assumeYes) {
+                arguments.append(u"--noninteractive"_s);
+            }
+            if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
+                failures.add(u"Flatpak user update failed (exit code %1)"_s.arg(exitCode));
+            }
+        }
+        // `nix profile upgrade` doesn't prompt
+        if (canManageNixProfile()) {
+            if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
+                failures.add(u"Nix profile upgrade failed (exit code %1)"_s.arg(exitCode));
+            }
+        }
+        if (canManagePlasmoids()) {
+            if (QString plasmoidError; !upgradePlasmoids(&plasmoidError)) {
+                failures.add(u"Plasma widget update failed: %1"_s.arg(plasmoidError));
+            }
+        }
+        return failures.report(error);
+    }
+
+    bool applySystem(const bool assumeYes, const bool offline, bool *updated, QString *error) {
+        *updated = false;
+        Failures failures;
+        if (isImageMode()) {
+            // the new image is always staged for the next boot, so offline doesn't apply
+            if (QString imageError; !upgradeImage(&imageError)) {
+                failures.add(imageError);
+            }
+            *updated = true;
+        } else if (const QString dnf = QStandardPaths::findExecutable(u"dnf"_s); !dnf.isEmpty()) {
+            if (QString rpmError; !upgradeRpms(dnf, assumeYes, offline, &rpmError)) {
+                failures.add(rpmError);
             }
             *updated = true;
         }
@@ -187,8 +213,7 @@ namespace UltramarineUpdates {
             // Nix itself, installed system-wide by the nix tweak. Only upgrades
             // when Determinate Systems advises a newer version.
             if (const int exitCode = upgradeDeterminateNix(); exitCode != 0) {
-                *error = u"Determinate Nix upgrade failed (exit code %1)"_s.arg(exitCode);
-                return false;
+                failures.add(u"Determinate Nix upgrade failed (exit code %1)"_s.arg(exitCode));
             }
             *updated = true;
         }
@@ -198,12 +223,11 @@ namespace UltramarineUpdates {
                 arguments.append(u"--noninteractive"_s);
             }
             if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
-                *error = u"Flatpak update failed (exit code %1)"_s.arg(exitCode);
-                return false;
+                failures.add(u"Flatpak update failed (exit code %1)"_s.arg(exitCode));
             }
             *updated = true;
         }
-        return true;
+        return failures.report(error);
     }
 
 } // namespace UltramarineUpdates

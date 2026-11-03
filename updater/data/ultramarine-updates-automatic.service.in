@@ -12,3 +12,11 @@ Type=oneshot
 ExecStart=@ULTRAMARINE_UPDATES_EXECUTABLE@ run-scheduled
 Nice=19
 IOSchedulingClass=idle
+# rpm finishes a running transaction before it handles SIGTERM, which can take
+# longer than the default 90 seconds. Don't SIGKILL it halfway when it's stopped
+# anyway (e.g. `systemctl poweroff` as root, which ignores the logind inhibitor).
+TimeoutStopSec=30min
+# a run that hangs (e.g. on a stalled download) would keep the timer from ever
+# starting it again. Installs take far less, and rpm still finishes a running
+# transaction when it's stopped.
+TimeoutStartSec=6h

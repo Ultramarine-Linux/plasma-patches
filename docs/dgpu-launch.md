@@ -9,11 +9,25 @@ menu. That includes laptops with an eGPU plugged in.
 - **The action:** Plasma's launchers load drop-in actions from
   `share/plasma/kickeractions/*.desktop` for every app, passing the app's desktop
   file as `%u` ([plasma-workspace!1355](https://invent.kde.org/plasma/plasma-workspace/-/merge_requests/1355)).
-  [`../dgpu-launch/data/ultramarine-dgpu-launch.desktop`](../dgpu-launch/data/ultramarine-dgpu-launch.desktop)
-  runs `switcherooctl launch kioclient exec %u`. switcheroo-control sets the
+  [`../dgpu-launch/data/ultramarine-dgpu-launch.desktop.in`](../dgpu-launch/data/ultramarine-dgpu-launch.desktop.in)
+  runs `/usr/libexec/ultramarine-dgpu-launch %u`. `%u` is the app's desktop file as a
+  local path (kicker's `handleAdditionalAppActions()` passes `QUrl::fromLocalFile(entryPath)`).
+- **The launcher:** [`../dgpu-launch/main.cpp`](../dgpu-launch/main.cpp) reads the
   discrete GPU's environment (`DRI_PRIME`, NVIDIA PRIME offload variables,
-  `VK_LOADER_DRIVERS_SELECT`), and kioclient starts the app the same way Plasma does,
-  in its own `app-*.service` unit.
+  `VK_LOADER_DRIVERS_SELECT`) from switcheroo-control's `GPUs` D-Bus property. It
+  takes the first discrete GPU that isn't the default, then any non-default GPU, like
+  KIO does for `PrefersNonDefaultGPU`. If switcheroo-control isn't running, it does what
+  switcheroo-control would: when `/sys/module/nvidia` exists, the NVIDIA PRIME offload
+  variables (`__NV_PRIME_RENDER_OFFLOAD`, `__GLX_VENDOR_LIBRARY_NAME`, `__VK_LAYER_NV_optimus`),
+  since the proprietary driver ignores `DRI_PRIME`. Otherwise `DRI_PRIME=1`. Then it expands the app's `Exec` line with `KIO::DesktopExecParser`
+  and runs it with `KIO::CommandLauncherJob`, which starts it in its own `app-*.service`
+  unit with the launcher's activation token, like Plasma does.
+- **Why not `kioclient exec` or `switcherooctl launch`:** KIO starts apps with
+  `DBusActivatable=true` (most GNOME apps, some KDE ones) by D-Bus activation, so the
+  app is started by the D-Bus daemon and never sees the environment. That's how
+  `kioclient exec` and KIO's own `PrefersNonDefaultGPU` handling work, so those apps
+  would silently run on the integrated GPU. `CommandLauncherJob` never uses D-Bus
+  activation.
 - **Task manager:** Plasma only reads drop-ins in the launchers, so the task
   manager doesn't show the action. That's waiting on an upstream plasma-desktop
   change; Ultramarine ships Fedora's plasma-desktop unpatched.
@@ -46,8 +60,6 @@ the check once:
 
 ```spec
 Requires: switcheroo-control
-# kioclient
-Requires: kde-cli-tools
 %{?systemd_requires}
 BuildRequires: systemd-rpm-macros
 
@@ -63,13 +75,17 @@ rules, so starting the service is the safer choice.
 
 Runtime dependencies:
 
-- `switcheroo-control`: `switcherooctl` (the action) and the
-  `switcheroo-discrete-gpu` udev tag (detection). `switcherooctl launch` talks to
-  `switcheroo-control.service`, which Fedora's presets enable.
-- `kde-cli-tools`: `kioclient`, which the action uses to start the app.
+- `switcheroo-control`: `switcheroo-control.service`, which the launcher asks for the
+  GPUs' environment over D-Bus (Fedora's presets enable it), and the
+  `switcheroo-discrete-gpu` udev tag (detection). `switcherooctl` isn't used.
+
+Build dependencies are the KF6 KIO, KService, I18n and WidgetsAddons development
+packages the rest of the tree already needs.
 
 ## Limits
 
+- Apps whose desktop file has no `Exec` line (allowed for `DBusActivatable` apps,
+  though rare) can't be started this way, and show an error.
 - Single-instance apps that are already running (Firefox, Discord, most Electron
   apps) hand off to the running copy, so they stay on the GPU they started on.
 - Flatpak apps get the environment through `flatpak run`, so this works as long
@@ -84,10 +100,16 @@ Runtime dependencies:
 # Is this machine hybrid? (exit 0 = shown, 1 = hidden; changes nothing)
 /usr/libexec/ultramarine-dgpu-detect --check
 
-# What the action runs, by hand:
-switcherooctl launch kioclient exec /usr/share/applications/org.kde.kwrite.desktop
+# The GPUs and environments switcheroo-control knows about:
+switcherooctl list
+
+# What the action runs, by hand. Try a DBusActivatable app too (grep -l DBusActivatable=true
+# /usr/share/applications/*.desktop), which kioclient exec would start without the environment.
+/usr/libexec/ultramarine-dgpu-launch /usr/share/applications/org.kde.kwrite.desktop
 tr '\0' '\n' < /proc/$(pgrep -n kwrite)/environ | grep -E 'DRI_PRIME|NV_PRIME|VK_LOADER'
 ```
+
+`tests/test_dgpu_launch.cpp` covers picking the GPU from switcheroo-control's list.
 
 Plasma looks up `share/plasma/kickeractions` the first time a launcher menu opens.
 After the first install, restart plasmashell once.

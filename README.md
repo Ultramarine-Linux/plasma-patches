@@ -12,6 +12,8 @@ Plasma System Settings modules and Discover integration for Ultramarine Linux.
 - **Location Services** (`kcm_ultramarine_location`): turns GeoClue on or off for the whole system, until Plasma
   has its own switch.
 - **Discover patch** (`discover/`): routes Discover's Updates entry to the Ultramarine Updates KCM.
+- **PowerDevil patch** (`powerdevil/`): backports upstream powerdevil MR !699 so Plasma reports idle sessions to logind
+  (IdleHint), which automatic updates use to tell whether the device is in use.
 - **Launch Using Dedicated Graphics Card** (`dgpu-launch/`): app launcher
   action that runs an app on the discrete GPU, only shown on hybrid GPU systems and with an eGPU.
 - **Office suite installer** (`office-installer/`): opening an office document with no office suite installed offers
@@ -24,6 +26,7 @@ Plasma System Settings modules and Discover integration for Ultramarine Linux.
 - [umcli backend (Tweaks)](docs/umcli-backend.md)
 - [Location Services](docs/location.md)
 - [Discover patch](docs/discover.md)
+- [PowerDevil patch](docs/powerdevil.md)
 - [Launch Using Dedicated Graphics Card](docs/dgpu-launch.md)
 - [Office suite installer](docs/office-installer.md)
 - [Translations with Weblate](docs/translations.md)

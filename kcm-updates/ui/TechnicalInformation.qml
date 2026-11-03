@@ -56,16 +56,23 @@ KCMUtils.ScrollViewKCM {
             required property var model
 
             width: ListView.view.width
+            // read by screen readers. The content item below shows it.
+            text: delegate.model.name
+            Accessible.description: details.subtitle
+            // rows only show information, so they do nothing when clicked and aren't tab stops
             down: false
             hoverEnabled: false
+            focusPolicy: Qt.NoFocus
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing
 
                 KD.IconTitleSubtitle {
+                    id: details
+
                     Layout.fillWidth: true
                     icon.name: delegate.model.icon
-                    title: delegate.model.name
+                    title: delegate.text
                     subtitle: delegate.model.oldVersion.length > 0 && delegate.model.oldVersion !== delegate.model.newVersion
                         ? i18nc("@info %1 source, %2 old version, %3 new version", "%1 · %2 → %3",
                                 delegate.model.source, delegate.model.oldVersion, delegate.model.newVersion)

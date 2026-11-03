@@ -17,7 +17,6 @@ target_link_libraries(kcm_ultramarine_tweaks
         Qt6::Core
         Qt6::Gui
         Qt6::Qml
-        KF6::ConfigCore
         KF6::CoreAddons
         KF6::I18n
         KF6::KCMUtilsQuick

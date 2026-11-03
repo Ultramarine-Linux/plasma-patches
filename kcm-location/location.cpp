@@ -7,10 +7,17 @@
 #include <QDBusConnection>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
+#include <QFileInfo>
+#include <QStandardPaths>
 
 #include <utility>
 
 #include "location.h"
+#include "pkexec.h"
+
+#ifndef ULTRAMARINE_LOCATION_HELPER
+#define ULTRAMARINE_LOCATION_HELPER "/usr/libexec/ultramarine-location-helper"
+#endif
 
 K_PLUGIN_CLASS_WITH_JSON(Location, "kcm_ultramarine_location.json")
 
@@ -21,16 +28,6 @@ namespace {
     const auto SystemdPath = QStringLiteral("/org/freedesktop/systemd1");
     const auto ManagerInterface = QStringLiteral("org.freedesktop.systemd1.Manager");
     const auto GeoClueUnit = QStringLiteral("geoclue.service");
-
-    // the polkit prompt is shown while the call is pending, so don't time out under the user
-    constexpr int CallTimeoutMs = 10 * 60 * 1000;
-
-    /// returns whether systemd refused a call because polkit didn't authorize it
-    bool isAuthenticationFailure(const QDBusMessage &reply) {
-        const QString name = reply.errorName();
-        return name == QLatin1String("org.freedesktop.DBus.Error.AccessDenied") ||
-            name == QLatin1String("org.freedesktop.DBus.Error.InteractiveAuthorizationRequired");
-    }
 } // namespace
 
 LocationState parseUnitFileState(const QString &state) {
@@ -47,12 +44,57 @@ LocationState parseUnitFileState(const QString &state) {
     return LocationState::Enabled;
 }
 
+LocationState parseUnitFileStateError(const QString &errorName) {
+    // GetUnitFileState looks the unit file up on disk, and systemd 259 says FileNotFound when
+    // there's none. NoSuchUnit is what other manager calls (and older systemd) say.
+    if (errorName == QLatin1String("org.freedesktop.DBus.Error.FileNotFound") ||
+        errorName == QLatin1String("org.freedesktop.systemd1.NoSuchUnit")) {
+        return LocationState::Unavailable;
+    }
+    return LocationState::ReadFailed;
+}
+
+QString helperErrorMessage(const int exitCode, const QProcess::ExitStatus exitStatus, const QString &output) {
+    if (exitStatus == QProcess::NormalExit && exitCode == 0) {
+        return {};
+    }
+    // the helper never exits with these itself, so they're pkexec's, from before it ran
+    if (exitStatus == QProcess::NormalExit && Pkexec::isAuthenticationFailure(exitCode)) {
+        return i18n("Authentication was cancelled or failed. No changes were made.");
+    }
+    // systemctl may have gotten partway, for example masking GeoClue but failing to stop it
+    const QString details = output.trimmed();
+    if (details.isEmpty()) {
+        return i18n("Could not change location services. The change may have been partly applied.");
+    }
+    return i18n("Could not change location services. The change may have been partly applied: %1", details);
+}
+
 Location::Location(QObject *parent, const KPluginMetaData &metaData) : KQuickConfigModule(parent, metaData) {
     // the switch applies right away, like the Tweaks KCM
     setButtons(NoAdditionalButton);
 }
 
-bool Location::available() const { return m_state != LocationState::Unavailable; }
+Location::~Location() {
+    // ~QProcess would kill pkexec and wait up to 30 seconds for it, freezing System Settings.
+    // Once pkexec runs the helper as root it can't be killed from here anyway, and the
+    // helper finishes by itself, so let it. SIGPIPE is ignored in it, so writing to the
+    // pipe after System Settings quits doesn't kill it.
+    if (m_helper && m_helper->state() != QProcess::NotRunning) {
+        m_helper->disconnect(this);
+        m_helper->setParent(nullptr);
+        connect(m_helper, &QProcess::finished, m_helper, &QObject::deleteLater);
+    }
+}
+
+bool Location::available() const {
+    return m_state == LocationState::Enabled || m_state == LocationState::Disabled ||
+        m_state == LocationState::DisabledRuntime;
+}
+
+bool Location::notInstalled() const { return m_state == LocationState::Unavailable; }
+
+bool Location::readFailed() const { return m_state == LocationState::ReadFailed; }
 
 bool Location::locationEnabled() const { return m_state == LocationState::Enabled; }
 
@@ -82,11 +124,11 @@ void Location::load() {
         }
         const QDBusPendingReply<QString> reply = *call;
         if (reply.isError()) {
-            // NoSuchUnit when GeoClue isn't installed
-            if (reply.error().name() != QLatin1String("org.freedesktop.systemd1.NoSuchUnit")) {
+            const LocationState state = parseUnitFileStateError(reply.error().name());
+            if (state == LocationState::ReadFailed) {
                 setErrorMessage(i18n("Could not read the state of location services: %1", reply.error().message()));
             }
-            setState(LocationState::Unavailable);
+            setState(state);
             return;
         }
         setState(parseUnitFileState(reply.value()));
@@ -98,59 +140,54 @@ void Location::setLocationEnabled(const bool enabled) {
         return;
     }
     setErrorMessage({});
-    setBusy(true);
 
-    if (enabled) {
-        // a mask in /run has to be removed from /run
-        const bool runtime = m_state == LocationState::DisabledRuntime;
-        callSystemd(QStringLiteral("UnmaskUnitFiles"), {QStringList{GeoClueUnit}, runtime},
-                    [this](const QDBusMessage &) {
-                        callSystemd(QStringLiteral("Reload"), {}, [this](const QDBusMessage &) { changeFinished(); });
-                    });
+    const QString helper = QStringLiteral(ULTRAMARINE_LOCATION_HELPER);
+    if (!QFileInfo(helper).isExecutable()) {
+        setErrorMessage(i18n("Could not change location services: %1 is not installed.", helper));
+        return;
+    }
+    const QString pkexec = QStandardPaths::findExecutable(QStringLiteral("pkexec"));
+    if (pkexec.isEmpty()) {
+        setErrorMessage(i18n("Could not change location services: pkexec is not installed."));
         return;
     }
 
-    // persistent, and forced over anything already at that path
-    callSystemd(QStringLiteral("MaskUnitFiles"), {QStringList{GeoClueUnit}, false, true}, [this](const QDBusMessage &) {
-        callSystemd(QStringLiteral("Reload"), {}, [this](const QDBusMessage &) {
-            // stop it too, otherwise apps that already have a location keep getting updates until it idles out
-            callSystemd(QStringLiteral("StopUnit"), {GeoClueUnit, QStringLiteral("replace")},
-                        [this](const QDBusMessage &) { changeFinished(); });
-        });
-    });
-}
-
-void Location::callSystemd(const QString &method, const QVariantList &arguments,
-                           const std::function<void(const QDBusMessage &)> &next) {
-    auto message = QDBusMessage::createMethodCall(SystemdService, SystemdPath, ManagerInterface, method);
-    message.setArguments(arguments);
-    // lets systemd ask polkit to show an authentication dialog
-    message.setInteractiveAuthorizationAllowed(true);
-    const auto *watcher =
-        new QDBusPendingCallWatcher(QDBusConnection::systemBus().asyncCall(message, CallTimeoutMs), this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, next](QDBusPendingCallWatcher *call) {
-        call->deleteLater();
-        const QDBusMessage reply = call->reply();
-        if (reply.type() == QDBusMessage::ErrorMessage) {
-            callFailed(reply);
-            return;
+    setBusy(true);
+    auto *process = new QProcess(this);
+    m_helper = process;
+    process->setProcessChannelMode(QProcess::MergedChannels);
+    // keep pkexec off System Settings' terminal, if it has one, so it asks through the
+    // polkit agent instead of falling back to a text prompt
+    process->setStandardInputFile(QProcess::nullDevice());
+    // QProcess resets SIGPIPE to the default (exit) in the child. Ignore it, so if System
+    // Settings quits mid-change, systemctl printing "Created symlink" to the closed pipe
+    // can't kill it before it stops GeoClue.
+    QProcess::UnixProcessFlags flags = QProcess::UnixProcessFlag::IgnoreSigPipe;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    flags |= QProcess::UnixProcessFlag::CreateNewSession;
+#endif
+    process->setUnixProcessParameters(flags);
+    connect(process, &QProcess::finished, this, &Location::helperFinished);
+    connect(process, &QProcess::errorOccurred, this, [this, process](const QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            process->deleteLater();
+            setErrorMessage(i18n("Could not start pkexec."));
+            setBusy(false);
+            load();
         }
-        next(reply);
     });
+    process->start(pkexec, {helper, enabled ? QStringLiteral("enable") : QStringLiteral("disable")});
 }
 
-void Location::callFailed(const QDBusMessage &reply) {
-    if (isAuthenticationFailure(reply)) {
-        setErrorMessage(i18n("Authentication was cancelled or failed. No changes were made."));
-    } else {
-        setErrorMessage(i18n("Could not change location services: %1", reply.errorMessage()));
+void Location::helperFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
+    QString output;
+    if (m_helper) {
+        output = QString::fromLocal8Bit(m_helper->readAll());
+        m_helper->deleteLater();
     }
-    // a step may have gone through before the failure, so show what's actually set
-    changeFinished();
-}
-
-void Location::changeFinished() {
+    setErrorMessage(helperErrorMessage(exitCode, exitStatus, output));
     setBusy(false);
+    // show what's actually set, even after a failure
     load();
 }
 

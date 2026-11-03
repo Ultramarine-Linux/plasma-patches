@@ -11,10 +11,14 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "activity.h"
 #include "apps.h"
 #include "flatpak.h"
 #include "image.h"
+#include "inhibit.h"
 #include "lock.h"
 #include "nix.h"
 #include "packagekit.h"
@@ -22,6 +26,7 @@
 #include "rpm.h"
 #include "schedule.h"
 #include "settings.h"
+#include "updates.h"
 
 using namespace Qt::StringLiterals;
 using namespace std::chrono_literals;
@@ -70,11 +75,18 @@ namespace {
         static void inWindow();
         static void validatesSettings();
         static void parsesTimerShow();
+        static void combinesTonightStatus();
+        static void tonightAlreadyInstalled();
+        static void listFailsOnlyIfEverySourceFailed();
         static void readyToInstall();
         static void sessionInUse();
         static void timestamps();
         static void activityTracker();
         static void activityTrackerRestartsAfterGaps();
+        static void activityTrackerCountsFromIdleHint();
+        static void sessionsIdleSince();
+        static void idleInhibited();
+        static void screenInhibitedMarker();
         static void installLock();
         static void parsesBootcStatusCache();
         static void classifiesSystemUpdateTarget();
@@ -457,6 +469,14 @@ void UpdaterTest::parsesDeterminateNixVersions() {
     std::tie(installed, latest) = determinateNixVersions(u"Determinate Nixd client version: 3.22.5\n"_s);
     QCOMPARE(installed, u"3.22.5"_s);
     QVERIFY(latest.isEmpty());
+
+    QVERIFY(determinateNixUpgradable(u"3.22.5"_s, u"3.23.3"_s));
+    QVERIFY(determinateNixUpgradable(u"3.9.0"_s, u"3.10.0"_s));
+    // an install newer than the advised version, the same version, or nothing to compare
+    QVERIFY(!determinateNixUpgradable(u"3.23.3"_s, u"3.22.5"_s));
+    QVERIFY(!determinateNixUpgradable(u"3.22.5"_s, u"3.22.5"_s));
+    QVERIFY(!determinateNixUpgradable(u"3.22.5"_s, {}));
+    QVERIFY(!determinateNixUpgradable({}, u"3.22.5"_s));
 }
 
 void UpdaterTest::parsesImageStatus() {
@@ -639,7 +659,7 @@ void UpdaterTest::settingsRoundTrip() {
     file.close();
     QVERIFY(loadSettings(&got, &error));
     QCOMPARE(got,
-             (Settings{.automatic = true, .offline = true, .inactiveMinutes = 30, .windowStart = {}, .windowEnd = {}}));
+             (Settings{.automatic = true, .offline = true, .inactiveMinutes = 5, .windowStart = {}, .windowEnd = {}}));
 
     QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
     file.write("nope");
@@ -698,6 +718,46 @@ void UpdaterTest::parsesTimerShow() {
     QCOMPARE(parseTimerShow(u"ActiveState=inactive\nNextElapseUSecRealtime=\n"_s), ScheduleStatus{});
 }
 
+void UpdaterTest::combinesTonightStatus() {
+    const ScheduleStatus system{.scheduled = true, .next = 1761181200};
+    const ScheduleStatus user{.scheduled = true, .next = 1761181260};
+    const ScheduleStatus none;
+    // as root, only the system's timer counts
+    QCOMPARE(combineTonightStatus(system, std::nullopt), system);
+    QCOMPARE(combineTonightStatus(system, user), (ScheduleStatus{.scheduled = true, .next = 1761181200}));
+    // logging out stopped the user's timer
+    QCOMPARE(combineTonightStatus(system, none), (ScheduleStatus{.partial = true}));
+    QCOMPARE(combineTonightStatus(none, user), (ScheduleStatus{.partial = true}));
+    QCOMPARE(combineTonightStatus(none, none), ScheduleStatus{});
+
+    const QJsonObject json = ScheduleStatus{.partial = true}.toJson();
+    QCOMPARE(json.value(u"scheduled"_s).toBool(true), false);
+    QVERIFY(json.value(u"partial"_s).toBool());
+    QVERIFY(!ScheduleStatus{.scheduled = true}.toJson().contains(u"partial"_s));
+}
+
+void UpdaterTest::tonightAlreadyInstalled() {
+    const QDateTime scheduled(QDate(2026, 10, 22), QTime(14, 0));
+    QVERIFY(UltramarineUpdates::tonightAlreadyInstalled(scheduled.addSecs(9LL * 3600), scheduled));
+    // installed before it was scheduled, so there may be new updates
+    QVERIFY(!UltramarineUpdates::tonightAlreadyInstalled(scheduled.addSecs(-3600), scheduled));
+    QVERIFY(!UltramarineUpdates::tonightAlreadyInstalled(std::nullopt, scheduled));
+    // scheduled by an older helper that didn't record it
+    QVERIFY(!UltramarineUpdates::tonightAlreadyInstalled(scheduled, std::nullopt));
+}
+
+void UpdaterTest::listFailsOnlyIfEverySourceFailed() {
+    ListResponse response;
+    QVERIFY(!response.allFailed());
+    response.queriedSources = 3;
+    QVERIFY(!response.allFailed());
+    // no updates, and one source failed: the others still answered
+    response.errors = {u"flatpak user: no network"_s};
+    QVERIFY(!response.allFailed());
+    response.errors << u"rpm: no network"_s << u"flatpak system: no network"_s;
+    QVERIFY(response.allFailed());
+}
+
 void UpdaterTest::readyToInstall() {
     const QDateTime noon(QDate(2026, 10, 22), QTime(12, 0));
     const QDateTime night(QDate(2026, 10, 22), QTime(23, 0));
@@ -727,7 +787,7 @@ void UpdaterTest::readyToInstall() {
         {"in use", automatic, false, true, 0s, false, noon, false},
         {"in use with no wait", settings(true, 0), false, true, 0s, false, noon, false},
         {"no wait", settings(true, 0), false, false, 0s, false, noon, true},
-        {"used recently", automatic, false, false, 10min, false, noon, false},
+        {"used recently", automatic, false, false, 2min, false, noon, false},
         {"already installed", automatic, false, false, idle, true, noon, false},
         {"automatic off", settings(false, 30), false, false, idle, false, noon, false},
         {"outside window", settings(true, 30, u"01:00"_s, u"05:00"_s), false, false, idle, false, noon, false},
@@ -778,6 +838,15 @@ void UpdaterTest::timestamps() {
     // a stamp from the future (clock changes) doesn't block forever
     QVERIFY(writeTimestamp(stamp, now.addSecs(60 * 60LL), nullptr));
     QVERIFY(!within(stamp, 24h, now));
+    // out of QDateTime's range
+    QFile file(stamp);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    file.write("9223372036854775807\n");
+    file.close();
+    QVERIFY(!readTimestamp(stamp));
+    QVERIFY(!within(stamp, 24h, now));
+    QVERIFY(!parseTimestamp("-9223372036854775807"));
+    QCOMPARE(parseTimestamp(" 1800000000\n"), now);
 }
 
 void UpdaterTest::activityTracker() {
@@ -817,6 +886,134 @@ void UpdaterTest::activityTrackerRestartsAfterGaps() {
     const ActivityTracker fresh(upgraded.path() + "/inactive-since"_L1, upgraded.path() + "/last-poll"_L1);
     QCOMPARE(fresh.inactiveFor(false, minutesLater(60)), 0s);
     QCOMPARE(fresh.inactiveFor(false, minutesLater(65)), std::chrono::seconds(5min));
+}
+
+void UpdaterTest::activityTrackerCountsFromIdleHint() {
+    const QTemporaryDir dir;
+    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
+    const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
+    QCOMPARE(tracker.inactiveFor(true, start), 0s);
+    // idle since minute 2, first seen idle at minute 5
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(5), minutesLater(2)), std::chrono::seconds(3min));
+    // only used when inactivity starts
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(10), minutesLater(9)), std::chrono::seconds(8min));
+
+    // never from before the last poll, which saw the device in use (e.g. a video kept it on)
+    QCOMPARE(tracker.inactiveFor(true, minutesLater(15)), 0s);
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(20), minutesLater(1)), 0s);
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(25)), std::chrono::seconds(5min));
+    // or from the future
+    QCOMPARE(tracker.inactiveFor(true, minutesLater(30)), 0s);
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(35), minutesLater(40)), 0s);
+    // or after a gap no one watched
+    QCOMPARE(tracker.inactiveFor(true, minutesLater(40)), 0s);
+    QCOMPARE(tracker.inactiveFor(false, minutesLater(120), minutesLater(100)), 0s);
+}
+
+void UpdaterTest::sessionsIdleSince() {
+    const QList<LoginSession> sessions =
+        parseShowSessions(u"Id=2\nName=cypress\nUser=1000\nClass=user\nType=wayland\n"
+                          u"Active=yes\nIdleHint=yes\nIdleSinceHint=1800000000000000\n"
+                          u"LockedHint=no\n\n"
+                          u"Id=3\nName=cypress\nUser=1000\nClass=manager\n"
+                          u"Type=unspecified\nActive=yes\nIdleHint=no\nIdleSinceHint=0\n\n"
+                          u"Id=7\nName=admin\nUser=1001\nClass=user\nType=tty\n"
+                          u"Active=yes\nIdleHint=yes\nIdleSinceHint=1800000600000000\n"_s);
+    QCOMPARE(sessions.size(), 3);
+    QCOMPARE(sessions.at(0).uid, 1000U);
+    QCOMPARE(sessions.at(0).idleSince, QDateTime::fromSecsSinceEpoch(1'800'000'000));
+    QVERIFY(!sessions.at(1).idleSince);
+    // the latest of them, and the user manager doesn't count
+    QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions), QDateTime::fromSecsSinceEpoch(1'800'000'600));
+    QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions, u"cypress"_s),
+             QDateTime::fromSecsSinceEpoch(1'800'000'000));
+    QVERIFY(!UltramarineUpdates::sessionsIdleSince(sessions, u"guest"_s));
+
+    // a session that's only locked doesn't say since when
+    QList<LoginSession> locked = sessions;
+    locked[2].idle = false;
+    locked[2].locked = true;
+    QVERIFY(!UltramarineUpdates::sessionsIdleSince(locked));
+    QCOMPARE(UltramarineUpdates::sessionsIdleSince(locked, u"cypress"_s), QDateTime::fromSecsSinceEpoch(1'800'000'000));
+}
+
+void UpdaterTest::idleInhibited() {
+    const QList<LoginSession> sessions{
+        {.id = u"2"_s,
+         .name = u"cypress"_s,
+         .sessionClass = u"user"_s,
+         .type = u"wayland"_s,
+         .active = true,
+         .uid = 1000,
+         .locked = false,
+         .idle = false,
+         .idleSince = {}},
+        {.id = u"c1"_s,
+         .name = u"sddm"_s,
+         .sessionClass = u"greeter"_s,
+         .type = u"wayland"_s,
+         .active = false,
+         .uid = 976,
+         .locked = false,
+         .idle = false,
+         .idleSince = {}},
+    };
+    const auto inhibitor = [](const QString &what, const QString &who, const uint uid,
+                              const QString &mode = u"block"_s) {
+        return Inhibitor{.what = what, .who = who, .why = u"why"_s, .mode = mode, .uid = uid, .pid = 42};
+    };
+    QVERIFY(!UltramarineUpdates::idleInhibited({}, sessions));
+    QVERIFY(UltramarineUpdates::idleInhibited({inhibitor(u"sleep:idle"_s, u"mpv"_s, 1000)}, sessions));
+    QVERIFY(UltramarineUpdates::idleInhibited({inhibitor(u"idle"_s, u"mpv"_s, 1000)}, sessions, u"cypress"_s));
+    QVERIFY(!UltramarineUpdates::idleInhibited({inhibitor(u"idle"_s, u"mpv"_s, 1000)}, sessions, u"admin"_s));
+    const QList<Inhibitor> ignored{
+        // not about idle, only delaying, root, PowerDevil's and ours, or a user without a session
+        inhibitor(u"sleep"_s, u"mpv"_s, 1000),
+        inhibitor(u"idle"_s, u"mpv"_s, 1000, u"delay"_s),
+        inhibitor(u"idle"_s, u"daemon"_s, 0),
+        inhibitor(u"handle-power-key:handle-lid-switch:idle"_s, u"PowerDevil"_s, 1000),
+        inhibitor(u"idle"_s, QString::fromLatin1(inhibitorName), 1000),
+        inhibitor(u"idle"_s, u"greeter"_s, 976),
+        inhibitor(u"idle"_s, u"mpv"_s, 1234),
+    };
+    QVERIFY(!UltramarineUpdates::idleInhibited(ignored, sessions));
+
+    // only a foreground session counts: PowerDevil says everything is inhibited in the others
+    QVERIFY(hasActiveSession(sessions, u"cypress"_s));
+    QVERIFY(!hasActiveSession(sessions, u"sddm"_s));
+    QVERIFY(!hasActiveSession(sessions, u"guest"_s));
+}
+
+void UpdaterTest::screenInhibitedMarker() {
+    const QTemporaryDir dir;
+    const QString path = dir.path() + "/screen-inhibited"_L1;
+    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const uint uid = getuid();
+    QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now));
+    QVERIFY(writeTimestamp(path, now.addSecs(-60), nullptr));
+    QVERIFY(freshScreenInhibitedMarker(path, uid, maxPollGap, now));
+    // stale, from the future, someone else's, or not a plain file
+    QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now.addSecs(3600)));
+    QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now.addSecs(-120)));
+    QVERIFY(!freshScreenInhibitedMarker(path, uid + 1, maxPollGap, now));
+    const QString link = dir.path() + "/link"_L1;
+    QVERIFY(QFile::link(path, link));
+    QVERIFY(!freshScreenInhibitedMarker(link, uid, maxPollGap, now));
+    // a symlinked directory
+    const QString linkedDir = dir.path() + "/linked"_L1;
+    QVERIFY(QFile::link(dir.path(), linkedDir));
+    QVERIFY(!freshScreenInhibitedMarker(linkedDir + "/screen-inhibited"_L1, uid, maxPollGap, now));
+    // a FIFO is rejected without blocking on it
+    const QString fifo = dir.path() + "/fifo"_L1;
+    QCOMPARE(mkfifo(QFile::encodeName(fifo).constData(), 0600), 0);
+    QVERIFY(!freshScreenInhibitedMarker(fifo, uid, maxPollGap, now));
+    // a timestamp QDateTime can't represent isn't fresh forever
+    QFile huge(path);
+    QVERIFY(huge.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    huge.write("9223372036854775807\n");
+    huge.close();
+    QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now));
 }
 
 void UpdaterTest::installLock() {

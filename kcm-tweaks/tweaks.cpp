@@ -4,9 +4,13 @@
 
 #include <KLocalizedString>
 
+#include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
+#include <QStandardPaths>
+#include <QUuid>
 
 #include <algorithm>
 #include <ranges>
@@ -31,6 +35,35 @@ namespace {
             return 2;
         }
         return 3;
+    }
+
+    // how often the output of a running change is read
+    constexpr int OutputPollMs = 200;
+
+    /**
+     * starts children without stdin and, where Qt can, in a new session without a controlling
+     * terminal. um picks sudo when it has a terminal, which would prompt where nobody sees it
+     * if System Settings was started from one. SIGPIPE is ignored too, which QProcess would
+     * otherwise reset to the default (exit) in the child.
+     */
+    void detachFromTerminal(QProcess *process) {
+        process->setStandardInputFile(QProcess::nullDevice());
+        QProcess::UnixProcessFlags flags = QProcess::UnixProcessFlag::IgnoreSigPipe;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        flags |= QProcess::UnixProcessFlag::CreateNewSession;
+#endif
+        process->setUnixProcessParameters(flags);
+    }
+
+    /// returns the last line of @p output that um logged an error on, without the timestamp
+    QString lastUmError(const QString &output) {
+        for (const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+             const QString &line: lines | std::views::reverse) {
+            if (const QString stripped = stripGoLogTimestamp(line); stripped != line) {
+                return stripped.trimmed();
+            }
+        }
+        return {};
     }
 } // namespace
 
@@ -60,7 +93,9 @@ bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
         item.type = object.value(QStringLiteral("type")).toString();
         item.stability = object.value(QStringLiteral("stability")).toString();
         item.warning = object.value(QStringLiteral("warning")).toString();
-        item.enabled = object.value(QStringLiteral("enabled")).toBool();
+        item.stateError = object.value(QStringLiteral("state_error")).toString();
+        // um reports enabled as false when it couldn't tell, which isn't the same as off
+        item.enabled = item.stateError.isEmpty() && object.value(QStringLiteral("enabled")).toBool();
         result.append(item);
     }
 
@@ -78,6 +113,40 @@ bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
     return true;
 }
 
+QString stripGoLogTimestamp(const QString &line) {
+    static const QRegularExpression timestamp(QStringLiteral(R"(^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} )"));
+    if (const QRegularExpressionMatch match = timestamp.match(line); match.hasMatch()) {
+        return line.mid(match.capturedLength());
+    }
+    return line;
+}
+
+QString changeErrorMessage(const bool script, const int exitCode, const QProcess::ExitStatus exitStatus,
+                           const QString &output) {
+    if (exitStatus == QProcess::NormalExit && exitCode == 0) {
+        return {};
+    }
+    if (exitStatus != QProcess::NormalExit) {
+        // the exit code of a crashed process means nothing
+        return script ? i18n("The maintenance task stopped unexpectedly. See the output for details.")
+                      : i18n("The tweak could not be changed because um stopped unexpectedly. See the output for "
+                             "details.");
+    }
+    if (UmCli::isAuthenticationFailure(exitCode)) {
+        // um maps a playbook's 126 and 127 to 1, so for toggles and one-time changes these are
+        // pkexec's. um execs script.sh directly though, so a script can exit with them too.
+        return script ? i18n("Authentication was cancelled or failed, or the maintenance task failed. See the "
+                             "output for details.")
+                      : i18n("Authentication was cancelled or failed. No changes were made.");
+    }
+    if (const QString error = lastUmError(output); !error.isEmpty()) {
+        return script ? i18n("The maintenance task failed: %1", error)
+                      : i18n("The tweak could not be changed: %1", error);
+    }
+    return script ? i18n("The maintenance task failed (exit code %1). See the output for details.", exitCode)
+                  : i18n("The tweak could not be changed (exit code %1). See the output for details.", exitCode);
+}
+
 TweaksModel::TweaksModel(QObject *parent) : QAbstractListModel(parent) {}
 
 int TweaksModel::rowCount(const QModelIndex &parent) const {
@@ -89,7 +158,7 @@ QVariant TweaksModel::data(const QModelIndex &index, const int role) const {
         return {};
     }
 
-    const auto &[id, description, type, stability, warning, enabled] = m_tweaks.at(index.row());
+    const auto &[id, description, type, stability, warning, stateError, enabled] = m_tweaks.at(index.row());
     switch (role) {
     case IdRole:
         return id;
@@ -102,6 +171,8 @@ QVariant TweaksModel::data(const QModelIndex &index, const int role) const {
         return stability;
     case WarningRole:
         return warning;
+    case StateErrorRole:
+        return stateError;
     case EnabledRole:
         return enabled;
     case BusyRole:
@@ -113,8 +184,14 @@ QVariant TweaksModel::data(const QModelIndex &index, const int role) const {
 
 QHash<int, QByteArray> TweaksModel::roleNames() const {
     return {
-        {IdRole, "tweakId"},      {DescriptionRole, "description"}, {TypeRole, "type"}, {StabilityRole, "stability"},
-        {WarningRole, "warning"}, {EnabledRole, "tweakEnabled"},    {BusyRole, "busy"},
+        {IdRole, "tweakId"},
+        {DescriptionRole, "description"},
+        {TypeRole, "type"},
+        {StabilityRole, "stability"},
+        {WarningRole, "warning"},
+        {StateErrorRole, "stateError"},
+        {EnabledRole, "tweakEnabled"},
+        {BusyRole, "busy"},
     };
 }
 
@@ -146,9 +223,12 @@ void TweaksModel::setBusyId(const QString &id) {
 }
 
 Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
-    KQuickManagedConfigModule(parent, metaData), m_tweaks(this) {
+    KQuickConfigModule(parent, metaData), m_tweaks(this), m_changeProcess(new QProcess(this)) {
     // tweaks are applied immediately through um, not through the Apply button
     setButtons(NoAdditionalButton);
+
+    detachFromTerminal(&m_listProcess);
+    detachFromTerminal(m_changeProcess);
 
     connect(&m_listProcess, &QProcess::finished, this, &Tweaks::listFinished);
     connect(&m_listProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
@@ -159,18 +239,44 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
         }
     });
 
-    m_changeProcess.setProcessChannelMode(QProcess::MergedChannels);
-    connect(&m_changeProcess, &QProcess::finished, this, &Tweaks::changeFinished);
-    connect(&m_changeProcess, &QProcess::readyReadStandardOutput, this, &Tweaks::readChangeOutput);
-    connect(&m_changeProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
+    // stderr goes to the same file as stdout
+    m_changeProcess->setProcessChannelMode(QProcess::MergedChannels);
+    m_outputTimer.setInterval(OutputPollMs);
+    connect(&m_outputTimer, &QTimer::timeout, this, &Tweaks::readChangeOutput);
+    connect(m_changeProcess, &QProcess::started, this, [this] {
+        // um has opened it by now, and the file goes away with the last handle
+        QFile::remove(m_outputFile.fileName());
+    });
+    connect(m_changeProcess, &QProcess::finished, this, &Tweaks::changeFinished);
+    connect(m_changeProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
+            closeChangeOutput();
             m_tweaks.setBusyId({});
             setRunning(false);
             setStatus({});
             setErrorMessage(i18n("Could not start um."));
         }
     });
+}
 
+Tweaks::~Tweaks() {
+    if (m_changeProcess->state() == QProcess::NotRunning) {
+        return;
+    }
+    // ~QProcess would kill um and wait up to 30 seconds for it, freezing System Settings. Once
+    // um runs as root through pkexec it can't be killed from here, and stopping a playbook
+    // halfway could leave the system half changed. So let it finish by itself. Its output
+    // goes to an unlinked file rather than a pipe, so it can keep writing after this handle
+    // is closed, and even after System Settings quits.
+    closeChangeOutput();
+    m_changeProcess->disconnect(this);
+    m_changeProcess->setParent(nullptr);
+    connect(m_changeProcess, &QProcess::finished, m_changeProcess, &QObject::deleteLater);
+}
+
+void Tweaks::load() {
+    KQuickConfigModule::load();
+    // the list is read again whenever the page is shown, since tweaks can change from a terminal
     refresh();
 }
 
@@ -235,9 +341,25 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
         return;
     }
 
+    // a fresh file per run, only readable by the user. NewOnly refuses anything already at the path.
+    closeChangeOutput();
+    const QString runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    m_outputFile.setFileName(QDir(runtimeDir)
+                                 .filePath(QStringLiteral("kcm_ultramarine_tweaks-%1.log")
+                                               .arg(QUuid::createUuid().toString(QUuid::WithoutBraces))));
+    if (!m_outputFile.open(QIODevice::ReadWrite | QIODevice::NewOnly | QIODevice::Unbuffered,
+                           QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+        setErrorMessage(i18n("Could not create a file for um's output: %1", m_outputFile.errorString()));
+        return;
+    }
+    m_changeProcess->setStandardOutputFile(m_outputFile.fileName());
+
     setErrorMessage({});
     m_output.clear();
     Q_EMIT outputChanged();
+    m_changeDecoder.resetState();
+    m_partialLine.clear();
+    m_runningScript = arguments.contains(QStringLiteral("run"));
     m_tweaks.setBusyId(id);
     setRunning(true);
     setStatus(progressMessage);
@@ -247,7 +369,8 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
         QStringList{QStringLiteral("tweaks")} + arguments + QStringList{QStringLiteral("--yes"), id};
     // um escalates through pkexec itself when it isn't run from a terminal. There is no
     // Cancel, since once the tweak runs as root, signals from this unprivileged process fail.
-    m_changeProcess.start(um, umArguments);
+    m_changeProcess->start(um, umArguments);
+    m_outputTimer.start();
 }
 
 void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
@@ -266,8 +389,15 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
         if (stdErr.contains(QLatin1String("flag provided but not defined"))) {
             setErrorMessage(i18n("This version of um is too old to manage tweaks from System Settings."));
         } else {
-            setErrorMessage(stdErr.isEmpty() ? i18n("Could not load the list of tweaks.")
-                                             : i18n("Could not load the list of tweaks: %1", stdErr));
+            // um's errors go through Go's log package, which puts a timestamp in front
+            QStringList errorLines;
+            for (const QStringList lines = stdErr.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+                 const QString &line: lines) {
+                errorLines.append(stripGoLogTimestamp(line));
+            }
+            const QString error = errorLines.join(QLatin1Char('\n'));
+            setErrorMessage(error.isEmpty() ? i18n("Could not load the list of tweaks.")
+                                            : i18n("Could not load the list of tweaks: %1", error));
         }
         return;
     }
@@ -276,14 +406,15 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
 
 void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
     readChangeOutput();
+    closeChangeOutput();
     m_tweaks.setBusyId({});
     setRunning(false);
     setStatus({});
 
-    if (exitStatus == QProcess::NormalExit && UmCli::isAuthenticationFailure(exitCode)) {
-        setErrorMessage(i18n("Authentication was cancelled or failed. No changes were made."));
-    } else if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-        setErrorMessage(i18n("The tweak could not be changed (exit code %1). See the output for details.", exitCode));
+    m_partialLine.clear();
+    if (const QString message = changeErrorMessage(m_runningScript, exitCode, exitStatus, m_output);
+        !message.isEmpty()) {
+        setErrorMessage(message);
     }
 
     // always reload: um records state only after a playbook succeeds
@@ -291,16 +422,41 @@ void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitS
 }
 
 void Tweaks::readChangeOutput() {
-    const QString text = QString::fromUtf8(m_changeProcess.readAllStandardOutput());
+    // stateful, so a UTF-8 sequence split across reads isn't mangled
+    if (!m_outputFile.isOpen()) {
+        return;
+    }
+    const QString text = m_changeDecoder.decode(m_outputFile.readAll());
     if (text.isEmpty()) {
         return;
     }
     m_output += text;
     Q_EMIT outputChanged();
 
+    // only complete lines are shown, so the status doesn't flicker through partial ones
+    m_partialLine += text;
+    const qsizetype end = m_partialLine.lastIndexOf(QLatin1Char('\n'));
+    if (end < 0) {
+        return;
+    }
+    const QString complete = m_partialLine.left(end);
+    m_partialLine.remove(0, end + 1);
+    updateStatus(complete);
+}
+
+void Tweaks::closeChangeOutput() {
+    m_outputTimer.stop();
+    if (m_outputFile.isOpen()) {
+        // normally unlinked already, unless um never started
+        QFile::remove(m_outputFile.fileName());
+        m_outputFile.close();
+    }
+}
+
+void Tweaks::updateStatus(const QString &lines) {
     // the status shows the last meaningful line
-    for (const QStringList lines = text.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-         const QString &rawLine: lines | std::views::reverse) {
+    for (const QStringList split = lines.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+         const QString &rawLine: split | std::views::reverse) {
         // Ansible pads headers like "TASK [name] ****" with asterisks, so drop the padding
         QString line = rawLine.trimmed();
         while (line.endsWith(QLatin1Char('*'))) {

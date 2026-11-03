@@ -52,17 +52,18 @@ namespace OfficeInstaller {
         return result;
     }
 
-    Command installCommand(const Suite &suite, const Source source) {
-        switch (source) {
-        case Source::Flatpak:
-            // flatpak and PackageKit authorize through polkit, which prompts in the session
-            return {.program = u"flatpak"_s,
-                    .arguments = {u"install"_s, u"--system"_s, u"--noninteractive"_s, u"-y"_s, u"flathub"_s,
-                                  suite.flatpakId}};
-        case Source::Rpm:
-            return {u"pkcon"_s, QStringList{u"install"_s, u"--noninteractive"_s} + suite.rpmPackages};
+    bool isSuite(const Suite &suite, const QString &desktopEntryName, const QString &executable) {
+        // LibreOffice's Flatpak has org.libreoffice.LibreOffice.writer and so on
+        if (!suite.flatpakId.isEmpty() &&
+            (desktopEntryName.compare(suite.flatpakId, Qt::CaseInsensitive) == 0 ||
+             desktopEntryName.startsWith(suite.flatpakId + u'.', Qt::CaseInsensitive))) {
+            return true;
         }
-        Q_UNREACHABLE();
+        return !suite.rpmExecutable.isEmpty() && executable == suite.rpmExecutable;
+    }
+
+    QString flatpakRef(const Suite &suite, const QString &arch) {
+        return u"app/%1/%2/stable"_s.arg(suite.flatpakId, arch);
     }
 
     Command launchCommand(const Suite &suite, const Source source, const QStringList &files) {

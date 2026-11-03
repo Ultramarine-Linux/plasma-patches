@@ -251,7 +251,6 @@ namespace UltramarineUpdates {
                     *error = u"bootc upgrade --check failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
                     return false;
                 }
-                updateBootcStatusCache();
                 return true;
             }
         }

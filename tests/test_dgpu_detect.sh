@@ -46,6 +46,11 @@ card desktop-igpu card1 1 1
 card igpu-only card0 1 0
 card two-dgpus card0 1 1
 card two-dgpus card1 0 1
+# udevadm keeps writing after the tag. grep -q stops reading at the match, which
+# must not make udevadm's SIGPIPE count as "not discrete"
+card noisy card0 1 0
+card noisy card1 0 1
+for i in $(seq 200000); do echo "PADDING_$i=x"; done >>"$tmp/noisy/card1/fake-udev"
 mkdir -p "$tmp/empty"
 
 failed=0
@@ -78,5 +83,6 @@ expect desktop hidden
 expect desktop-igpu hidden
 expect igpu-only hidden
 expect two-dgpus hidden
+expect noisy shown
 expect empty hidden
 exit $failed

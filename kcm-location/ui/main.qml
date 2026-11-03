@@ -136,17 +136,32 @@ KCMUtils.SimpleKCM {
         }
     }
 
+    // also before the first read, when there's no state to show yet
     Kirigami.LoadingPlaceholder {
         anchors.centerIn: parent
-        visible: kcm.loading && !kcm.available
+        visible: !kcm.available && (kcm.loading || (!kcm.notInstalled && !kcm.readFailed))
     }
 
     Kirigami.PlaceholderMessage {
         anchors.centerIn: parent
         width: parent.width - Kirigami.Units.gridUnit * 4
-        visible: !kcm.loading && !kcm.available
+        visible: !kcm.loading && kcm.notInstalled
         icon.name: "mark-location"
         text: i18nc("@info:placeholder", "Location services aren't installed")
         explanation: i18nc("@info:placeholder", "Install the geoclue2 package to let apps request your location.")
+    }
+
+    // systemd couldn't be asked. The banner says why.
+    Kirigami.PlaceholderMessage {
+        anchors.centerIn: parent
+        width: parent.width - Kirigami.Units.gridUnit * 4
+        visible: !kcm.loading && kcm.readFailed
+        icon.name: "dialog-error"
+        text: i18nc("@info:placeholder", "Couldn't check whether location services are on")
+        helpfulAction: Kirigami.Action {
+            text: i18nc("@action:button", "Try Again")
+            icon.name: "view-refresh"
+            onTriggered: kcm.load()
+        }
     }
 }

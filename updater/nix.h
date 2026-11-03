@@ -68,6 +68,9 @@ namespace UltramarineUpdates {
     /// version. latest is empty if the output doesn't say (offline).
     std::pair<QString, QString> determinateNixVersions(const QString &output);
 
+    /// whether @p latest is a newer version than @p installed (both like "3.22.5")
+    bool determinateNixUpgradable(const QString &installed, const QString &latest);
+
     QString nixBinary();
     QString determinateNixdBinary();
 

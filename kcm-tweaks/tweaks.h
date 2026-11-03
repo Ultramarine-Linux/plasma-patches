@@ -4,11 +4,14 @@
 
 #pragma once
 
-#include <KQuickManagedConfigModule>
+#include <KQuickConfigModule>
 
 #include <QAbstractListModel>
-
+#include <QFile>
 #include <QProcess>
+#include <QStringDecoder>
+#include <QTimer>
+
 #include <cstdint>
 
 struct TweakItem {
@@ -18,6 +21,8 @@ struct TweakItem {
     QString type;
     QString stability;
     QString warning;
+    /// set when um couldn't tell whether the tweak is on, in which case enabled isn't meaningful
+    QString stateError;
     bool enabled = false;
 };
 
@@ -27,6 +32,16 @@ struct TweakItem {
  * Returns false and leaves @p tweaks untouched if the output is not valid.
  */
 bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks);
+
+/// removes the "YYYY/MM/DD HH:MM:SS " prefix Go's log package puts on um's error lines
+[[nodiscard]] QString stripGoLogTimestamp(const QString &line);
+
+/**
+ * returns the message to show after `um tweaks` finished, or an empty string if it succeeded.
+ * @p script is whether it ran a script tweak, and @p output is everything it printed.
+ */
+[[nodiscard]] QString changeErrorMessage(bool script, int exitCode, QProcess::ExitStatus exitStatus,
+                                         const QString &output);
 
 class TweaksModel final : public QAbstractListModel {
     Q_OBJECT
@@ -40,6 +55,7 @@ public:
         TypeRole,
         StabilityRole,
         WarningRole,
+        StateErrorRole,
         EnabledRole,
         BusyRole,
     };
@@ -72,7 +88,7 @@ private:
     QString m_busyId;
 };
 
-class Tweaks : public KQuickManagedConfigModule {
+class Tweaks : public KQuickConfigModule {
     Q_OBJECT
     Q_PROPERTY(TweaksModel *tweaks READ tweaks CONSTANT)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
@@ -84,6 +100,15 @@ class Tweaks : public KQuickManagedConfigModule {
 public:
     /// creates the Ultramarine tweaks configuration module
     explicit Tweaks(QObject *parent, const KPluginMetaData &metaData);
+    ~Tweaks() override;
+
+    Tweaks(const Tweaks &) = delete;
+    Tweaks &operator=(const Tweaks &) = delete;
+    Tweaks(Tweaks &&) = delete;
+    Tweaks &operator=(Tweaks &&) = delete;
+
+    /// reloads the tweak list, called when the page is shown
+    void load() override;
 
     /// returns the model containing the available tweaks
     TweaksModel *tweaks();
@@ -129,6 +154,10 @@ private:
     void listFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void changeFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void readChangeOutput();
+    /// stops reading the change's output and closes the file
+    void closeChangeOutput();
+    /// shows the last complete line of @p lines as the status
+    void updateStatus(const QString &lines);
 
     void setLoading(bool value);
     void setRunning(bool value);
@@ -137,12 +166,29 @@ private:
 
     TweaksModel m_tweaks;
     QProcess m_listProcess;
-    QProcess m_changeProcess;
+    /**
+     * a pointer, so ~Tweaks can let a running change finish instead of having ~QProcess kill
+     * it and wait (see ~Tweaks)
+     */
+    QProcess *m_changeProcess;
+    /**
+     * the change's output. um writes it to a file in $XDG_RUNTIME_DIR rather than a pipe, so
+     * it keeps running if System Settings quits (a write to a closed pipe would kill it). The
+     * file is unlinked once um has started, and read through this handle.
+     */
+    QFile m_outputFile;
+    /// polls m_outputFile for new output while a change runs
+    QTimer m_outputTimer;
+    QStringDecoder m_changeDecoder{QStringDecoder::Utf8};
+    /// change output after the last newline, not yet shown as the status
+    QString m_partialLine;
     QString m_status;
     QString m_errorMessage;
     QString m_output;
     bool m_loading = false;
     bool m_running = false;
+    /// the running change is a script tweak
+    bool m_runningScript = false;
     /// refresh() was called while loading, so reload once the current load finishes
     bool m_reloadPending = false;
 };

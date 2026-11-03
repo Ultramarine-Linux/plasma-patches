@@ -9,27 +9,29 @@
 #include <KSycoca>
 
 #include <QComboBox>
+#include <QDBusConnection>
 #include <QDialogButtonBox>
 #include <QFileInfo>
 #include <QLabel>
 #include <QListWidget>
 #include <QMimeDatabase>
 #include <QPainter>
+#include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
-#include <QRegularExpression>
 #include <QSet>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStyledItemDelegate>
-#include <QSysInfo>
 #include <QVBoxLayout>
 
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
 
+#include "flatpakinstaller.h"
 #include "launch.h"
+#include "packagekit.h"
 
 using namespace Qt::StringLiterals;
 
@@ -54,15 +56,31 @@ namespace OfficeInstaller {
             Q_UNREACHABLE();
         }
 
-        QString subtitle(const QList<QUrl> &urls) {
+        QString subtitle(const QList<QUrl> &urls, const QString &installedSuiteName) {
+            if (!installedSuiteName.isEmpty()) {
+                if (urls.isEmpty()) {
+                    return i18nc("@info %1 is an office suite", "Install an office suite to use alongside %1.",
+                                 installedSuiteName);
+                }
+                if (urls.size() == 1) {
+                    return i18nc("@info %1 is an office suite, %2 a file name",
+                                 "%1 can't open “%2”. Install another office suite to open it.", installedSuiteName,
+                                 urls.constFirst().fileName());
+                }
+                // the singular is never shown, but languages with several plural forms need i18np
+                return i18ncp("@info %2 is an office suite",
+                              "%2 can't open this document. Install another office suite to open it.",
+                              "%2 can't open these %1 documents. Install another office suite to open them.",
+                              urls.size(), installedSuiteName);
+            }
+            if (urls.isEmpty()) {
+                return i18n("Install an office suite to open documents, spreadsheets and presentations.");
+            }
             if (urls.size() == 1) {
                 return i18n("Install an office suite to open “%1”.", urls.constFirst().fileName());
             }
-            if (urls.size() > 1) {
-                return i18np("Install an office suite to open this document",
-                             "Install an office suite to open these %1 documents", urls.size());
-            }
-            return i18n("Install an office suite to open documents, spreadsheets and presentations");
+            return i18np("Install an office suite to open this document.",
+                         "Install an office suite to open these %1 documents.", urls.size());
         }
 
         /// the documents' type icon if they're all the same type, or a generic document icon
@@ -81,15 +99,6 @@ namespace OfficeInstaller {
             return QIcon::fromTheme(u"x-office-document"_s);
         }
 
-        /// Flatpak's architecture name for this machine
-        QString flatpakArch() {
-            QString arch = QSysInfo::currentCpuArchitecture();
-            if (arch == "arm64"_L1) {
-                return u"aarch64"_s;
-            }
-            return arch;
-        }
-
         /**
          * the suite's icon. Flatpak keeps Flathub's app icons with its AppStream
          * data, so the icons are there before anything is installed. Falls back
@@ -99,11 +108,14 @@ namespace OfficeInstaller {
             if (QIcon::hasThemeIcon(suite.flatpakId)) {
                 return QIcon::fromTheme(suite.flatpakId);
             }
-            const QString appstream = u"/flatpak/appstream/flathub/%1/active/icons"_s.arg(flatpakArch());
-            const QStringList roots{
-                QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + appstream,
-                u"/var/lib"_s + appstream,
-            };
+            const QString appstream =
+                u"/flatpak/appstream/flathub/%1/active/icons"_s.arg(FlatpakInstaller::defaultArch());
+            QStringList roots{u"/var/lib"_s + appstream};
+            // empty without a home directory, which would make the user root "/flatpak/..."
+            if (const QString userData = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+                !userData.isEmpty()) {
+                roots.prepend(userData + appstream);
+            }
             QIcon icon;
             for (const QString &root: roots) {
                 for (const auto size: {"128x128"_L1, "64x64"_L1}) {
@@ -302,20 +314,15 @@ namespace OfficeInstaller {
             label->setForegroundRole(QPalette::PlaceholderText);
             return label;
         }
-
-        /// Flatpak and PackageKit redraw progress with carriage returns and colors
-        QString cleanLine(QString line) {
-            static const QRegularExpression escapes(u"\x1b\\[[0-9;?]*[A-Za-z]"_s);
-            line.remove(escapes);
-            return line.section(u'\r', -1).trimmed();
-        }
     } // namespace
 
-    InstallerDialog::InstallerDialog(const QList<QUrl> &urls, QWidget *parent) :
-        QDialog(parent), m_urls(urls), m_suites(suites()), m_imageBased(isImageBased()),
-        m_pages(new QStackedWidget(this)), m_error(new KMessageWidget(this)), m_suiteList(new SuiteList(this)),
-        m_sourceRow(new QWidget(this)), m_sourceLabel(new QLabel(this)), m_sourceBox(new QComboBox(this)),
-        m_progressIcon(new QLabel(this)), m_progressTitle(titleLabel({}, this)), m_progressDetail(mutedLabel({}, this)),
+    InstallerDialog::InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered,
+                                     const QString &installedSuite, QWidget *parent) :
+        QDialog(parent), m_urls(urls), m_installedSuite(installedSuite), m_suites(offered),
+        m_imageBased(isImageBased()), m_pages(new QStackedWidget(this)), m_error(new KMessageWidget(this)),
+        m_suiteList(new SuiteList(this)), m_sourceRow(new QWidget(this)), m_sourceLabel(new QLabel(this)),
+        m_sourceBox(new QComboBox(this)), m_progressIcon(new QLabel(this)), m_progressTitle(titleLabel({}, this)),
+        m_progressDetail(mutedLabel({}, this)),
         m_buttons(new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this)) {
         setWindowTitle(i18nc("@title:window", "Install an Office Suite"));
 
@@ -363,8 +370,11 @@ namespace OfficeInstaller {
         header->addWidget(iconLabel(documentIcon(m_urls), HeaderIconSize, page), 0, Qt::AlignTop);
         auto *headerText = new QVBoxLayout;
         headerText->setSpacing(0);
-        headerText->addWidget(titleLabel(i18nc("@title", "No Office Suite Installed"), page));
-        headerText->addWidget(mutedLabel(subtitle(m_urls), page));
+        headerText->addWidget(titleLabel(m_installedSuite.isEmpty() ? i18nc("@title", "No Office Suite Installed")
+                                                                    : i18nc("@title", "Install Another Office Suite"),
+                                         page));
+        m_subtitle = mutedLabel(subtitle(m_urls, m_installedSuite), page);
+        headerText->addWidget(m_subtitle);
         header->addLayout(headerText, 1);
         layout->addLayout(header);
         layout->addSpacing(fontMetrics().height() / 2);
@@ -434,10 +444,42 @@ namespace OfficeInstaller {
         return page;
     }
 
-    void InstallerDialog::reject() {
-        if (!m_process) {
-            QDialog::reject();
+    bool InstallerDialog::registerOnBus() {
+        QDBusConnection bus = QDBusConnection::sessionBus();
+        if (!bus.isConnected()) {
+            return true;
         }
+        bus.registerObject(u"/"_s, this, QDBusConnection::ExportScriptableSlots);
+        if (bus.registerService(QLatin1StringView(DBusService))) {
+            return true;
+        }
+        bus.unregisterObject(u"/"_s);
+        return false;
+    }
+
+    void InstallerDialog::unregisterFromBus() {
+        QDBusConnection bus = QDBusConnection::sessionBus();
+        bus.unregisterService(QLatin1StringView(DBusService));
+        bus.unregisterObject(u"/"_s);
+    }
+
+    void InstallerDialog::reject() {
+        if (!m_installer) {
+            unregisterFromBus();
+            QDialog::reject();
+            return;
+        }
+        m_buttons->button(QDialogButtonBox::Cancel)->setEnabled(false);
+        m_progressTitle->setText(i18nc("@info:status", "Canceling…"));
+        m_progressDetail->clear();
+        m_installer->cancel();
+    }
+
+    void InstallerDialog::addDocuments(const QStringList &urls) {
+        std::ranges::transform(urls, std::back_inserter(m_urls), [](const QString &url) { return QUrl(url); });
+        m_subtitle->setText(subtitle(m_urls, m_installedSuite));
+        raise();
+        activateWindow();
     }
 
     const Suite &InstallerDialog::selectedSuite() const { return m_suites.at(std::max(0, m_suiteList->currentRow())); }
@@ -459,79 +501,78 @@ namespace OfficeInstaller {
     }
 
     void InstallerDialog::install() {
-        if (m_process) {
+        if (m_installer) {
             return;
         }
         const Suite &suite = selectedSuite();
-        const auto [program, arguments] = installCommand(suite, selectedSource());
-        m_lastLine.clear();
-        m_process = new QProcess(this);
-        m_process->setProcessChannelMode(QProcess::MergedChannels);
-        connect(m_process, &QProcess::readyReadStandardOutput, this, &InstallerDialog::readOutput);
-        connect(m_process, &QProcess::finished, this, &InstallerDialog::installFinished);
-        connect(m_process, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
-            if (error == QProcess::FailedToStart) {
-                m_lastLine = m_process->errorString();
-                installFinished(-1, QProcess::CrashExit);
-            }
+        if (selectedSource() == Source::Rpm) {
+            m_installer = new PackageKitInstaller(suite.rpmPackages, this);
+        } else {
+            m_installer = new FlatpakInstaller(u"flathub"_s, flatpakRef(suite, FlatpakInstaller::defaultArch()), this);
+        }
+        connect(m_installer, &Installer::progress, this, [this](const QString &text) {
+            m_progressDetail->setText(
+                m_progressDetail->fontMetrics().elidedText(text, Qt::ElideMiddle, m_progressDetail->width()));
         });
+        connect(m_installer, &Installer::finished, this, &InstallerDialog::installFinished);
 
         m_error->animatedHide();
         m_progressIcon->setPixmap(suiteIcon(suite).pixmap(64, 64));
         m_progressTitle->setText(i18nc("@info:status %1 is an office suite", "Installing %1…", suite.name));
         m_progressDetail->clear();
         setBusy(true);
-        m_process->start(program, arguments);
+        m_installer->start();
     }
 
     void InstallerDialog::setBusy(const bool busy) const {
         m_pages->setCurrentIndex(busy ? 1 : 0);
         m_sourceRow->setVisible(!busy);
         m_buttons->button(QDialogButtonBox::Ok)->setVisible(!busy);
-        m_buttons->button(QDialogButtonBox::Cancel)->setEnabled(!busy);
+        m_buttons->button(QDialogButtonBox::Cancel)->setEnabled(true);
     }
 
-    void InstallerDialog::readOutput() {
-        for (const QStringList lines = QString::fromUtf8(m_process->readAllStandardOutput()).split(u'\n');
-             const QString &line: lines) {
-            if (const QString cleaned = cleanLine(line); !cleaned.isEmpty()) {
-                m_lastLine = cleaned;
-            }
-        }
-        m_progressDetail->setText(
-            m_progressDetail->fontMetrics().elidedText(m_lastLine, Qt::ElideMiddle, m_progressDetail->width()));
-    }
+    void InstallerDialog::installFinished(const bool success, const bool canceled, const QString &error) {
+        m_installer->deleteLater();
+        m_installer = nullptr;
 
-    void InstallerDialog::installFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
-        if (!m_process) {
+        if (success) {
+            openDocuments();
             return;
         }
-        const bool succeeded = exitStatus == QProcess::NormalExit && exitCode == 0;
-        if (m_process->state() == QProcess::NotRunning) {
-            readOutput();
+        setBusy(false);
+        if (canceled) {
+            m_error->setMessageType(KMessageWidget::Information);
+            m_error->setText(i18nc("@info %1 is an office suite", "Installing %1 was canceled.", selectedSuite().name));
+        } else {
+            m_error->setMessageType(KMessageWidget::Error);
+            m_error->setText(error.isEmpty() ? i18nc("@info %1 is an office suite", "%1 could not be installed.",
+                                                     selectedSuite().name)
+                                             : i18nc("@info %1 is an office suite, %2 the installer's error",
+                                                     "%1 could not be installed: %2", selectedSuite().name, error));
         }
-        m_process->deleteLater();
-        m_process = nullptr;
-
-        if (!succeeded) {
-            setBusy(false);
-            m_error->setText(
-                m_lastLine.isEmpty()
-                    ? i18nc("@info %1 is an office suite", "%1 could not be installed.", selectedSuite().name)
-                    : i18nc("@info %1 is an office suite, %2 the installer's error", "%1 could not be installed: %2",
-                            selectedSuite().name, m_lastLine));
-            m_error->animatedShow();
-            return;
-        }
-        openDocuments();
+        m_error->animatedShow();
     }
 
     void InstallerDialog::openDocuments() {
         m_progressTitle->setText(i18nc("@info:status %1 is an office suite", "Opening %1…", selectedSuite().name));
         m_progressDetail->clear();
+        // nothing left to cancel, and documents handed over from now on wouldn't be opened
+        m_buttons->button(QDialogButtonBox::Cancel)->setEnabled(false);
+        unregisterFromBus();
         // pick up the new suite's desktop files, so it opens like any other app
         KSycoca::self()->ensureCacheValid();
-        if (openWithInstalledApps(m_urls, this, [this] { accept(); })) {
+        if (openWithInstalledApps(m_urls, this, [this](const QString &error) {
+                if (error.isEmpty()) {
+                    accept();
+                    return;
+                }
+                setBusy(false);
+                // back on the suite list, so be the one installer again (best effort)
+                registerOnBus();
+                m_error->setMessageType(KMessageWidget::Error);
+                m_error->setText(error);
+                m_error->animatedShow();
+            })) {
             return;
         }
 
@@ -540,7 +581,15 @@ namespace OfficeInstaller {
         std::ranges::transform(m_urls, std::back_inserter(files),
                                [](const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); });
         const auto [program, arguments] = launchCommand(selectedSuite(), selectedSource(), files);
-        QProcess::startDetached(program, arguments);
+        if (!QProcess::startDetached(program, arguments)) {
+            setBusy(false);
+            registerOnBus();
+            m_error->setMessageType(KMessageWidget::Error);
+            m_error->setText(i18nc("@info %1 is an office suite", "%1 was installed, but could not be started.",
+                                   selectedSuite().name));
+            m_error->animatedShow();
+            return;
+        }
         accept();
     }
 

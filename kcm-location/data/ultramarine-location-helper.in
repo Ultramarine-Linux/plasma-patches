@@ -1,0 +1,47 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+# turns location services on or off for the whole system by masking geoclue.service.
+# The Location Services KCM runs it as root through pkexec, so it's a single polkit
+# action (org.ultramarine.location.manage) and one password prompt. systemctl reloads
+# the manager by itself after changing unit files.
+#
+# usage: @ULTRAMARINE_LOCATION_HELPER@ enable|disable
+
+set -u
+
+# if System Settings quits mid-change, systemctl's "Created symlink" goes to a closed pipe.
+# Ignore SIGPIPE (systemctl inherits that) so it can't stop systemctl before GeoClue is stopped.
+trap '' PIPE
+
+PATH=/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+unit=geoclue.service
+
+case "${1-}" in
+enable)
+    # a mask can be in /etc or, until the next boot, in /run. Each unmask only
+    # removes one of them, and unmasking a unit that isn't masked is a no-op.
+    systemctl unmask "$unit" && systemctl unmask --runtime "$unit"
+    ;;
+disable)
+    # --now stops it too, so apps that already have a location stop getting updates.
+    # --force replaces a symlink already at the mask's path.
+    systemctl mask --force --now "$unit"
+    ;;
+*)
+    echo "usage: $0 enable|disable" >&2
+    exit 2
+    ;;
+esac
+status=$?
+
+# pkexec exits with 126 and 127 when authentication fails, so don't pass those on
+# (the shell uses them when systemctl can't be run)
+if [ "$status" -eq 126 ] || [ "$status" -eq 127 ]; then
+    status=1
+fi
+exit "$status"

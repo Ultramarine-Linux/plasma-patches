@@ -1,0 +1,75 @@
+// SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
+//
+// SPDX-License-Identifier: GPL-3.0-only
+
+#include "gpuenvironment.h"
+
+#include <QDBusArgument>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusReply>
+#include <QDBusVariant>
+#include <QFileInfo>
+
+#include <algorithm>
+
+using namespace Qt::StringLiterals;
+
+namespace DgpuLaunch {
+
+    QProcessEnvironment gpuEnvironment(const QList<QVariantMap> &gpus) {
+        const auto isDefault = [](const QVariantMap &gpu) { return gpu.value(u"Default"_s).toBool(); };
+        auto gpu = std::ranges::find_if(
+            gpus, [&](const QVariantMap &gpu) { return gpu.value(u"Discrete"_s).toBool() && !isDefault(gpu); });
+        if (gpu == gpus.end()) {
+            gpu = std::ranges::find_if(gpus, [&](const QVariantMap &gpu) { return !isDefault(gpu); });
+        }
+
+        QProcessEnvironment environment;
+        if (gpu == gpus.end()) {
+            return environment;
+        }
+        // name, value, name, value...
+        const QStringList pairs = gpu->value(u"Environment"_s).toStringList();
+        for (qsizetype i = 0; i + 1 < pairs.size(); i += 2) {
+            environment.insert(pairs.at(i), pairs.at(i + 1));
+        }
+        return environment;
+    }
+
+    std::optional<QList<QVariantMap>> switcherooGpus() {
+        QDBusMessage call =
+            QDBusMessage::createMethodCall(u"net.hadess.SwitcherooControl"_s, u"/net/hadess/SwitcherooControl"_s,
+                                           u"org.freedesktop.DBus.Properties"_s, u"Get"_s);
+        call << u"net.hadess.SwitcherooControl"_s << u"GPUs"_s;
+        const QDBusReply<QDBusVariant> reply = QDBusConnection::systemBus().call(call);
+        if (!reply.isValid()) {
+            return std::nullopt;
+        }
+        QList<QVariantMap> gpus;
+        qvariant_cast<QDBusArgument>(reply.value().variant()) >> gpus;
+        return gpus;
+    }
+
+    QProcessEnvironment fallbackEnvironment(const bool nvidiaLoaded) {
+        // the same as switcheroo-control: the PRIME offload variables for the nvidia
+        // driver, DRI_PRIME for everything else, never both
+        QProcessEnvironment environment;
+        if (nvidiaLoaded) {
+            environment.insert(u"__GLX_VENDOR_LIBRARY_NAME"_s, u"nvidia"_s);
+            environment.insert(u"__NV_PRIME_RENDER_OFFLOAD"_s, u"1"_s);
+            environment.insert(u"__VK_LAYER_NV_optimus"_s, u"NVIDIA_only"_s);
+        } else {
+            environment.insert(u"DRI_PRIME"_s, u"1"_s);
+        }
+        return environment;
+    }
+
+    QProcessEnvironment discreteGpuEnvironment() {
+        if (const auto gpus = switcherooGpus()) {
+            return gpuEnvironment(*gpus);
+        }
+        return fallbackEnvironment(QFileInfo::exists(u"/sys/module/nvidia"_s));
+    }
+
+} // namespace DgpuLaunch

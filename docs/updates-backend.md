@@ -78,6 +78,21 @@ scheduled to install during the next restart (see below); they're still listed
 as updates until then. If PackageKit's last offline update failed,
 `offline_error` has PackageKit's message until updates are scheduled again or
 packages change. It isn't counted in `errors`, so it doesn't make `list` fail.
+`list` exits with 1 only if every source it queried failed.
+
+`schedule --status --json` prints `{"scheduled": true, "next": 1761181200}`
+(`next` is a Unix timestamp, left out when unknown). Run as the user, it checks
+both halves of Apply Tonight: `scheduled` is true only if the system's and the
+user's timers are both active, and `"partial": true` is added when only one of
+them is (see [Automatic updates and Apply Tonight](#automatic-updates-and-apply-tonight)).
+Run as root, it only checks the system's timer.
+
+`apply` and the timers run every package manager even if an earlier one failed,
+and report all failures at the end. The only ordering is within RPM offline
+updates: PackageKit prepares the update only if dnf's download worked. Run as
+the user, `apply` installs the user's updates even if the system part failed
+(but not if authentication was dismissed or refused), and exits with the system
+part's exit code if that failed.
 
 ## Offline updates
 
@@ -134,15 +149,25 @@ The KCM runs the helper as the logged-in user, so user Flatpaks, the Nix
 profile and Plasma widgets are updated as that user. Commands that need root
 (`apply`, changing `settings`, `schedule`) run their
 system part first, as a child through `pkexec` (no terminal: a polkit prompt)
-or `sudo` (in a terminal), and do the user's part only if that succeeded. So
-if authentication is dismissed, nothing changes. pkexec's exit codes 126
+or `sudo` (in a terminal), and then the user's part. If authentication is
+dismissed or refused, the user's part is skipped, so nothing changes. `apply`
+still installs the user's updates if some system updates failed. `schedule`
+skips the user's part if the system part failed for any reason. pkexec's exit codes 126
 (dismissed) and 127 (not authorized) are passed back to the KCM.
 
 The polkit actions in `/usr/share/polkit-1/actions/org.ultramarine.updates.policy`
 match the helper's exact install path, so the helper must be installed where
 CMake's `ULTRAMARINE_UPDATES_EXECUTABLE` says (default
-`/usr/libexec/ultramarine-updates`). pkexec clears the environment, so privileged
-runs always use the real settings.
+`/usr/libexec/ultramarine-updates`). pkexec clears the environment, so runs
+escalated through it (the KCM) always use the real settings and state. sudo (in
+a terminal) is passed `ULTRAMARINE_UPDATES_CONFIG` and `ULTRAMARINE_UPDATES_STATE`
+on its command line, so a development override also applies to the root part
+there. Changing `settings` with `ULTRAMARINE_UPDATES_CONFIG` set doesn't escalate
+at all.
+
+The helper ignores `SIGPIPE`, and so do the package managers it runs, so closing
+the KCM mid-install makes their progress output fail instead of killing dnf or
+flatpak halfway.
 
 | Action | Command (`exec.argv1`) | Active session |
 | --- | --- | --- |
@@ -166,11 +191,14 @@ session) for "Install Updates and Restart" and cancelling.
 
 Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
 `ULTRAMARINE_UPDATES_CONFIG` overrides the path for development, and stops
-`settings` from escalating):
+`settings` from escalating). The defaults:
 
 ```json
-{ "automatic": true, "offline": false, "inactive_minutes": 30, "window_start": "", "window_end": "" }
+{ "automatic": true, "offline": false, "inactive_minutes": 5, "window_start": "", "window_end": "" }
 ```
+
+`ULTRAMARINE_UPDATES_STATE` overrides the system state directory
+(`/var/lib/ultramarine-updates`) for development, the same way.
 
 - `ultramarine-updates-automatic.timer` (system, enabled by Ultramarine's systemd
   presets) runs
@@ -184,25 +212,100 @@ Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
   widgets. With them
   off ("Ask me"), it checks once a day and shows a notification with an
   "Open Updates" action.
-- **Apply Tonight** (`schedule`) creates transient `ultramarine-updates-tonight`
-  timers in the user and system managers. They install once tonight (22:00–06:00,
-  or the configured window) while the device is unused, even with automatic
-  updates off, then stop. A failed attempt is retried at most once an hour.
+- **Apply Tonight** (`schedule`) creates a transient
+  `ultramarine-updates-tonight` timer in the system manager and
+  `ultramarine-updates-tonight-user` in the user's. They install once tonight
+  (22:00–06:00, or the configured window) while the device is unused, even with
+  automatic updates off, then stop. A failed attempt is retried at most once an
+  hour. If the automatic timer already installed updates after Apply Tonight was
+  scheduled (recorded in `tonight-scheduled` in the state directories), the
+  tonight timer stops without installing again. The system's tonight service
+  waits for `network-online.target`, like the automatic one. Scheduling again
+  replaces the timers, except while tonight's service is installing, which is
+  left to finish.
 
-The user's updates also wait for AC power. "In use" means an active, unlocked,
-non-idle `user` session of type wayland, x11, mir or tty (`loginctl`). Only
-time the timers watched counts as unused: if more than 11 minutes pass between
-two checks (the device was suspended or off), the count starts over.
-Timestamps are kept in `/var/lib/ultramarine-updates` and
-`~/.local/state/ultramarine-updates`. The device is never restarted
-automatically.
+Apply Tonight is _partial_ when only one of its two timers is still active.
+That's common: each half stops its own timer once it installed (or found the
+automatic timer already did), and the other can follow minutes later or only
+the next night. The user's half also lives in the user's systemd manager, which
+stops when they log out (unless lingering is enabled), taking the timer with it,
+so only the system's updates are installed tonight. Run as the user,
+`schedule --status` reports `"scheduled": false, "partial": true` in both
+cases, so the KCM doesn't claim everything installs tonight. Scheduling again
+sets up both halves, and `schedule --cancel` stops whichever is left (a timer
+that isn't loaded anymore isn't an error).
+
+The user's updates also wait for AC power. The device is in use while:
+
+- a `user` session of type wayland, x11, mir or tty is active, unlocked and not
+  idle (`loginctl`), so inactivity counts from when logind sets the session's
+  `IdleHint` or `LockedHint`;
+- an app holds a logind `idle` block inhibitor (`ListInhibitors`; e.g.
+  `systemd-inhibit --what=idle mpv`) for a user with such a session, except
+  PowerDevil's (it only blocks the power keys and the lid) and our own;
+- or an app keeps the screen on through Plasma, as browsers and video players do
+  with `org.freedesktop.ScreenSaver.Inhibit`. kscreenlocker passes those to
+  PowerDevil's PolicyAgent (`ChangeScreenSettings`), which keeps them to itself:
+  PowerDevil only reads logind's inhibitors, never adds these to logind, and
+  its `IdleHint` ignores them. So `run-user` asks
+  `org.kde.Solid.PowerManagement.PolicyAgent.HasInhibition(4)` on the session
+  bus, and while it's true writes a timestamp to
+  `$XDG_RUNTIME_DIR/ultramarine-updates/screen-inhibited` (also with "Ask me",
+  for the system's Apply Tonight). It only asks while one of the user's
+  sessions is active: PowerDevil reports every inhibition as held in a session
+  that isn't in the foreground (`requirePolicyCheck()`), which would otherwise
+  hold off updates for as long as a switched-away session stays logged in. The
+  system timer, which can't reach the session bus, treats a marker less than 11
+  minutes old in `/run/user/<uid>/ultramarine-updates/` of a user with an
+  active session as in use. That directory is the user's, so root opens it and
+  the marker by descriptor without following symlinks (`O_NOFOLLOW`), checks
+  that both are the user's, and only reads a small regular file: a FIFO or
+  device is never read and can't block it. A user can only use the marker to
+  hold off updates, and an app that never releases its inhibition does that
+  too.
+
+Plasma doesn't set `IdleHint` by itself ([KDE bug
+448942](https://bugs.kde.org/show_bug.cgi?id=448942)). Our backport of
+powerdevil MR !699 sets it after 5 minutes without input. Without it, counting
+only starts once the screen locks, by default after 5 minutes. Only time the
+timers watched counts as unused: if more than 11 minutes pass between two
+checks (the device was suspended or off), the count starts over. When a check
+first finds the device unused, it counts from the sessions' `IdleSinceHint`
+(when logind's idle hint was set) if all of them are idle, but never from
+before the previous check, which saw the device in use.
+
+That's why `inactive_minutes` defaults to 5. PowerDevil suspends after 15 idle
+minutes on AC by default, and the checks run every 5 to 6 minutes. With the
+`IdleHint` backport, inactivity starts at minute 5 and reaches 5 counted minutes
+at the first check after minute 10, which nearly always comes before the
+suspend at 15. Without it, the count starts at the first check after the lock
+(minute 5 to 11), reaches 5 minutes between minute 10 and 16, and about half of
+the idle periods end in suspend first. A longer wait like 30 is never reached
+on a default install that suspends. Timestamps are kept in
+`/var/lib/ultramarine-updates` and `~/.local/state/ultramarine-updates`. The
+device is never restarted automatically.
+
+While installing, `apply` and the timers hold a logind `shutdown:sleep` block
+inhibitor (`org.freedesktop.login1.Manager.Inhibit`), so Plasma's logout screen
+and idle suspend wait for them. If logind refuses (polkit may not allow it for
+the user timer, which isn't part of a session), the install goes ahead with a
+warning. `ultramarine-updates-automatic.service` and the system's tonight
+service have `TimeoutStopSec=30min`: rpm finishes its transaction before
+handling `SIGTERM`, and the default 90 seconds could cut that short. They also
+have `TimeoutStartSec=6h` (oneshot services otherwise never time out), so a run
+stuck on a stalled download can't keep the timer from starting it again. That's
+stopped the same way, so a running rpm transaction still finishes.
 
 Installs take a lock first, `/run/ultramarine-updates.lock` for system updates
-(root only) and `$XDG_RUNTIME_DIR/ultramarine-updates.lock` for the user's, so
-the automatic timers, Apply Tonight and `apply` never run dnf or flatpak at the
-same time. A timer that finds the lock held skips that run; `apply` fails with
-a message. The system timer also skips its image check while an install holds
-the lock.
+(root only) and `$XDG_RUNTIME_DIR/ultramarine-updates.lock` for the user's. So
+the automatic timers, Apply Tonight and `apply` never install system updates
+twice at the same time, and the same goes for each user's own. The two locks are
+separate, so the system's and a user's updates can install at the same time
+(each package manager guards its own installation). Listing takes no lock, so
+the KCM's `dnf check-update` can run during an install. A timer that finds the
+lock held skips that run; `apply` fails with a message. The system timer only
+writes the bootc status cache while holding the system lock, and skips its
+image check while an install holds it.
 
 ## Installed files
 

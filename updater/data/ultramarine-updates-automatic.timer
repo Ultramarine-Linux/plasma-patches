@@ -6,7 +6,8 @@ Documentation=https://github.com/Ultramarine-Linux/plasma-patches
 
 [Timer]
 # the helper tracks how long no one has used the device and only installs once
-# that exceeds the configured time, at most once a day. Checks are cheap and quiet.
+# that exceeds the configured time, at most once every 20 hours. Checks are cheap
+# and quiet.
 OnBootSec=5min
 OnUnitActiveSec=5min
 AccuracySec=1min

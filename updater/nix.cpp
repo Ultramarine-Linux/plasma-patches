@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSet>
+#include <QVersionNumber>
 
 #include <algorithm>
 
@@ -196,6 +197,12 @@ map resolve elements
         return {installed, latest};
     }
 
+    bool determinateNixUpgradable(const QString &installed, const QString &latest) {
+        const QVersionNumber from = QVersionNumber::fromString(installed);
+        const QVersionNumber to = QVersionNumber::fromString(latest);
+        return !from.isNull() && !to.isNull() && to > from;
+    }
+
     QString nixBinary() { return findExecutable(u"nix"_s, {nixDefaultProfileBin}); }
 
     QString determinateNixdBinary() { return findExecutable(u"determinate-nixd"_s, {determinateNixdPath}); }
@@ -276,7 +283,8 @@ map resolve elements
             return {};
         }
         const auto [installed, latest] = determinateNixVersions(QString::fromUtf8(result.out));
-        if (installed.isEmpty() || latest.isEmpty() || installed == latest) {
+        // the advised version can lag behind a newer install (or a prerelease)
+        if (!determinateNixUpgradable(installed, latest)) {
             return {};
         }
         PackageUpdate update;

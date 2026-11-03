@@ -80,6 +80,11 @@ namespace UltramarineUpdates {
         QString stagedVersion;
         /// why the last offline update failed while restarting, if it did
         QString offlineError;
+        /// how many sources were queried, including the failed ones. Not part of the JSON.
+        qsizetype queriedSources = 0;
+
+        /// whether every queried source failed, so nothing at all is known about updates
+        [[nodiscard]] bool allFailed() const { return !errors.isEmpty() && errors.size() >= queriedSources; }
 
         [[nodiscard]] QJsonObject toJson() const;
     };
@@ -90,7 +95,8 @@ namespace UltramarineUpdates {
     /**
      * updates user-installation Flatpaks, the user's Nix profile and Plasma
      * widgets. Must run as the user: after escalating, flatpak, nix and KNewStuff
-     * would only see root's (empty) installation, profile and widgets.
+     * would only see root's (empty) installation, profile and widgets. A failing
+     * one doesn't stop the others. @p error then lists every failure.
      */
     bool applyUser(bool assumeYes, QString *error);
 
@@ -98,7 +104,8 @@ namespace UltramarineUpdates {
      * updates system packages, system Flatpaks and Nix itself, and needs root. With
      * @p offline, dnf downloads the RPM updates and PackageKit prepares them to
      * install during the next restart (see packagekit.h). Sets @p updated to
-     * whether any package manager was found.
+     * whether any package manager was found. Like applyUser(), every package
+     * manager runs even if an earlier one failed.
      */
     bool applySystem(bool assumeYes, bool offline, bool *updated, QString *error);
 

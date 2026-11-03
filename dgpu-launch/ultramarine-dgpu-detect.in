@@ -35,9 +35,11 @@ for card in "$drm"/card[0-9]*; do
     boot_vga=0
     [[ -r $card/device/boot_vga ]] && boot_vga=$(<"$card/device/boot_vga")
 
+    # captured first: with pipefail, grep -q exiting early could SIGPIPE udevadm
+    # and turn a match into a failure
     discrete=0
-    if udevadm info --query=property --path="$card" 2>/dev/null |
-        grep -Eq '^(CURRENT_)?TAGS=.*:switcheroo-discrete-gpu:'; then
+    properties=$(udevadm info --query=property --path="$card" 2>/dev/null) || properties=
+    if grep -Eq '^(CURRENT_)?TAGS=.*:switcheroo-discrete-gpu:' <<<"$properties"; then
         discrete=1
     fi
 

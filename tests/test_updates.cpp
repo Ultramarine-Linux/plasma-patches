@@ -25,6 +25,10 @@ namespace {
         static void upgradeSettingsDefaults();
         static void parsesUpgradeSettings();
         static void parsesScheduleStatus();
+        static void upgradeSettingsIgnoreUnusedWindow();
+        static void installErrorMessages();
+        static void previewModelLimitsRows();
+        static void composesErrorMessages();
     };
 } // namespace
 
@@ -213,7 +217,7 @@ void UpdatesTest::upgradeSettingsDefaults() {
     const UpgradeSettings defaults;
     QVERIFY(defaults.automatic);
     QVERIFY(!defaults.offline);
-    QCOMPARE(defaults.inactiveMinutes, 30);
+    QCOMPARE(defaults.inactiveMinutes, 5);
     QVERIFY(!defaults.windowEnabled);
     QCOMPARE(defaults.windowStart, 60);
     QCOMPARE(defaults.windowEnd, 5 * 60);
@@ -222,10 +226,12 @@ void UpdatesTest::upgradeSettingsDefaults() {
     UpgradeSettings changed = defaults;
     QVERIFY(changed == defaults);
     changed.windowEnd = changed.windowStart;
-    QVERIFY(changed != defaults);
+    // the times aren't stored while the window is off, so they don't make it a change
+    QVERIFY(changed == defaults);
     // an equal start and end only matters once the window is used, since the helper rejects it then
     QVERIFY(changed.isValid());
     changed.windowEnabled = true;
+    QVERIFY(changed != defaults);
     QVERIFY(!changed.isValid());
     changed.windowEnd = 0;
     QVERIFY(changed.isValid());
@@ -262,14 +268,88 @@ void UpdatesTest::parsesUpgradeSettings() {
 
 void UpdatesTest::parsesScheduleStatus() {
     bool scheduled = false;
-    qint64 next = 0;
-    QVERIFY(parseScheduleStatus(R"({"scheduled":true,"next":1792656000})", &scheduled, &next));
+    bool partial = true;
+    QVERIFY(parseScheduleStatus(R"({"scheduled":true,"next":1792656000})", &scheduled, &partial));
     QVERIFY(scheduled);
-    QCOMPARE(next, 1792656000);
-    QVERIFY(parseScheduleStatus(R"({"scheduled":false})", &scheduled, &next));
+    QVERIFY(!partial);
+    QVERIFY(parseScheduleStatus(R"({"scheduled":false})", &scheduled));
     QVERIFY(!scheduled);
-    QCOMPARE(next, 0);
-    QVERIFY(!parseScheduleStatus("nope", &scheduled, &next));
+    // only the system or the user part is still scheduled
+    QVERIFY(parseScheduleStatus(R"({"scheduled":false,"partial":true})", &scheduled, &partial));
+    QVERIFY(!scheduled);
+    QVERIFY(partial);
+    QVERIFY(!parseScheduleStatus("nope", &scheduled, &partial));
+}
+
+void UpdatesTest::upgradeSettingsIgnoreUnusedWindow() {
+    UpgradeSettings saved;
+    UpgradeSettings edited = saved;
+    edited.windowStart = 22 * 60;
+    edited.windowEnd = 6 * 60;
+    QVERIFY(edited == saved);
+
+    // once the window is used, its times matter
+    edited.windowEnabled = true;
+    saved.windowEnabled = true;
+    QVERIFY(edited != saved);
+    saved.windowStart = edited.windowStart;
+    saved.windowEnd = edited.windowEnd;
+    QVERIFY(edited == saved);
+
+    for (const auto change:
+         {+[](UpgradeSettings &s) { s.automatic = !s.automatic; }, +[](UpgradeSettings &s) { s.offline = !s.offline; },
+          +[](UpgradeSettings &s) { s.inactiveMinutes += 1; },
+          +[](UpgradeSettings &s) { s.windowEnabled = !s.windowEnabled; }}) {
+        UpgradeSettings other = saved;
+        change(other);
+        QVERIFY(other != saved);
+    }
+}
+
+void UpdatesTest::installErrorMessages() {
+    QCOMPARE(installErrorMessage(0, QProcess::CrashExit, "partial log\n"),
+             QStringLiteral("Updating failed: the update helper stopped unexpectedly."));
+    QCOMPARE(installErrorMessage(1, QProcess::NormalExit, {}), QStringLiteral("Updating failed (exit code 1)."));
+    // stdout (the package manager's log) is never passed, and only stderr's last lines are shown
+    QByteArray stdErr;
+    for (int line = 1; line <= 15; ++line) {
+        stdErr += "line " + QByteArray::number(line) + '\n';
+    }
+    const QString message = installErrorMessage(1, QProcess::NormalExit, stdErr);
+    QVERIFY(message.startsWith(QStringLiteral("Updating failed (exit code 1). line 6\n")));
+    QVERIFY(message.endsWith(QStringLiteral("\nline 15")));
+    QVERIFY(!message.contains(QStringLiteral("line 5\n")));
+    // no special case for messages that mention updates
+    QCOMPARE(installErrorMessage(1, QProcess::NormalExit, "Error: no updates could be downloaded\n"),
+             QStringLiteral("Updating failed (exit code 1). Error: no updates could be downloaded"));
+    // helper output is UTF-8 whatever the locale
+    QCOMPARE(installErrorMessage(1, QProcess::NormalExit, "Fehler: ungültig"),
+             QStringLiteral("Updating failed (exit code 1). Fehler: ungültig"));
+    QVERIFY(installErrorMessage(126, QProcess::NormalExit, {}).startsWith(QStringLiteral("Authentication")));
+}
+
+void UpdatesTest::previewModelLimitsRows() {
+    UpdatesModel model;
+    const UpdatesPreviewModel preview(&model, 2);
+    QCOMPARE(preview.rowCount(), 0);
+    for (const QString &name: {QStringLiteral("a"), QStringLiteral("b"), QStringLiteral("c")}) {
+        UpdateItem item;
+        item.name = name;
+        model.addUpdate(item);
+    }
+    QCOMPARE(preview.limit(), 2);
+    QCOMPARE(preview.rowCount(), 2);
+    QCOMPARE(preview.data(preview.index(1, 0), UpdatesModel::NameRole).toString(), QStringLiteral("b"));
+    model.clear();
+    QCOMPARE(preview.rowCount(), 0);
+}
+
+void UpdatesTest::composesErrorMessages() {
+    QVERIFY(composeErrorMessage({}, {}).isEmpty());
+    QCOMPARE(composeErrorMessage(QStringLiteral("install"), {}), QStringLiteral("install"));
+    QCOMPARE(composeErrorMessage({}, QStringLiteral("check")), QStringLiteral("check"));
+    // the install error comes first and the check's error below it, each shown once
+    QCOMPARE(composeErrorMessage(QStringLiteral("install"), QStringLiteral("check")), QStringLiteral("install\ncheck"));
 }
 
 QTEST_GUILESS_MAIN(UpdatesTest)

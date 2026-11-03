@@ -20,7 +20,7 @@ namespace UltramarineUpdates {
     struct Settings {
         bool automatic = true;
         bool offline = false;
-        int inactiveMinutes = 30;
+        int inactiveMinutes = 5;
         /// "HH:MM", both empty for any time
         QString windowStart;
         QString windowEnd;

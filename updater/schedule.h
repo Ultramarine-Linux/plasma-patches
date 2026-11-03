@@ -4,7 +4,10 @@
 
 #pragma once
 
+#include <QDateTime>
+
 #include <chrono>
+#include <optional>
 
 #include "settings.h"
 
@@ -13,21 +16,26 @@
  *
  * The helper's timers call runScheduled() (system, as root) and runUser() (per
  * user, started by the XDG autostart entry) every few minutes. They track how
- * long no one has used the device and install at most once a day. Otherwise
- * they quietly do nothing. With automatic updates off, runUser() notifies about
- * pending updates once a day instead.
+ * long no one has used the device and install at most once every 20 hours.
+ * Otherwise they quietly do nothing. With automatic updates off, runUser()
+ * notifies about pending updates once a day instead.
  *
  * scheduleTonight() ("Apply Tonight") creates transient timers that do the same
- * once, tonight, even if automatic updates are off. The device is never
+ * once, tonight, even if automatic updates are off. They stop without
+ * installing if automatic updates already installed since. The device is never
  * restarted automatically.
  */
 namespace UltramarineUpdates {
 
     /// the state of Apply Tonight
     struct ScheduleStatus {
+        /// whether every part of Apply Tonight is scheduled
         bool scheduled = false;
         /// when tonight's run is next attempted, as a Unix timestamp (0 if unknown)
         qint64 next = 0;
+        /// whether only the system's or only the user's timer is still scheduled,
+        /// e.g. after logging out stopped the user's
+        bool partial = false;
 
         bool operator==(const ScheduleStatus &) const = default;
 
@@ -37,8 +45,16 @@ namespace UltramarineUpdates {
     /// parses `systemctl show --timestamp=unix -p ActiveState -p NextElapseUSecRealtime`
     ScheduleStatus parseTimerShow(const QString &output);
 
-    /// whether Apply Tonight is scheduled in the system manager
+    /// combines the system timer's and (when run as the user) the user timer's status
+    ScheduleStatus combineTonightStatus(const ScheduleStatus &system, const std::optional<ScheduleStatus> &user);
+
+    /// whether Apply Tonight is scheduled: in the system manager, and also in the
+    /// user's manager unless run as root
     ScheduleStatus tonightStatus();
+
+    /// whether updates were @p installed (by the automatic timer) since Apply
+    /// Tonight was @p scheduled, so tonight's timer has nothing left to do
+    bool tonightAlreadyInstalled(const std::optional<QDateTime> &installed, const std::optional<QDateTime> &scheduled);
 
     /// decides whether a timer run should install updates now. Sets @p reason
     /// when it shouldn't. Separate from the side effects so it can be tested.
@@ -53,7 +69,8 @@ namespace UltramarineUpdates {
     bool runUser(bool tonight, QString *error);
 
     /// sets up Apply Tonight in the user's manager (@p userManager) or the system
-    /// manager (as root). Scheduling again replaces the old timer.
+    /// manager (as root). Scheduling again replaces the old timer, unless tonight's
+    /// updates are installing right now.
     bool scheduleTonight(bool userManager, QString *error);
 
     /// removes Apply Tonight. It's not an error if nothing was scheduled. Returns false

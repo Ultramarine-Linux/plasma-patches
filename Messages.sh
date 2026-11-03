@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# extract KI18n strings to one POT per KCM (and the office suite installer). Weblate writes translations to
+# extract KI18n strings to one POT per KCM (and the office suite installer and dGPU launcher). Weblate writes translations to
 # po/<locale>/<domain>.po. KI18N_INSTALL(po) compiles and installs those files.
 set -euo pipefail
 
@@ -45,7 +45,8 @@ extract_domain kcm_ultramarine_updates \
     "kcm-updates/updates.cpp updater/schedule.cpp" \
     kcm-updates/ui/main.qml \
     kcm-updates/ui/AdvancedSettings.qml \
-    kcm-updates/ui/TechnicalInformation.qml
+    kcm-updates/ui/TechnicalInformation.qml \
+    kcm-updates/ui/ErrorMessage.qml
 
 extract_domain kcm_ultramarine_tweaks \
     kcm-tweaks/tweaks.cpp \
@@ -56,4 +57,7 @@ extract_domain kcm_ultramarine_location \
     kcm-location/ui/main.qml
 
 extract_domain ultramarine_office_installer \
-    "office-installer/main.cpp office-installer/installerdialog.cpp office-installer/suites.cpp"
+    "office-installer/main.cpp office-installer/installerdialog.cpp office-installer/suites.cpp office-installer/packagekit.cpp office-installer/flatpakinstaller.cpp"
+
+extract_domain ultramarine_dgpu_launch \
+    dgpu-launch/main.cpp

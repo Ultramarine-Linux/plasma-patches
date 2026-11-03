@@ -4,14 +4,22 @@
 
 cmake_minimum_required(VERSION 3.29)
 
-set(QT_MIN_VERSION "6.5.0")
+# 6.6 for QFileInfo::readSymLink() and QProcess::setUnixProcessParameters() in updater/
+set(QT_MIN_VERSION "6.6.0")
 set(KF6_MIN_VERSION "6.0.0")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_LINKER_TYPE LLD)
 
 project(kcm_ultramarine)
+
+# link with lld when it's installed, unless -DCMAKE_LINKER_TYPE picks a linker
+if (NOT DEFINED CMAKE_LINKER_TYPE)
+    find_program(LLD_EXECUTABLE NAMES ld.lld lld)
+    if (LLD_EXECUTABLE)
+        set(CMAKE_LINKER_TYPE LLD)
+    endif ()
+endif ()
 
 find_package(ECM ${KF6_MIN_VERSION} REQUIRED NO_MODULE)
 

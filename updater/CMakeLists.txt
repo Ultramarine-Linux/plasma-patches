@@ -17,6 +17,7 @@ add_library(ultramarine_updates_core STATIC
         settings.cpp
         activity.cpp
         lock.cpp
+        inhibit.cpp
         schedule.cpp
 )
 
@@ -28,6 +29,7 @@ target_link_libraries(ultramarine_updates_core
         Qt6::Core
         KF6::I18n
         PRIVATE
+        Qt6::DBus
         KF6::NewStuffCore
 )
 

@@ -44,7 +44,14 @@ namespace OfficeInstaller {
     /// out on image based systems (@p imageBased), where dnf can't install them.
     QList<Source> sources(const Suite &suite, bool imageBased);
 
-    Command installCommand(const Suite &suite, Source source);
+    /**
+     * whether an installed app is @p suite: its Flatpak (desktop file names
+     * start with the app ID) or its RPM (by the executable its desktop file runs)
+     */
+    bool isSuite(const Suite &suite, const QString &desktopEntryName, const QString &executable);
+
+    /// the Flathub ref of @p suite's app on @p arch (Flatpak's architecture name)
+    QString flatpakRef(const Suite &suite, const QString &arch);
 
     /// opens @p files (local paths) with a freshly installed suite
     Command launchCommand(const Suite &suite, Source source, const QStringList &files);

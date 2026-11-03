@@ -16,11 +16,13 @@
 #include <QSet>
 #include <QStandardPaths>
 
+#include <csignal>
 #include <cstdio>
 
 #include <unistd.h>
 
 #include "image.h"
+#include "inhibit.h"
 #include "lock.h"
 #include "packagekit.h"
 #include "process.h"
@@ -32,6 +34,10 @@ using namespace Qt::StringLiterals;
 using namespace UltramarineUpdates;
 
 namespace {
+
+    /// pkexec's exit codes when the prompt is dismissed and when authorization fails
+    constexpr int pkexecDismissed = 126;
+    constexpr int pkexecNotAuthorized = 127;
 
     /// environment forwarded through sudo (pkexec always clears it)
     const QStringList forwardedEnvironment{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
@@ -126,7 +132,7 @@ namespace {
             }
         }
         // only fail when nothing could be queried at all
-        return !response.errors.isEmpty() && response.updates.isEmpty() ? 1 : 0;
+        return response.allFailed() ? 1 : 0;
     }
 
     int applyCommand(const QString &command, const QCommandLineParser &parser) {
@@ -137,25 +143,33 @@ namespace {
             if (const InstallLock::Result locked = userLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
                 return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
             }
-            // system updates first: if authentication is canceled (or they fail),
-            // nothing is installed, and pkexec's exit codes are passed on
-            if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
-                return exitCode;
+            // system updates first: if authentication is canceled, nothing is
+            // installed, and pkexec's exit codes are passed on
+            const int systemExitCode = runAsRoot(commandLine(command, parser));
+            if (systemExitCode == pkexecDismissed || systemExitCode == pkexecNotAuthorized) {
+                return systemExitCode;
             }
-            // user-level updates must run as the invoking user
-            return applyUser(assumeYes, &error) ? 0 : fail(error);
+            // user-level updates must run as the invoking user. They're installed
+            // even if some system updates failed, which the root part already reported.
+            const ShutdownInhibitor inhibitor(u"Installing your updates"_s);
+            if (!applyUser(assumeYes, &error)) {
+                fail(error);
+                return systemExitCode != 0 ? systemExitCode : 1;
+            }
+            return systemExitCode;
         }
 
         InstallLock systemLock(systemLockPath());
         if (const InstallLock::Result locked = systemLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
             return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
         }
-        // read as root: pkexec cleared any development override
+        // read as root: pkexec cleared any development override, sudo forwards it
         Settings settings;
         if (!loadSettings(&settings, &error)) {
             std::fprintf(stderr, "warning: %s\n", qPrintable(error));
         }
         bool updated = false;
+        const ShutdownInhibitor inhibitor(u"Installing system updates"_s);
         if (!applySystem(assumeYes, settings.offline, &updated, &error)) {
             return fail(error);
         }
@@ -242,8 +256,15 @@ namespace {
             if (parser.isSet(u"json"_s)) {
                 printJson(status.toJson());
             } else {
-                print(status.scheduled ? u"Updates are scheduled to install tonight.\n"_s
-                                       : u"No updates are scheduled.\n"_s);
+                if (status.scheduled) {
+                    print(u"Updates are scheduled to install tonight.\n"_s);
+                } else if (status.partial) {
+                    // usually the user's timer, which logging out stops
+                    print(u"Only some of tonight's updates are still scheduled. Schedule them again to "
+                          u"install all of them.\n"_s);
+                } else {
+                    print(u"No updates are scheduled.\n"_s);
+                }
             }
             return 0;
         }
@@ -284,6 +305,10 @@ namespace {
 } // namespace
 
 int main(int argc, char *argv[]) {
+    // if the KCM goes away mid-install, writing progress to its pipe fails with
+    // EPIPE instead of killing the helper. Children keep this (see runForwarded()),
+    // so dnf and flatpak finish too.
+    std::signal(SIGPIPE, SIG_IGN);
     const QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(u"ultramarine-updates"_s);
     KLocalizedString::setApplicationDomain("kcm_ultramarine_updates");

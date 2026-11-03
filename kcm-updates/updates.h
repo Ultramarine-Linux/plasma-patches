@@ -7,8 +7,8 @@
 #include <KQuickManagedConfigModule>
 
 #include <QAbstractListModel>
+#include <QSortFilterProxyModel>
 
-#include <QDateTime>
 #include <QProcess>
 #include <cstdint>
 
@@ -42,8 +42,8 @@ struct UpgradeSettings {
     bool automatic = true;
     /// install system updates while restarting instead of on the running system
     bool offline = false;
-    /// install once no one has used the device for this long
-    int inactiveMinutes = 30;
+    /// install once no one has used the device for this long (also used by Apply Tonight)
+    int inactiveMinutes = 5;
     /// only install between windowStart and windowEnd (minutes after midnight)
     bool windowEnabled = false;
     int windowStart = 60;
@@ -52,7 +52,8 @@ struct UpgradeSettings {
     /// returns false if the window starts and ends at the same time, which the helper rejects
     [[nodiscard]] bool isValid() const;
 
-    bool operator==(const UpgradeSettings &) const = default;
+    /// compares what the helper would store, so the window times only count while the window is used
+    bool operator==(const UpgradeSettings &other) const;
 };
 
 /// parses `ultramarine-updates settings --json`. Returns false if the output isn't valid.
@@ -61,9 +62,12 @@ bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings);
 /// returns the `ultramarine-updates settings` arguments that save @p settings
 QStringList upgradeSettingsArguments(const UpgradeSettings &settings);
 
-/// parses `ultramarine-updates schedule --status --json` into whether Apply Tonight is
-/// scheduled and when it next runs (Unix time, 0 if unknown)
-bool parseScheduleStatus(const QByteArray &json, bool *scheduled, qint64 *next);
+/**
+ * parses `ultramarine-updates schedule --status --json` into whether Apply Tonight is
+ * scheduled, and whether only part of it still is (@p partial). Apply Tonight has a system
+ * and a user part, and one can be done or canceled while the other is still waiting.
+ */
+bool parseScheduleStatus(const QByteArray &json, bool *scheduled, bool *partial = nullptr);
 
 /// installed updates that are waiting for a restart, from the update listing
 struct RestartState {
@@ -92,6 +96,21 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
  * query, or why checking failed. Empty if there is nothing to report.
  */
 QString refreshErrorMessage(int exitCode, const QByteArray &stdOut, const QByteArray &stdErr);
+
+/**
+ * returns the error to show once `ultramarine-updates apply` failed. Only the last lines
+ * of stderr are included, since the rest is the package manager's whole log.
+ */
+QString installErrorMessage(int exitCode, QProcess::ExitStatus exitStatus, const QByteArray &stdErr);
+
+/**
+ * returns the error banner text: the error from installing, saving or scheduling
+ * (@p actionError) above the error from checking for updates (@p refreshError)
+ */
+QString composeErrorMessage(const QString &actionError, const QString &refreshError);
+
+/// decodes helper output, which is always UTF-8, and trims it
+QString helperText(const QByteArray &output);
 
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
@@ -153,16 +172,39 @@ private:
     QList<UpdateItem> m_updates;
 };
 
+/// the first few rows of an update model, so the main page doesn't create a delegate per update.
+/// UpdatesModel only appends rows or clears, so earlier rows never shift past the limit.
+class UpdatesPreviewModel final : public QSortFilterProxyModel {
+    Q_OBJECT
+
+public:
+    /// shows at most @p limit rows of @p source
+    explicit UpdatesPreviewModel(QAbstractItemModel *source, int limit, QObject *parent = nullptr);
+
+    /// returns the maximum number of rows shown
+    [[nodiscard]] int limit() const;
+
+protected:
+    [[nodiscard]] bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
+
+private:
+    int m_limit;
+};
+
 class Updates : public KQuickManagedConfigModule {
     Q_OBJECT
     Q_PROPERTY(bool running READ running NOTIFY runningChanged)
     Q_PROPERTY(bool scheduling READ scheduling NOTIFY schedulingChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
+    Q_PROPERTY(bool errorRetryable READ errorRetryable NOTIFY errorMessageChanged)
+    Q_PROPERTY(QString successMessage READ successMessage NOTIFY successMessageChanged)
     Q_PROPERTY(QString distributionVersion READ distributionVersion CONSTANT)
     Q_PROPERTY(int updateCount READ updateCount NOTIFY updateCountChanged)
     Q_PROPERTY(int installableCount READ installableCount NOTIFY updateCountChanged)
     Q_PROPERTY(UpdatesModel *updates READ updates CONSTANT)
+    Q_PROPERTY(QAbstractItemModel *previewUpdates READ previewUpdates CONSTANT)
+    Q_PROPERTY(int previewLimit READ previewLimit CONSTANT)
     Q_PROPERTY(QString technicalInformation READ technicalInformation NOTIFY technicalInformationChanged)
     Q_PROPERTY(bool automaticUpdates READ automaticUpdates WRITE setAutomaticUpdates NOTIFY settingsValuesChanged)
     Q_PROPERTY(bool offlineUpdates READ offlineUpdates WRITE setOfflineUpdates NOTIFY settingsValuesChanged)
@@ -172,7 +214,7 @@ class Updates : public KQuickManagedConfigModule {
     Q_PROPERTY(int windowEnd READ windowEnd WRITE setWindowEnd NOTIFY settingsValuesChanged)
     Q_PROPERTY(bool windowValid READ windowValid NOTIFY settingsValuesChanged)
     Q_PROPERTY(bool scheduledTonight READ scheduledTonight NOTIFY scheduleChanged)
-    Q_PROPERTY(QDateTime scheduledTime READ scheduledTime NOTIFY scheduleChanged)
+    Q_PROPERTY(bool tonightPartial READ tonightPartial NOTIFY scheduleChanged)
     Q_PROPERTY(qint64 downloadSize READ downloadSize NOTIFY updateCountChanged)
     Q_PROPERTY(qint64 installedSizeChange READ installedSizeChange NOTIFY updateCountChanged)
     Q_PROPERTY(bool imageMode READ imageMode CONSTANT)
@@ -182,9 +224,17 @@ class Updates : public KQuickManagedConfigModule {
 
 public:
     /**
-     * creates the Fedora updates configuration module
+     * creates the Ultramarine updates configuration module
      */
     explicit Updates(QObject *parent, const KPluginMetaData &metaData);
+
+    /// stops read-only helper calls and releases changing ones (see the definition)
+    ~Updates() override;
+
+    Updates(const Updates &) = delete;
+    Updates &operator=(const Updates &) = delete;
+    Updates(Updates &&) = delete;
+    Updates &operator=(Updates &&) = delete;
 
     /// returns whether an update operation is running
     [[nodiscard]] bool running() const;
@@ -198,7 +248,13 @@ public:
     /// returns the current error shown in the UI banner
     [[nodiscard]] const QString &errorMessage() const;
 
-    /// returns the Fedora release version
+    /// returns whether checking again could fix the error, so the banner offers Try Again
+    [[nodiscard]] bool errorRetryable() const;
+
+    /// returns the message shown after updates were installed, until it is dismissed
+    [[nodiscard]] const QString &successMessage() const;
+
+    /// returns the distribution version (VERSION_ID in os-release)
     [[nodiscard]] static QString distributionVersion();
 
     /// returns the number of available updates
@@ -210,6 +266,12 @@ public:
 
     /// returns the model containing available updates
     UpdatesModel *updates();
+
+    /// returns the first previewLimit() updates, for the main page
+    QAbstractItemModel *previewUpdates();
+
+    /// returns the number of updates listed on the main page
+    [[nodiscard]] int previewLimit() const;
 
     /// returns the complete technical update information
     [[nodiscard]] const QString &technicalInformation() const;
@@ -236,9 +298,11 @@ public:
     /// returns false if the window starts and ends at the same time
     [[nodiscard]] bool windowValid() const;
 
-    /// returns whether Apply Tonight is scheduled, and when it next runs
+    /// returns whether Apply Tonight is scheduled
     [[nodiscard]] bool scheduledTonight() const;
-    [[nodiscard]] QDateTime scheduledTime() const;
+
+    /// returns whether only part of Apply Tonight is still scheduled, which can be canceled too
+    [[nodiscard]] bool tonightPartial() const;
 
     /// loads the settings and Apply Tonight state from the update helper
     void load() override;
@@ -293,6 +357,9 @@ public:
     /// clears the error message, for example when the user dismisses it
     Q_INVOKABLE void clearError();
 
+    /// clears the success message once the user dismisses it
+    Q_INVOKABLE void clearSuccess();
+
 Q_SIGNALS:
     /// emitted when an update operation starts or stops
     void runningChanged();
@@ -305,6 +372,9 @@ Q_SIGNALS:
 
     /// emitted when the error banner text changes
     void errorMessageChanged();
+
+    /// emitted when the success message changes
+    void successMessageChanged();
 
     /// emitted when the number of available updates changes
     void updateCountChanged();
@@ -338,6 +408,12 @@ private:
         Install,
     };
 
+    /**
+     * creates a helper process owned by this module. A process that @p changesSystem
+     * keeps running if the module closes (see ~Updates()).
+     */
+    QProcess *createProcess(bool changesSystem);
+
     /// starts one backend process and records its operation type
     void startProcess(const QString &program, const QStringList &arguments, Operation operation);
 
@@ -347,16 +423,36 @@ private:
     /// updates the technical information shown in the details dialog
     void setTechnicalInformation(const QString &information);
 
-    /// completes an operation and updates its final status
-    void finishOperation(bool success, const QString &message);
+    /// completes an operation and shows @p statusText. Callers set any error themselves.
+    void finishOperation(const QString &statusText);
+
+    /// sets the error from checking for updates, which the next check replaces
+    void setRefreshError(const QString &message);
+
+    /// sets the error from installing, saving or scheduling, which stays until it's dismissed
+    void setActionError(const QString &message);
+
+    /// composes errorMessage() from both errors
+    void updateErrorMessage();
+
+    /// reads the settings. With @p keepEdits, only the saved state is updated, not what's shown.
+    void loadSettings(bool keepEdits);
 
     /// parses the helper's structured update listing
     void parseListing(const QString &output);
 
-    QProcess m_process;
+    /// the running list or apply call, if any
+    QProcess *m_process = nullptr;
     UpdatesModel m_updates;
+    UpdatesPreviewModel m_previewUpdates;
     QString m_status;
+    /// shown in the banner, see composeErrorMessage()
     QString m_errorMessage;
+    QString m_actionError;
+    QString m_refreshError;
+    /// only a refresh error is shown, so checking again may fix it
+    bool m_errorRetryable = false;
+    QString m_successMessage;
     /// raw output of the running operation, decoded once it exits so multi-byte
     /// characters split across reads survive and stdout still parses as JSON
     QByteArray m_processStdout;
@@ -365,12 +461,13 @@ private:
     Operation m_operation = Operation::None;
     bool m_running = false;
     /// runs the update helper with @p arguments and calls @p done when it exits (exit
-    /// code -1 if it couldn't start). The helper escalates through pkexec if needed.
-    void runHelper(const QStringList &arguments,
+    /// code -1 if it couldn't start or crashed). The helper escalates through pkexec if
+    /// needed. Calls that @p changesSystem keep running if the module closes.
+    void runHelper(const QStringList &arguments, bool changesSystem,
                    const std::function<void(int exitCode, const QByteArray &out, const QByteArray &err)> &done);
 
-    /// shows @p message in the error banner
-    void setErrorMessage(const QString &message);
+    /// sets the message shown after updates were installed
+    void setSuccessMessage(const QString &message);
 
     /// reloads whether Apply Tonight is scheduled. Only the latest request's reply is used.
     void refreshSchedule();
@@ -384,7 +481,17 @@ private:
     UpgradeSettings m_upgradeSettings;
     UpgradeSettings m_savedUpgradeSettings;
     bool m_scheduledTonight = false;
-    QDateTime m_scheduledTime;
+    bool m_tonightPartial = false;
+    /// a `settings` save is in flight
+    bool m_saving = false;
+    /// a `settings --json` read is in flight
+    bool m_loading = false;
+    /// load() (Reset) was called while saving, so it runs once the save is done
+    bool m_loadAfterSave = false;
+    /// save() made a settings read stale, so the saved state is read again afterwards
+    bool m_reloadSavedAfterSave = false;
+    /// only the latest settings read's reply is used, and a save makes reads in flight stale
+    quint64 m_settingsRequest = 0;
     /// a `schedule` (or `schedule --cancel`) call is in flight
     bool m_scheduleChanging = false;
     /// true from the start of a schedule change until the status read after it arrives

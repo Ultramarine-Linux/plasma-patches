@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com> -->
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!--
+  the helper only accepts "enable" and "disable", so one action covers both and
+  turning location on or off asks for the password once
+-->
+<policyconfig>
+  <vendor>Ultramarine Linux</vendor>
+  <vendor_url>https://ultramarine-linux.org</vendor_url>
+  <action id="org.ultramarine.location.manage">
+    <description>Turn location services on or off</description>
+    <message>Authentication is required to turn location services on or off</message>
+    <icon_name>mark-location</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">@ULTRAMARINE_LOCATION_HELPER@</annotate>
+  </action>
+</policyconfig>

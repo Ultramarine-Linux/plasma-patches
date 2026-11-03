@@ -6,9 +6,13 @@
 # text editors. When a suite is installed, this sorts after it: KDE breaks ties
 # by desktop file name, and org.ultramarine comes after com.collaboraoffice,
 # libreoffice-*, org.libreoffice and org.onlyoffice.
+# NoDisplay hides it from the launchers, but not from file managers' "Open With"
+# menus, which list every handler. So the name has to make sense there too, even
+# with a suite installed. Name and Comment are translated in the desktop file, not
+# through the gettext catalogs (Messages.sh only extracts the C++ strings).
 [Desktop Entry]
 Type=Application
-Name=Install an Office Suite
+Name=Office Suite Installer
 Comment=Install an office suite to open documents, spreadsheets and presentations
 Icon=system-software-install
 Exec=@OFFICE_INSTALLER_EXECUTABLE@ %U

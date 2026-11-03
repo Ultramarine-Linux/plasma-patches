@@ -26,6 +26,9 @@ namespace {
         static void modelExposesRoles();
         static void modelTracksBusyTweak();
         static void authenticationExitCodes();
+        static void parsesStateErrors();
+        static void stripsGoLogTimestamps();
+        static void reportsChangeErrors();
     };
 } // namespace
 
@@ -69,6 +72,7 @@ void TweaksTest::modelExposesRoles() {
                       .type = QStringLiteral("toggle"),
                       .stability = QStringLiteral("alpha"),
                       .warning = QStringLiteral("careful"),
+                      .stateError = {},
                       .enabled = true}});
 
     QCOMPARE(model.count(), 1);
@@ -106,6 +110,59 @@ void TweaksTest::authenticationExitCodes() {
     QVERIFY(UmCli::isAuthenticationFailure(126));
     QVERIFY(UmCli::isAuthenticationFailure(127));
     QVERIFY(!UmCli::isAuthenticationFailure(1));
+}
+
+void TweaksTest::parsesStateErrors() {
+    QList<TweakItem> tweaks;
+    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[
+        {"id":"broken","type":"toggle","enabled":true,"state_error":"check script for broken timed out"},
+        {"id":"fine","type":"toggle","enabled":true}
+    ]})"),
+                              &tweaks));
+    QCOMPARE(tweaks.size(), 2);
+    QCOMPARE(tweaks.at(0).id, QStringLiteral("broken"));
+    QCOMPARE(tweaks.at(0).stateError, QStringLiteral("check script for broken timed out"));
+    // enabled isn't trusted when the state couldn't be read
+    QVERIFY(!tweaks.at(0).enabled);
+    QVERIFY(tweaks.at(1).stateError.isEmpty());
+    QVERIFY(tweaks.at(1).enabled);
+
+    TweaksModel model;
+    model.setTweaks(tweaks);
+    QCOMPARE(model.data(model.index(0, 0), TweaksModel::StateErrorRole).toString(),
+             QStringLiteral("check script for broken timed out"));
+    QVERIFY(model.roleNames().values().contains("stateError"));
+}
+
+void TweaksTest::stripsGoLogTimestamps() {
+    QCOMPARE(stripGoLogTimestamp(QStringLiteral("2026/11/02 13:04:05 tweak nix not found")),
+             QStringLiteral("tweak nix not found"));
+    QCOMPARE(stripGoLogTimestamp(QStringLiteral("tweak nix not found")), QStringLiteral("tweak nix not found"));
+    QCOMPARE(stripGoLogTimestamp(QStringLiteral("x 2026/11/02 13:04:05 y")), QStringLiteral("x 2026/11/02 13:04:05 y"));
+}
+
+void TweaksTest::reportsChangeErrors() {
+    QVERIFY(changeErrorMessage(false, 0, QProcess::NormalExit, {}).isEmpty());
+    QVERIFY(changeErrorMessage(true, 0, QProcess::NormalExit, {}).isEmpty());
+
+    // um maps a playbook's 126 and 127 to 1, so for toggles these are pkexec's
+    QVERIFY(changeErrorMessage(false, 126, QProcess::NormalExit, {}).contains(QLatin1String("No changes were made")));
+    // a script's own exit code reaches us unchanged, so don't be sure
+    const QString script = changeErrorMessage(true, 127, QProcess::NormalExit, {});
+    QVERIFY(!script.isEmpty());
+    QVERIFY(!script.contains(QLatin1String("No changes were made")));
+
+    // a crash has no meaningful exit code
+    const QString crashed = changeErrorMessage(false, 9, QProcess::CrashExit, {});
+    QVERIFY(!crashed.isEmpty());
+    QVERIFY(!crashed.contains(QLatin1String("9")));
+
+    // um's own error is shown without its timestamp
+    QCOMPARE(changeErrorMessage(false, 1, QProcess::NormalExit,
+                                QStringLiteral("TASK [x]\n2026/11/02 13:04:05 tweak is locked\n")),
+             QStringLiteral("The tweak could not be changed: tweak is locked"));
+    QVERIFY(changeErrorMessage(false, 2, QProcess::NormalExit, QStringLiteral("fatal: [localhost]"))
+                .contains(QLatin1String("exit code 2")));
 }
 
 QTEST_GUILESS_MAIN(TweaksTest)

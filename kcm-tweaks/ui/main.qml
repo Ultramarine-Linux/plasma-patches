@@ -114,6 +114,7 @@ KCMUtils.ScrollViewKCM {
             required property string type
             required property string stability
             required property string warning
+            required property string stateError
             required property bool tweakEnabled
             required property bool busy
 
@@ -122,16 +123,26 @@ KCMUtils.ScrollViewKCM {
             down: false
             hoverEnabled: false
 
+            // um couldn't tell whether it's on, so its state isn't shown or changed from here
+            readonly property bool stateUnknown: stateError.length > 0
+
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing
 
                 KD.TitleSubtitle {
                     Layout.fillWidth: true
                     title: delegate.description
-                    subtitle: delegate.type === "oneshot" && delegate.tweakEnabled
-                        ? i18nc("@info", "Already applied")
+                    subtitle: delegate.stateUnknown ? i18nc("@info", "State unknown: %1", delegate.stateError)
+                        : delegate.type === "oneshot" && delegate.tweakEnabled ? i18nc("@info", "Already applied")
                         : delegate.tweakId
                     elide: Text.ElideRight
+
+                    HoverHandler {
+                        id: titleHover
+                    }
+                    // the error is often longer than the row
+                    QQC2.ToolTip.visible: delegate.stateUnknown && titleHover.hovered
+                    QQC2.ToolTip.text: delegate.stateError
                 }
 
                 Kirigami.Chip {
@@ -163,7 +174,7 @@ KCMUtils.ScrollViewKCM {
 
                 QQC2.Switch {
                     visible: delegate.type === "toggle"
-                    enabled: !kcm.running
+                    enabled: !kcm.running && !delegate.stateUnknown
                     checked: delegate.tweakEnabled
                     onToggled: {
                         const wanted = checked;
@@ -179,7 +190,7 @@ KCMUtils.ScrollViewKCM {
 
                 QQC2.Button {
                     visible: delegate.type === "oneshot"
-                    enabled: !kcm.running && !delegate.tweakEnabled
+                    enabled: !kcm.running && !delegate.tweakEnabled && !delegate.stateUnknown
                     text: delegate.tweakEnabled ? i18nc("@action:button", "Applied")
                                                 : i18nc("@action:button", "Apply")
                     icon.name: delegate.tweakEnabled ? "dialog-ok-apply" : "run-build"
@@ -225,7 +236,11 @@ KCMUtils.ScrollViewKCM {
 
         function message(type, stability, warning) {
             let parts = [];
-            if (stability.length > 0 && stability !== "stable") {
+            if (stability === "gfl") {
+                parts.push(i18nc("@info", "This tweak comes with no guarantees. Use it at your own risk."));
+            } else if (stability === "devel") {
+                parts.push(i18nc("@info", "This tweak is still in development and may be unstable."));
+            } else if (stability.length > 0 && stability !== "stable") {
                 parts.push(i18nc("@info", "This tweak is marked as “%1” and may be unstable.",
                                  root.stabilityLabel(stability)));
             }

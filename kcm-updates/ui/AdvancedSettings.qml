@@ -15,18 +15,33 @@ KCMUtils.SimpleKCM {
 
     title: i18nc("@title", "Advanced Update Settings")
 
-    // half-hour steps, shown in the locale's time format
-    readonly property var timeChoices: {
+    // errors from saving show here too, since this is where the settings are
+    headerPaddingEnabled: false
+    header: ErrorMessage {}
+
+    function timeChoice(minutes) {
+        const time = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
+        return { minutes: minutes, text: time.toLocaleTimeString(Qt.locale(), Locale.ShortFormat) };
+    }
+
+    // half-hour steps, shown in the locale's time format. A saved time that isn't on
+    // the grid (like 01:15 set elsewhere) is listed too, so it isn't changed by opening this page.
+    function timeChoices(current) {
         const choices = [];
         for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
-            const time = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
-            choices.push({ minutes: minutes, text: time.toLocaleTimeString(Qt.locale(), Locale.ShortFormat) });
+            if (current > minutes - 30 && current < minutes && current % 30 !== 0) {
+                choices.push(timeChoice(current));
+            }
+            choices.push(timeChoice(minutes));
+        }
+        if (current > 24 * 60 - 30 && current % 30 !== 0) {
+            choices.push(timeChoice(current));
         }
         return choices;
     }
 
-    function timeIndex(minutes) {
-        return Math.max(0, Math.min(timeChoices.length - 1, Math.round(minutes / 30)));
+    function timeIndex(choices, minutes) {
+        return Math.max(0, choices.findIndex(choice => choice.minutes === minutes));
     }
 
     Kirigami.FormLayout {
@@ -34,7 +49,6 @@ KCMUtils.SimpleKCM {
             id: inactiveSpin
 
             Kirigami.FormData.label: i18nc("@label:spinbox", "Install when unused for:")
-            enabled: kcm.automaticUpdates
             from: 0
             to: 24 * 60
             stepSize: 5
@@ -47,9 +61,7 @@ KCMUtils.SimpleKCM {
         QQC2.Label {
             Layout.fillWidth: true
             Layout.maximumWidth: Kirigami.Units.gridUnit * 20
-            text: kcm.automaticUpdates
-                ? i18nc("@info", "The device counts as in use while anyone is logged in with their screen unlocked.")
-                : i18nc("@info", "Only used when updates install automatically.")
+            text: i18nc("@info", "Used for automatic updates and Apply Tonight. The device counts as in use while anyone is logged in with their screen unlocked.")
             font: Kirigami.Theme.smallFont
             wrapMode: Text.Wrap
         }
@@ -67,33 +79,28 @@ KCMUtils.SimpleKCM {
             onToggled: kcm.windowEnabled = checked
         }
 
-        RowLayout {
+        // one labeled row each, so no sentence is split around the combo boxes
+        QQC2.ComboBox {
+            Kirigami.FormData.label: i18nc("@label:listbox the start of the update time range", "Starting at:")
+            Accessible.name: i18nc("@label:listbox", "Start time")
             enabled: kcm.windowEnabled
-            spacing: Kirigami.Units.smallSpacing
+            model: page.timeChoices(kcm.windowStart)
+            textRole: "text"
+            valueRole: "minutes"
+            // depends on model too, so it follows when an off-grid time leaves the list
+            currentIndex: page.timeIndex(model, kcm.windowStart)
+            onActivated: kcm.windowStart = currentValue
+        }
 
-            QQC2.Label {
-                text: i18nc("@label:listbox the start of a time range", "From")
-            }
-
-            QQC2.ComboBox {
-                model: page.timeChoices
-                textRole: "text"
-                valueRole: "minutes"
-                currentIndex: page.timeIndex(kcm.windowStart)
-                onActivated: kcm.windowStart = currentValue
-            }
-
-            QQC2.Label {
-                text: i18nc("@label:listbox the end of a time range", "to")
-            }
-
-            QQC2.ComboBox {
-                model: page.timeChoices
-                textRole: "text"
-                valueRole: "minutes"
-                currentIndex: page.timeIndex(kcm.windowEnd)
-                onActivated: kcm.windowEnd = currentValue
-            }
+        QQC2.ComboBox {
+            Kirigami.FormData.label: i18nc("@label:listbox the end of the update time range", "Ending at:")
+            Accessible.name: i18nc("@label:listbox", "End time")
+            enabled: kcm.windowEnabled
+            model: page.timeChoices(kcm.windowEnd)
+            textRole: "text"
+            valueRole: "minutes"
+            currentIndex: page.timeIndex(model, kcm.windowEnd)
+            onActivated: kcm.windowEnd = currentValue
         }
 
         // the helper rejects an empty window, so it can't be saved (see isSaveNeeded())

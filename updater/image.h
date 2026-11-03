@@ -73,7 +73,8 @@ namespace UltramarineUpdates {
     ImageState imageState(QString *error);
 
     /// looks for a new image in the registry without downloading or staging it,
-    /// so imageState() can report it. Needs root.
+    /// so imageState() can report it. Needs root. With bootc, the caller then
+    /// refreshes the status cache (under the system lock, see updateBootcStatusCache()).
     bool checkImageUpdate(QString *error);
 
     /// stages the new image for the next boot. Needs root.

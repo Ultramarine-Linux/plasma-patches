@@ -8,11 +8,21 @@ On Fedora or Ultramarine, install the Qt 6 and KDE Frameworks 6 development pack
 sudo dnf install \
     cmake extra-cmake-modules gcc-c++ gettext \
     qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel \
-    kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel \
-    kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel
+    kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel flatpak-devel \
+    kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel \
+    kf6-kirigami-addons lld
 ```
 
-The project requires Qt 6.5 and KDE Frameworks 6.0 or newer.
+The project requires Qt 6.6 and KDE Frameworks 6.0 or newer.
+
+- `flatpak-devel` (libflatpak) lets the office suite installer install from Flathub
+  with a polkit prompt. KIO and KService start apps from the office suite installer
+  and the dGPU launcher.
+- `kf6-kirigami-addons` is only needed at runtime. KCM pages built with
+  `org.kde.kirigamiaddons.formcard` (Location Services) fail to load without it.
+- `lld` is optional but recommended. CMake links with it when it finds `ld.lld`,
+  and falls back to the compiler's default linker otherwise. Pick a linker
+  explicitly with `-DCMAKE_LINKER_TYPE=` (for example `BFD` or `MOLD`).
 
 ## Configure, build and test
 
@@ -26,25 +36,30 @@ ctest --test-dir build --output-on-failure
 just cppcheck
 ```
 
-The install paths of the update helper, its systemd units and the dGPU launcher
-follow `CMAKE_INSTALL_PREFIX`. Build directories configured before they did still
-have the old paths cached, so reconfigure those with `cmake --fresh` (or
-`just clean`) before changing the prefix.
+The install paths of the update helper, its systemd units, the dGPU launcher,
+the location helper and the office suite installer follow `CMAKE_INSTALL_PREFIX`.
+Build directories configured before they did still have the old paths cached,
+so reconfigure those with `cmake --fresh` (or `just clean`) before changing the
+prefix.
 
 The `justfile` also provides `just build`, `just test`, `just install`, and
 `just install-user`. `just configure` generates `compile_commands.json` for
 clangd.
 
-`just install-user` installs under `~/.local`, which only works for the KCMs.
-The update helper, its polkit actions, the systemd units, the udev rule and the
-autostart entry are only read from system locations, and the KCM would run a
-user-writable helper through pkexec. Use `just dev-updates-install` for those.
+`just install-user` installs under `~/.local`, which only works for the Updates and
+Tweaks KCMs. The update helper, the location helper, their polkit actions, the
+systemd units, the udev rule and the autostart entry are only read from system
+locations, and the KCMs would run a user-writable helper through pkexec. Use
+`just dev-updates-install` for the update helper. The Location Services switch
+needs `/usr/libexec/ultramarine-location-helper` and its polkit policy installed
+system-wide (`just install`).
 
 To open the modules from the build without installing them:
 
 ```bash
 just run updates
 just run tweaks
+just run location
 ```
 
 ## Test the update helper
@@ -69,7 +84,7 @@ just dev-updates-uninstall
 the helper, its polkit action, systemd units and autostart entry. The automatic
 update timer is not enabled; to try automatic updates, run
 `sudo systemctl enable --now ultramarine-updates-automatic.timer` (with the
-default settings, they install once the device has been unused for 30 minutes).
+default settings, they install once the device has been unused for 5 minutes).
 The page's Apply button actually installs updates. See
 [Update helper](updates-backend.md) for behavior.
 

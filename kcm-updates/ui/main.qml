@@ -16,12 +16,15 @@ KCMUtils.SimpleKCM {
 
     title: i18nc("@title", "Updates")
 
-    // number of updates listed under "Software to Be Updated"
-    readonly property int shownUpdates: 5
+    // number of updates listed under "Software to Be Updated", see kcm.previewUpdates
+    readonly property int shownUpdates: kcm.previewLimit
     readonly property bool hasUpdates: kcm.updateCount > 0
     // RPM updates waiting for a restart are still listed, but Apply has nothing left to do for them
     readonly property bool canApply: kcm.installableCount > 0
     readonly property real labelColumnWidth: Kirigami.Units.gridUnit * 9
+    // part of Apply Tonight can still be pending after the other part ran or was
+    // canceled, and it can be canceled the same way
+    readonly property bool tonightActive: kcm.scheduledTonight || kcm.tonightPartial
 
     // every row of "Software to Be Updated" has the same height, and the list
     // always reserves room for shownUpdates rows, so the page doesn't move
@@ -48,6 +51,10 @@ KCMUtils.SimpleKCM {
         if (kcm.running) {
             return kcm.status;
         }
+        // the other part may have installed already, so this shows even when up to date
+        if (kcm.tonightPartial) {
+            return i18nc("@info", "Some updates are still scheduled to install tonight");
+        }
         if (!root.canApply && kcm.offlinePending) {
             return i18nc("@info", "Restart to install updates");
         }
@@ -69,8 +76,11 @@ KCMUtils.SimpleKCM {
         } else if (kcm.installedSizeChange < 0) {
             parts.push(i18nc("@info %1 is a size like 20 MB", "%1 Freed", root.formatSize(kcm.installedSizeChange)));
         }
-        return parts.length > 0 ? parts.join(" - ")
-                                : i18ncp("@info", "%1 update available", "%1 updates available", kcm.updateCount);
+        if (parts.length === 2) {
+            return i18nc("@info %1 is a download size, %2 an installed or freed size", "%1 - %2", parts[0], parts[1]);
+        }
+        return parts.length === 1 ? parts[0]
+                                  : i18ncp("@info", "%1 update available", "%1 updates available", kcm.updateCount);
     }
 
     // updates are checked when the page opens, and F5 checks again
@@ -81,24 +91,7 @@ KCMUtils.SimpleKCM {
     }
 
     headerPaddingEnabled: false
-    header: Kirigami.InlineMessage {
-        position: Kirigami.InlineMessage.Position.Header
-        type: Kirigami.MessageType.Error
-        text: kcm.errorMessage
-        // not a binding: the close button sets visible = false, which would break it
-        visible: false
-        showCloseButton: true
-        onTextChanged: visible = text.length > 0
-        // only when the banner itself was closed, not when the page around it is hidden
-        onVisibleChanged: if (!visible && parent && parent.visible) kcm.clearError()
-        Component.onCompleted: visible = text.length > 0
-        actions: Kirigami.Action {
-            text: i18nc("@action:button", "Try Again")
-            icon.name: "view-refresh"
-            enabled: !kcm.running
-            onTriggered: kcm.refresh()
-        }
-    }
+    header: ErrorMessage {}
 
     // SimpleKCM stretches its content to the page width, so keep the design's
     // narrow, centered column inside it
@@ -114,6 +107,23 @@ KCMUtils.SimpleKCM {
 
             Item {
                 implicitHeight: Kirigami.Units.gridUnit
+            }
+
+            // stays after the check that follows installing, until it's dismissed. The
+            // restart message below says the same when restarting finishes the updates.
+            Kirigami.InlineMessage {
+                readonly property bool wanted: kcm.successMessage.length > 0 && !kcm.restartRequired
+
+                Layout.fillWidth: true
+                type: Kirigami.MessageType.Positive
+                text: kcm.successMessage
+                showCloseButton: true
+                // not a binding: the close button sets visible = false, which would break it
+                visible: false
+                onWantedChanged: visible = wanted
+                Component.onCompleted: visible = wanted
+                // only when the message itself was closed, not when the page is hidden
+                onVisibleChanged: if (!visible && wanted && parent && parent.visible) kcm.clearSuccess()
             }
 
             // offline updates install while restarting (Plasma's logout screen offers
@@ -207,14 +217,14 @@ KCMUtils.SimpleKCM {
                         }
 
                         QQC2.Button {
-                            text: kcm.scheduledTonight ? i18nc("@action:button", "Don’t Apply Tonight")
+                            text: root.tonightActive ? i18nc("@action:button", "Don’t Apply Tonight")
                                                        : i18nc("@action:button install updates tonight", "Apply Tonight")
                             // a plain crescent, since the non-symbolic weather icon is a full moon
-                            icon.name: kcm.scheduledTonight ? "dialog-cancel" : "weather-clear-night-symbolic"
-                            enabled: !kcm.running && !kcm.scheduling && (root.canApply || kcm.scheduledTonight)
-                            onClicked: kcm.scheduledTonight ? kcm.cancelTonight() : kcm.applyTonight()
+                            icon.name: root.tonightActive ? "dialog-cancel" : "weather-clear-night-symbolic"
+                            enabled: !kcm.running && !kcm.scheduling && (root.canApply || root.tonightActive)
+                            onClicked: root.tonightActive ? kcm.cancelTonight() : kcm.applyTonight()
 
-                            QQC2.ToolTip.visible: hovered && !kcm.scheduledTonight
+                            QQC2.ToolTip.visible: hovered && !root.tonightActive
                             QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                             QQC2.ToolTip.text: i18nc("@info:tooltip", "Updates install tonight once the device hasn’t been used for a while and is plugged in")
                         }
@@ -274,14 +284,14 @@ KCMUtils.SimpleKCM {
                             anchors.right: parent.right
                             spacing: Kirigami.Units.largeSpacing
 
-                            // desktop apps and widgets come first, see parseUpdateListing()
+                            // desktop apps and widgets come first, see parseUpdateListing().
+                            // Only the first few are listed, so there's a delegate for each of them only.
                             Repeater {
-                                model: kcm.updates
+                                model: kcm.previewUpdates
 
                                 delegate: RowLayout {
                                     id: updateRow
 
-                                    required property int index
                                     required property string name
                                     required property string icon
                                     required property string sourceLabel
@@ -303,7 +313,6 @@ KCMUtils.SimpleKCM {
                                         ? "" : shortVersion(oldVersion)
                                     readonly property string toVersion: shortVersion(newVersion)
 
-                                    visible: index < root.shownUpdates
                                     Layout.preferredHeight: root.updateRowHeight
                                     Layout.fillWidth: true
                                     spacing: Kirigami.Units.largeSpacing
@@ -347,16 +356,19 @@ KCMUtils.SimpleKCM {
                     QQC2.Label {
                         // hidden with opacity so the space stays reserved
                         opacity: kcm.updateCount > root.shownUpdates ? 1 : 0
-                        text: i18ncp("@info %1 is a number of updates", "and <b>%1</b> More", "and <b>%1</b> More",
-                                    Math.max(0, kcm.updateCount - root.shownUpdates))
+                        text: i18ncp("@info %1 is the number of updates not listed above", "and <b>%1</b> more update",
+                                     "and <b>%1</b> more updates", Math.max(0, kcm.updateCount - root.shownUpdates))
                         textFormat: Text.StyledText
                     }
 
                     QQC2.ItemDelegate {
+                        id: technicalButton
+
                         Layout.fillWidth: true
                         Layout.leftMargin: -leftPadding
                         opacity: root.hasUpdates ? 1 : 0
                         enabled: root.hasUpdates && !kcm.running
+                        text: i18nc("@action:button opens a list of all updates", "Technical Information")
                         onClicked: kcm.push("TechnicalInformation.qml")
 
                         contentItem: RowLayout {
@@ -364,7 +376,7 @@ KCMUtils.SimpleKCM {
 
                             QQC2.Label {
                                 Layout.fillWidth: true
-                                text: i18nc("@action:button opens a list of all updates", "Technical Information")
+                                text: technicalButton.text
                                 elide: Text.ElideRight
                             }
 

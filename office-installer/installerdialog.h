@@ -5,7 +5,7 @@
 #pragma once
 
 #include <QDialog>
-#include <QProcess>
+#include <QPointer>
 #include <QUrl>
 
 #include "suites.h"
@@ -19,15 +19,44 @@ class QStackedWidget;
 
 namespace OfficeInstaller {
 
+    class Installer;
+
     /// asks which office suite to install, installs it and opens the documents with it
     class InstallerDialog : public QDialog {
         Q_OBJECT
+        Q_CLASSINFO("D-Bus Interface", "org.ultramarine.OfficeInstaller")
 
     public:
-        explicit InstallerDialog(const QList<QUrl> &urls, QWidget *parent = nullptr);
+        /**
+         * offers @p offered to open @p urls with. @p installedSuite is the name of
+         * an office suite that's installed but can't open them, or empty if there's none.
+         */
+        InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered, const QString &installedSuite,
+                        QWidget *parent = nullptr);
 
-        /// ignored while installing: interrupting flatpak or PackageKit could leave a partial install
+        /// cancels the install while installing
         void reject() override;
+
+    public Q_SLOTS:
+        /// documents from another launch of the installer, opened too once a suite is installed
+        Q_SCRIPTABLE void addDocuments(const QStringList &urls);
+
+    public:
+        /// the session bus name that makes the dialog unique, and the interface addDocuments() is on
+        static constexpr auto DBusService = "org.ultramarine.OfficeInstaller";
+
+        /**
+         * exports addDocuments() and takes DBusService. Returns false if another
+         * installer has the name. The object is exported first, so a launch that
+         * sees the name can always reach addDocuments().
+         */
+        bool registerOnBus();
+        /**
+         * gives up the name once the documents are being opened or the dialog is
+         * closing, so later launches open their own dialog instead of handing
+         * over documents that would never be opened
+         */
+        void unregisterFromBus();
 
     private:
         QWidget *createChoicePage();
@@ -35,8 +64,7 @@ namespace OfficeInstaller {
 
         void updateSources() const;
         void install();
-        void readOutput();
-        void installFinished(int exitCode, QProcess::ExitStatus exitStatus);
+        void installFinished(bool success, bool canceled, const QString &error);
         void openDocuments();
         void setBusy(bool busy) const;
 
@@ -44,6 +72,7 @@ namespace OfficeInstaller {
         [[nodiscard]] Source selectedSource() const;
 
         QList<QUrl> m_urls;
+        QString m_installedSuite;
         QList<Suite> m_suites;
         bool m_imageBased;
 
@@ -56,11 +85,10 @@ namespace OfficeInstaller {
         QLabel *m_progressIcon;
         QLabel *m_progressTitle;
         QLabel *m_progressDetail;
+        QLabel *m_subtitle = nullptr;
         QDialogButtonBox *m_buttons;
 
-        QProcess *m_process = nullptr;
-        /// the installer's last line of output, shown while installing and on failure
-        QString m_lastLine;
+        QPointer<Installer> m_installer;
     };
 
 } // namespace OfficeInstaller

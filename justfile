@@ -20,15 +20,19 @@ build:
 translations:
     ./Messages.sh
 
-# run cppcheck with the same checks as CI, suppressing only false positives in generated Qt moc files
+# run cppcheck with the same checks as CI (.github/workflows/cpp-ci.yml plus the reusable
+# FyraLabs/actions cpp.yml), minus its SARIF output. Keep the flags in sync with both
 cppcheck: build
-    cppcheck -j2 --project={{ build_dir }}/compile_commands.json \
+    cppcheck --project={{ build_dir }}/compile_commands.json \
         --enable=warning,style,performance,portability \
         --error-exitcode=1 \
         --suppress=missingIncludeSystem \
-        --suppress='preprocessorErrorDirective:*_autogen*' \
+        --quiet \
+        -j2 \
         --inline-suppr \
-        --quiet
+        --suppress='preprocessorErrorDirective:*_autogen*' \
+        --library=qt \
+        --library=cppcheck-kf6.cfg
 
 # run the test suite
 test: build

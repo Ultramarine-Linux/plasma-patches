@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kcm_ultramarine_location\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 12:15-0700\n"
+"POT-Creation-Date: 2026-11-02 14:09-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -22,16 +22,40 @@ msgctxt "@info"
 msgid "Allow apps to request your approximate location"
 msgstr ""
 
-#: kcm-location/location.cpp:144
+#: kcm-location/location.cpp:63
 msgid "Authentication was cancelled or failed. No changes were made."
 msgstr ""
 
-#: kcm-location/location.cpp:146
-msgid "Could not change location services: %1"
+#: kcm-location/location.cpp:68
+msgid ""
+"Could not change location services. The change may have been partly applied."
 msgstr ""
 
-#: kcm-location/location.cpp:87
+#: kcm-location/location.cpp:70
+msgid ""
+"Could not change location services. The change may have been partly applied: "
+"%1"
+msgstr ""
+
+#: kcm-location/location.cpp:146
+msgid "Could not change location services: %1 is not installed."
+msgstr ""
+
+#: kcm-location/location.cpp:151
+msgid "Could not change location services: pkexec is not installed."
+msgstr ""
+
+#: kcm-location/location.cpp:129
 msgid "Could not read the state of location services: %1"
+msgstr ""
+
+#: kcm-location/location.cpp:174
+msgid "Could not start pkexec."
+msgstr ""
+
+#: kcm-location/ui/main.qml:160
+msgctxt "@info:placeholder"
+msgid "Couldn't check whether location services are on"
 msgstr ""
 
 #: kcm-location/ui/main.qml:109
@@ -39,7 +63,7 @@ msgctxt "@info"
 msgid "How?"
 msgstr ""
 
-#: kcm-location/ui/main.qml:150
+#: kcm-location/ui/main.qml:151
 msgctxt "@info:placeholder"
 msgid "Install the geoclue2 package to let apps request your location."
 msgstr ""
@@ -59,7 +83,7 @@ msgctxt "@title"
 msgid "Location Services"
 msgstr ""
 
-#: kcm-location/ui/main.qml:149
+#: kcm-location/ui/main.qml:150
 msgctxt "@info:placeholder"
 msgid "Location services aren't installed"
 msgstr ""
@@ -77,6 +101,11 @@ msgstr ""
 #: kcm-location/ui/main.qml:101
 msgctxt "@title:group"
 msgid "Privacy"
+msgstr ""
+
+#: kcm-location/ui/main.qml:162
+msgctxt "@action:button"
+msgid "Try Again"
 msgstr ""
 
 #: kcm-location/ui/main.qml:84

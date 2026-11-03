@@ -6,6 +6,7 @@
 
 #include <KApplicationTrader>
 #include <KIO/ApplicationLauncherJob>
+#include <KIO/JobUiDelegateFactory>
 
 #include <QHash>
 #include <QMimeDatabase>
@@ -31,9 +32,15 @@ namespace OfficeInstaller {
                 });
             return services.value(0);
         }
+
+        struct PendingLaunches {
+            qsizetype remaining = 0;
+            QStringList errors;
+        };
     } // namespace
 
-    bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context, const std::function<void()> &done) {
+    bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context,
+                               const std::function<void(const QString &error)> &done) {
         if (urls.isEmpty()) {
             return false;
         }
@@ -51,18 +58,40 @@ namespace OfficeInstaller {
             urlsByService[service->storageId()].append(url);
         }
 
-        auto pending = std::make_shared<qsizetype>(services.size());
+        auto pending = std::make_shared<PendingLaunches>();
+        pending->remaining = services.size();
         for (auto it = services.cbegin(); it != services.cend(); ++it) {
             auto *job = new KIO::ApplicationLauncherJob(it.value());
             job->setUrls(urlsByService.value(it.key()));
-            QObject::connect(job, &KJob::result, context, [pending, done] {
-                if (--*pending == 0) {
-                    done();
+            // asks before running untrusted desktop files. Errors are reported through done(), not
+            // by the delegate: its message box would be queued after the installer has quit
+            job->setUiDelegate(KIO::createDefaultJobUiDelegate(KJobUiDelegate::AutoHandlingDisabled, nullptr));
+            QObject::connect(job, &KJob::result, context, [pending, done](KJob *job) {
+                if (job->error() != 0 && job->error() != KJob::KilledJobError) {
+                    pending->errors.append(job->errorString());
+                }
+                if (--pending->remaining == 0) {
+                    done(pending->errors.join(u'\n'));
                 }
             });
             job->start();
         }
         return true;
+    }
+
+    KService::Ptr findInstalledSuite() {
+        const QMimeDatabase db;
+        for (const auto type: {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"_L1,
+                               "application/vnd.oasis.opendocument.text"_L1,
+                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"_L1,
+                               "application/vnd.oasis.opendocument.spreadsheet"_L1,
+                               "application/vnd.openxmlformats-officedocument.presentationml.presentation"_L1,
+                               "application/vnd.oasis.opendocument.presentation"_L1}) {
+            if (KService::Ptr service = installedHandler(db.mimeTypeForName(type))) {
+                return service;
+            }
+        }
+        return {};
     }
 
 } // namespace OfficeInstaller
