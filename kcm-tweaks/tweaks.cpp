@@ -67,10 +67,24 @@ namespace {
     }
 } // namespace
 
+int tweaksOutputVersion(const QString &output) {
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8(), &error);
+    if (error.error != QJsonParseError::NoError || !document.isObject()) {
+        return 0;
+    }
+    // um builds from before the version field was added print the same format as version 1
+    return document.object().value(QStringLiteral("version")).toInt(1);
+}
+
 bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
     QJsonParseError error;
     const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8(), &error);
     if (error.error != QJsonParseError::NoError || !document.isObject()) {
+        return false;
+    }
+    // a newer format may change what the fields mean, so don't guess
+    if (tweaksOutputVersion(output) != SupportedTweaksOutputVersion) {
         return false;
     }
     const QJsonValue list = document.object().value(QStringLiteral("tweaks"));
@@ -133,11 +147,8 @@ QString changeErrorMessage(const bool script, const int exitCode, const QProcess
                              "details.");
     }
     if (UmCli::isAuthenticationFailure(exitCode)) {
-        // um maps a playbook's 126 and 127 to 1, so for toggles and one-time changes these are
-        // pkexec's. um execs script.sh directly though, so a script can exit with them too.
-        return script ? i18n("Authentication was canceled or failed, or the maintenance task failed. See the "
-                             "output for details.")
-                      : i18n("Authentication was canceled or failed. No changes were made.");
+        // um maps a playbook's or script's own 126 and 127 to 1, so these are always pkexec's
+        return i18n("Authentication was canceled or failed. No changes were made.");
     }
     if (const QString error = lastUmError(output); !error.isEmpty()) {
         return script ? i18n("The maintenance task failed: %1", error)
@@ -410,6 +421,9 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
         // older um releases have no --json flag, so point that out rather than showing a parse error
         if (stdErr.contains(QLatin1String("flag provided but not defined"))) {
             setListError(i18n("This version of um is too old to manage tweaks from System Settings."));
+        } else if (exitCode == 0 && tweaksOutputVersion(stdOut) > SupportedTweaksOutputVersion) {
+            setListError(i18n("This version of um is too new for this version of System Settings. Update "
+                              "System Settings to manage tweaks."));
         } else {
             // um's errors go through Go's log package, which puts a timestamp in front
             QStringList errorLines;

@@ -26,10 +26,17 @@ struct TweakItem {
     bool enabled = false;
 };
 
+/// the `version` of `um tweaks list --json` output this KCM understands
+constexpr int SupportedTweaksOutputVersion = 1;
+
+/// returns the `version` of `um tweaks list --json` output, or 0 if it isn't valid JSON
+[[nodiscard]] int tweaksOutputVersion(const QString &output);
+
 /**
  * parses the JSON emitted by `um tweaks list --json`. Tweaks are grouped by type
  * (toggles, then one-time tweaks, then scripts) and sorted by description.
- * Returns false and leaves @p tweaks untouched if the output is not valid.
+ * Returns false and leaves @p tweaks untouched if the output is not valid or has an unsupported
+ * version.
  */
 bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks);
 

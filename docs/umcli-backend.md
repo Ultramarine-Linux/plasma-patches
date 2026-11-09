@@ -13,15 +13,18 @@ CLI rather than maintaining its own list. Updates are handled by
 - Kirigami and KCMUtils' QML modules. Unlike [Location Services](location.md), this page
   doesn't use `kirigami-addons`.
 - `umcli` must install `/usr/bin/um` and `/usr/share/um`. The KCM prefers
-  `/usr/bin/um`; CMake's `-DUM_EXECUTABLE=...` setting can point development builds
-  elsewhere.
+  `/usr/bin/um`. CMake's `-DUM_EXECUTABLE=...` setting can point development builds
+  elsewhere. If that path doesn't exist, the KCM falls back to the first `um` in `PATH`,
+  which still works, but polkit then uses its generic `org.freedesktop.policykit.exec`
+  action (generic prompt, no remembered authorization) instead of umcli's.
 - The `umcli` package must install
   `polkit/org.ultramarine.um.policy` at
   `/usr/share/polkit-1/actions/org.ultramarine.um.policy`. The KCM runs `um` as
   the logged-in user; when it needs root, umcli re-executes through `pkexec`.
 - `pkexec` and an active polkit authentication agent are needed for privileged
-  actions. `pkexec` clears environment overrides, so privileged tweak actions
-  use the installed `/usr/share/um` data.
+  actions. `pkexec` clears the environment, so um refuses to escalate through it while
+  `UM_TWEAKS_PATH`, `UM_DATA` or `UM_STATE` is set rather than silently using the
+  installed `/usr/share/um` data. The KCM shows that error.
 
 ## Tweaks KCM
 
@@ -33,7 +36,10 @@ an unsupported control.
 Enabling, disabling or running a tweak invokes `um tweaks` through umcli's
 polkit-aware privilege escalation. Warnings are shown before risky or
 non-reversible operations. um is started without stdin and in a new session, so it
-never sees a terminal and always escalates through pkexec rather than sudo.
+never sees a terminal and escalates through pkexec. The exception is a `wheel` member
+for whom sudo needs no password (a `NOPASSWD` rule or cached credentials): um then uses
+`sudo -n`, which forwards the `UM_*` overrides and exits 1 rather than 126 or 127 if it
+fails.
 
 Whether a tweak is on comes from umcli: a tweak's `check.sh` decides when it has
 one, and the world-readable markers under `/var/lib/um/tweaks/` are the fallback
@@ -48,10 +54,12 @@ running rather than killing it halfway. Its output goes to a `0600` file in
 pipe, because Go kills a program that writes to a closed pipe on stdout or stderr. um is
 also started with SIGPIPE ignored.
 
-um exits with pkexec's 126 or 127 when authentication was canceled or failed.
-It maps a failed playbook's 126 and 127 to 1, so for toggles and one-time changes
-those codes mean nothing changed. `um tweaks run` execs the tweak's `script.sh`
-directly though, so a script exiting with 126 or 127 looks the same, and the KCM
-doesn't claim nothing changed for those.
+um exits with pkexec's 126 or 127 when authentication was canceled or failed. It
+maps a playbook's or script's own 126 and 127 to 1, so those codes always mean nothing
+changed.
+
+`um tweaks list --json` output has a `version`. The KCM only accepts version 1 (or no
+version, from um builds before it was added) and asks for a newer System Settings
+otherwise, since a new version may change what the fields mean.
 
 For the command behavior, see the [umcli README](https://github.com/Ultramarine-Linux/um/blob/main/README.md).

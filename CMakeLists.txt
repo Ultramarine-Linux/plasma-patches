@@ -51,7 +51,8 @@ um_install_translations(${UM_TRANSLATION_DOMAIN}
         COMPONENTS ultramarine-updates ultramarine-dgpu-launch ultramarine-office-installer)
 
 # absolute path of the um CLI, used by the Tweaks KCM. umcli's polkit action
-# (org.ultramarine.um.manage) matches this exact path when um escalates through pkexec.
+# (org.ultramarine.um.tweaks) matches this exact path plus the `tweaks` subcommand
+# (exec.argv1) when um escalates through pkexec.
 set(UM_EXECUTABLE "/usr/bin/um" CACHE FILEPATH "Path to the um CLI")
 
 # absolute path of the update helper (updater/), used by the Updates KCM. Its polkit

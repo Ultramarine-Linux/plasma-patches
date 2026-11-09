@@ -25,6 +25,7 @@ namespace {
     private Q_SLOTS:
         static void parsesAndGroupsTweaks();
         static void rejectsInvalidOutput();
+        static void checksOutputVersion();
         static void modelExposesRoles();
         static void modelTracksBusyTweak();
         static void authenticationExitCodes();
@@ -66,6 +67,20 @@ void TweaksTest::rejectsInvalidOutput() {
     QCOMPARE(tweaks.size(), 1);
     QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[]})"), &tweaks));
     QVERIFY(tweaks.isEmpty());
+}
+
+void TweaksTest::checksOutputVersion() {
+    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"version":1,"tweaks":[]})")), 1);
+    // um builds from before the version field print version 1's format
+    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"tweaks":[]})")), 1);
+    QCOMPARE(tweaksOutputVersion(QStringLiteral("- ID: nix")), 0);
+
+    QList tweaks{tweakWithId(QStringLiteral("keep"))};
+    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"version":1,"tweaks":[{"id":"nix","type":"toggle"}]})"), &tweaks));
+    QCOMPARE(tweaks.size(), 1);
+    QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
+    QVERIFY(!parseTweaksOutput(QStringLiteral(R"({"version":2,"tweaks":[{"id":"new","type":"toggle"}]})"), &tweaks));
+    QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
 }
 
 void TweaksTest::modelExposesRoles() {
@@ -149,12 +164,9 @@ void TweaksTest::reportsChangeErrors() {
     QVERIFY(changeErrorMessage(false, 0, QProcess::NormalExit, {}).isEmpty());
     QVERIFY(changeErrorMessage(true, 0, QProcess::NormalExit, {}).isEmpty());
 
-    // um maps a playbook's 126 and 127 to 1, so for toggles these are pkexec's
+    // um maps a playbook's or script's own 126 and 127 to 1, so these are always pkexec's
     QVERIFY(changeErrorMessage(false, 126, QProcess::NormalExit, {}).contains(QLatin1String("No changes were made")));
-    // a script's own exit code reaches us unchanged, so don't be sure
-    const QString script = changeErrorMessage(true, 127, QProcess::NormalExit, {});
-    QVERIFY(!script.isEmpty());
-    QVERIFY(!script.contains(QLatin1String("No changes were made")));
+    QVERIFY(changeErrorMessage(true, 127, QProcess::NormalExit, {}).contains(QLatin1String("No changes were made")));
 
     // a crash has no meaningful exit code
     const QString crashed = changeErrorMessage(false, 9, QProcess::CrashExit, {});
