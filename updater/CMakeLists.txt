@@ -5,6 +5,7 @@
 # the update backend: listing, installing, automatic updates and Apply Tonight.
 # The library is shared by the helper and the tests.
 add_library(ultramarine_updates_core STATIC
+        cli.cpp
         process.cpp
         updates.cpp
         apps.cpp

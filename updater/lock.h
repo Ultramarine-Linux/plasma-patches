@@ -6,6 +6,7 @@
 
 #include <QString>
 
+#include <chrono>
 #include <cstdint>
 
 /// keeps automatic updates, Apply Tonight and manual installs from running at the same time
@@ -30,7 +31,12 @@ namespace UltramarineUpdates {
         InstallLock(const InstallLock &) = delete;
         InstallLock &operator=(const InstallLock &) = delete;
 
-        Result tryLock(QString *error = nullptr);
+        /**
+         * takes the lock without blocking. While another process holds it, retries
+         * for up to @p wait before reporting Busy, for holders that only keep it
+         * for a moment.
+         */
+        Result tryLock(QString *error = nullptr, std::chrono::milliseconds wait = {});
 
     private:
         QString m_path;
@@ -42,6 +48,12 @@ namespace UltramarineUpdates {
 
     /// $XDG_RUNTIME_DIR/ultramarine-updates.lock: the user's own updates
     QString userLockPath();
+
+    /**
+     * /run/ultramarine-updates-status.lock: writing the bootc status cache, as root.
+     * Separate from the system lock, so refreshing the cache never turns away an install.
+     */
+    QString statusCacheLockPath();
 
     /// what to tell someone installing by hand while another install runs
     QString installBusyMessage();

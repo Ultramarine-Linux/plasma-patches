@@ -118,18 +118,24 @@ KCMUtils.ScrollViewKCM {
             required property bool tweakEnabled
             required property bool busy
 
-            width: ListView.view.width
-            // toggling happens through the controls only. The row itself is not a button.
-            down: false
-            hoverEnabled: false
-
             // um couldn't tell whether it's on, so its state isn't shown or changed from here
             readonly property bool stateUnknown: stateError.length > 0
+
+            width: ListView.view.width
+            // read by screen readers. The content item below shows it.
+            text: delegate.description
+            Accessible.description: details.subtitle
+            // toggling happens through the controls only. The row itself is not a button or a tab stop.
+            down: false
+            hoverEnabled: false
+            focusPolicy: Qt.NoFocus
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing
 
                 KD.TitleSubtitle {
+                    id: details
+
                     Layout.fillWidth: true
                     title: delegate.description
                     subtitle: delegate.stateUnknown ? i18nc("@info", "State unknown: %1", delegate.stateError)
@@ -176,6 +182,7 @@ KCMUtils.ScrollViewKCM {
                     visible: delegate.type === "toggle"
                     enabled: !kcm.running && !delegate.stateUnknown
                     checked: delegate.tweakEnabled
+                    Accessible.name: delegate.description
                     onToggled: {
                         const wanted = checked;
                         // keep showing the real state until um reports the change succeeded
@@ -194,6 +201,9 @@ KCMUtils.ScrollViewKCM {
                     text: delegate.tweakEnabled ? i18nc("@action:button", "Applied")
                                                 : i18nc("@action:button", "Apply")
                     icon.name: delegate.tweakEnabled ? "dialog-ok-apply" : "run-build"
+                    Accessible.name: delegate.tweakEnabled
+                        ? i18nc("@action:button accessible name, %1 is a tweak", "“%1” applied", delegate.description)
+                        : i18nc("@action:button accessible name, %1 is a tweak", "Apply “%1”", delegate.description)
                     onClicked: root.request(delegate.tweakId, delegate.description, delegate.type,
                                             delegate.stability, delegate.warning, true)
                 }
@@ -203,23 +213,40 @@ KCMUtils.ScrollViewKCM {
                     enabled: !kcm.running
                     text: i18nc("@action:button", "Run")
                     icon.name: "media-playback-start"
+                    Accessible.name: i18nc("@action:button accessible name, %1 is a tweak", "Run “%1”", delegate.description)
                     onClicked: root.request(delegate.tweakId, delegate.description, delegate.type,
                                             delegate.stability, delegate.warning, true)
                 }
             }
         }
 
+        // also before the first load, when there's nothing to show yet
         Kirigami.LoadingPlaceholder {
             anchors.centerIn: parent
-            visible: kcm.loading && list.count === 0
+            visible: list.count === 0 && (kcm.loading || (!kcm.loaded && !kcm.listFailed))
         }
 
+        // only once um answered, not before the first load or when loading failed
         Kirigami.PlaceholderMessage {
             anchors.centerIn: parent
             width: parent.width - Kirigami.Units.gridUnit * 4
-            visible: !kcm.loading && list.count === 0
+            visible: !kcm.loading && list.count === 0 && kcm.loaded && !kcm.listFailed
             icon.name: "preferences-system-ultramarine"
             text: i18nc("@info:placeholder", "No tweaks available")
+            helpfulAction: Kirigami.Action {
+                text: i18nc("@action:button", "Reload")
+                icon.name: "view-refresh"
+                onTriggered: kcm.refresh()
+            }
+        }
+
+        // the banner says why, and stays reachable here once it's dismissed
+        Kirigami.PlaceholderMessage {
+            anchors.centerIn: parent
+            width: parent.width - Kirigami.Units.gridUnit * 4
+            visible: !kcm.loading && list.count === 0 && kcm.listFailed
+            icon.name: "dialog-error"
+            text: i18n("Could not load the list of tweaks.")
             helpfulAction: Kirigami.Action {
                 text: i18nc("@action:button", "Reload")
                 icon.name: "view-refresh"
@@ -290,7 +317,8 @@ KCMUtils.ScrollViewKCM {
         QQC2.ScrollView {
             QQC2.TextArea {
                 readOnly: true
-                text: kcm.output
+                // only while it's shown, so the output isn't laid out again on every update while it's closed
+                text: outputDialog.visible ? kcm.output : ""
                 font.family: "monospace"
                 wrapMode: TextEdit.Wrap
                 // follow the output while an operation is running

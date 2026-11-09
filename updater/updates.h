@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 /**
  * lists and installs updates for an Ultramarine system: RPM packages (dnf) or
@@ -93,20 +94,53 @@ namespace UltramarineUpdates {
     ListResponse listUpdates();
 
     /**
+     * the outcome of applyUser() or applySystem(). Every package manager runs
+     * even if an earlier one failed, so some can succeed while others fail.
+     */
+    struct ApplyResult {
+        /// whether any package manager was found
+        bool updated = false;
+        /// how many package managers ran successfully
+        int succeeded = 0;
+        /// whether the main system update (RPMs or the image) failed
+        bool primaryFailed = false;
+        /// one message per package manager that failed
+        QStringList failures;
+
+        void succeed() { ++succeeded; }
+
+        void fail(const QString &message, bool primary = false);
+
+        /// whether every package manager that ran succeeded
+        [[nodiscard]] bool ok() const { return failures.isEmpty(); }
+
+        /**
+         * whether enough was installed to count as an install for the timers: the
+         * main system update worked (if there is one), and something worked or
+         * nothing failed. A single broken source (say, a Flatpak remote that's
+         * down) then waits for the next regular run instead of retrying
+         * everything every hour.
+         */
+        [[nodiscard]] bool installed() const { return !primaryFailed && (succeeded > 0 || failures.isEmpty()); }
+
+        /// every failure, one per line
+        [[nodiscard]] QString error() const { return failures.join(u'\n'); }
+    };
+
+    /**
      * updates user-installation Flatpaks, the user's Nix profile and Plasma
      * widgets. Must run as the user: after escalating, flatpak, nix and KNewStuff
      * would only see root's (empty) installation, profile and widgets. A failing
-     * one doesn't stop the others. @p error then lists every failure.
+     * one doesn't stop the others.
      */
-    bool applyUser(bool assumeYes, QString *error);
+    ApplyResult applyUser(bool assumeYes);
 
     /**
      * updates system packages, system Flatpaks and Nix itself, and needs root. With
      * @p offline, dnf downloads the RPM updates and PackageKit prepares them to
-     * install during the next restart (see packagekit.h). Sets @p updated to
-     * whether any package manager was found. Like applyUser(), every package
-     * manager runs even if an earlier one failed.
+     * install during the next restart (see packagekit.h). Like applyUser(), every
+     * package manager runs even if an earlier one failed.
      */
-    bool applySystem(bool assumeYes, bool offline, bool *updated, QString *error);
+    ApplyResult applySystem(bool assumeYes, bool offline);
 
 } // namespace UltramarineUpdates

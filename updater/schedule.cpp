@@ -8,6 +8,7 @@
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QProcess>
 #include <QStandardPaths>
 
 #include <algorithm>
@@ -50,7 +51,10 @@ namespace UltramarineUpdates {
         /// how long to wait after a failed install (often no network) before trying again
         constexpr std::chrono::seconds retryInterval = 1h;
 
-        void warn(const QString &message) { std::fprintf(stderr, "warning: %s\n", qPrintable(message)); }
+        void warn(const QString &message) {
+            std::fprintf(stderr, "%s\n",
+                         qPrintable(i18nc("@info:status %1 is a warning message", "Warning: %1", message)));
+        }
 
         void say(const QString &message) {
             std::puts(qPrintable(message));
@@ -59,6 +63,9 @@ namespace UltramarineUpdates {
 
         /// where scheduleTonight() remembers when Apply Tonight was scheduled
         const auto tonightScheduledFile = u"/tonight-scheduled"_s;
+
+        /// development overrides, passed on to the transient units
+        const QStringList forwardedEnvironment{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
 
         int systemctl(const bool userManager, QStringList arguments) {
             if (userManager) {
@@ -89,7 +96,7 @@ namespace UltramarineUpdates {
                                     QString *error) {
             // its unit name is taken while it runs, so leave it be. It stops the timer once it's done.
             if (unitRunning(userManager, unit + ".service"_L1)) {
-                say(u"Tonight's updates are being installed right now."_s);
+                say(i18nc("@info:status", "Tonight's updates are being installed right now."));
                 return true;
             }
             // replace an existing schedule. It's fine if there is none.
@@ -102,12 +109,20 @@ namespace UltramarineUpdates {
             }
             runArguments << u"--unit="_s + unit << u"--on-calendar="_s + pollCalendar
                          << u"--timer-property=AccuracySec=1min"_s << u"--description=Install updates tonight"_s
-                         << u"--property=Nice=19"_s << u"--property=IOSchedulingClass=idle"_s;
+                         << u"--property=Nice=19"_s << u"--property=IOSchedulingClass=idle"_s
+                         << u"--property=TimeoutStartSec=6h"_s;
             if (!userManager) {
                 // like ultramarine-updates-automatic.service. The user manager has no network-online.target.
                 runArguments << u"--property=Wants=network-online.target"_s
-                             << u"--property=After=network-online.target"_s << u"--property=TimeoutStartSec=6h"_s
-                             << u"--property=TimeoutStopSec=30min"_s;
+                             << u"--property=After=network-online.target"_s << u"--property=TimeoutStopSec=30min"_s;
+            }
+            // the units start with a clean environment. A development override (passed
+            // through sudo, or set for the user's half) must reach them too, or they'd
+            // read the real settings and state while scheduling wrote the override's.
+            for (const QString &name: forwardedEnvironment) {
+                if (const QByteArray variable = name.toLatin1(); qEnvironmentVariableIsSet(variable.constData())) {
+                    runArguments << u"--setenv=%1=%2"_s.arg(name, qEnvironmentVariable(variable.constData()));
+                }
             }
             runArguments << u"--"_s << QCoreApplication::applicationFilePath();
             runArguments += arguments;
@@ -117,7 +132,8 @@ namespace UltramarineUpdates {
                 warn(warning);
             }
             if (const CommandResult result = capture(u"systemd-run"_s, runArguments); !result.succeeded()) {
-                *error = u"systemd-run failed: %1"_s.arg(QString::fromUtf8(result.out + result.err).trimmed());
+                *error = i18nc("@info:status %1 is an error message", "systemd-run failed: %1",
+                               QString::fromUtf8(result.out + result.err).trimmed());
                 return false;
             }
             return true;
@@ -128,53 +144,43 @@ namespace UltramarineUpdates {
             return entry ? QString::fromLocal8Bit(entry->pw_name) : QString();
         }
 
+        const QStringList openUpdatesCommand{u"systemsettings"_s, u"kcm_ultramarine_updates"_s};
+
         /**
-         * opens System Settings > Updates in a unit of its own. Started directly, it
-         * would be in the oneshot run-user service, and systemd kills what's left
-         * there once the helper exits.
+         * shows that @p count updates are ready. "Open Updates" opens System
+         * Settings > Updates.
+         *
+         * notify-send waits until the notification is acted on or closed, which
+         * can take until the user comes back, or forever if the notification server
+         * keeps it in its history. So it runs in a transient service of its own,
+         * which also opens System Settings, and run-user doesn't wait for it.
          */
-        void openUpdatesKcm() {
-            const QStringList command{u"systemsettings"_s, u"kcm_ultramarine_updates"_s};
+        void showUpdatesNotification(const QString &notifySend, const qsizetype count) {
+            const QStringList notification{
+                u"--app-name="_s + i18nc("@title the app name in notifications", "Updates"),
+                u"--icon=system-software-update"_s,
+                u"--action=open="_s + i18nc("@action:button", "Open Updates"),
+                i18nc("@title", "Updates are ready"),
+                i18ncp("@info", "1 update is ready to install.", "%1 updates are ready to install.", count),
+            };
             if (const QString systemdRun = QStandardPaths::findExecutable(u"systemd-run"_s); !systemdRun.isEmpty()) {
-                // a transient service rather than a scope: systemd-run returns once it's started,
-                // so the helper can't exit (and take it along) before it moved
+                // the texts are passed as arguments, never as part of the script
+                const QString script =
+                    u"[ \"$(\"$0\" \"$@\")\" = open ] && exec %1"_s.arg(openUpdatesCommand.join(u' '));
                 if (capture(systemdRun,
-                            QStringList{u"--user"_s, u"--collect"_s, u"--quiet"_s, u"--slice=app.slice"_s, u"--"_s} +
-                                command)
+                            QStringList{u"--user"_s, u"--collect"_s, u"--quiet"_s, u"--slice=app.slice"_s,
+                                        u"--description=Updates notification"_s, u"--"_s, u"/bin/sh"_s, u"-c"_s, script,
+                                        notifySend} +
+                                notification)
                         .succeeded()) {
                     return;
                 }
             }
-            QProcess::startDetached(command.constFirst(), command.mid(1));
-        }
-
-        /// shows a notification if updates are available, at most once a day.
-        /// "Open Updates" opens System Settings > Updates.
-        void notifyPendingUpdates(const QDateTime &now) {
-            const QString checked = userStateDir() + "/last-update-check"_L1;
-            if (within(checked, notifyInterval, now)) {
-                return;
-            }
-            if (QString error; !writeTimestamp(checked, now, &error)) {
-                warn(error);
-            }
-            const qsizetype count = listUpdates().updates.size();
-            if (count == 0) {
-                return;
-            }
-            const QString notifySend = QStandardPaths::findExecutable(u"notify-send"_s);
-            if (notifySend.isEmpty()) {
-                say(u"%1 updates are available."_s.arg(count));
-                return;
-            }
-            // notify-send waits for an action or for the notification to close
-            const CommandResult result =
-                capture(notifySend,
-                        {u"--app-name="_s + i18n("Updates"), u"--icon=system-software-update"_s,
-                         u"--action=open="_s + i18n("Open Updates"), i18n("Updates are ready"),
-                         i18np("1 update is ready to install.", "%1 updates are ready to install.", count)});
-            if (result.succeeded() && result.out.trimmed() == "open") {
-                openUpdatesKcm();
+            // without systemd-run, wait a few minutes at most, so the next poll isn't held up
+            constexpr std::chrono::minutes notificationTimeout{4};
+            if (const CommandResult result = captureWithTimeout(notifySend, notification, notificationTimeout);
+                result.succeeded() && result.out.trimmed() == "open") {
+                QProcess::startDetached(openUpdatesCommand.constFirst(), openUpdatesCommand.mid(1));
             }
         }
 
@@ -187,24 +193,21 @@ namespace UltramarineUpdates {
             if (!isImageMode()) {
                 return;
             }
-            // the cache is only written under the lock. Skipped while an install runs,
-            // which rewrites the cache itself once it's done. Only held for the cache,
-            // so a manual Apply isn't turned away during the check.
-            const auto refreshStatusCache = [] {
-                InstallLock lock(systemLockPath());
-                if (QString error; lock.tryLock(&error) != InstallLock::Result::Acquired) {
+            // skipped while an install runs, which checks and rewrites the cache itself.
+            // The system lock is only taken for a moment to find out, and a manual
+            // Apply waits that long for it (see applyCommand()). The cache has a lock
+            // of its own (see updateBootcStatusCache()).
+            {
+                InstallLock probe(systemLockPath());
+                if (QString error; probe.tryLock(&error) != InstallLock::Result::Acquired) {
                     if (!error.isEmpty()) {
                         warn(error);
                     }
-                    return false;
+                    return;
                 }
-                updateBootcStatusCache();
-                return true;
-            };
-            // cheap, and keeps what the KCM shows current after restarting or a manual upgrade
-            if (!refreshStatusCache()) {
-                return;
             }
+            // cheap, and keeps what the KCM shows current after restarting or a manual upgrade
+            updateBootcStatusCache();
             const QString checked = systemStateDir() + "/last-image-check"_L1;
             if (within(checked, imageCheckInterval, now)) {
                 return;
@@ -215,7 +218,7 @@ namespace UltramarineUpdates {
                 return;
             }
             // so the listing sees what the check found
-            refreshStatusCache();
+            updateBootcStatusCache();
             if (QString error; !writeTimestamp(checked, now, &error)) {
                 warn(error);
             }
@@ -233,44 +236,63 @@ namespace UltramarineUpdates {
             });
         }
 
-        /**
-         * runs @p install for a timer once it's ready, unless an install is already
-         * running or the last one failed less than retryInterval ago: tonight's
-         * timers poll every 5 minutes, and a failure shouldn't retry all night.
-         * Remembers the time of a successful install in @p installedPath, and
-         * sets @p installed if it installed.
-         */
-        bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
-                              const QDateTime &now, const std::function<bool(QString *)> &install, bool *installed,
-                              QString *error) {
-            *installed = false;
-            InstallLock lock(lockPath);
-            if (QString lockError; lock.tryLock(&lockError) != InstallLock::Result::Acquired) {
-                // busy: a manual install or the other timer is running, so it'll be retried
-                if (!lockError.isEmpty()) {
-                    *error = lockError;
-                    return false;
-                }
-                return true;
-            }
-            const QString failed = stateDir + "/last-failed-update"_L1;
-            if (within(failed, retryInterval, now)) {
-                return true;
-            }
-            if (!install(error)) {
-                if (QString warning; !writeTimestamp(failed, now, &warning)) {
-                    warn(warning);
-                }
+    } // namespace
+
+    bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
+                          const QDateTime &now, const std::function<ApplyResult()> &install, bool *installed,
+                          QString *error) {
+        *installed = false;
+        InstallLock lock(lockPath);
+        if (QString lockError; lock.tryLock(&lockError) != InstallLock::Result::Acquired) {
+            // busy: a manual install or the other timer is running, so it'll be retried
+            if (!lockError.isEmpty()) {
+                *error = lockError;
                 return false;
             }
-            QFile::remove(failed);
-            if (QString warning; !writeTimestamp(installedPath, now, &warning)) {
-                warn(warning);
-            }
-            *installed = true;
             return true;
         }
-    } // namespace
+        const QString failed = stateDir + "/last-failed-update"_L1;
+        if (within(failed, retryInterval, now)) {
+            return true;
+        }
+        const ApplyResult result = install();
+        if (!result.installed()) {
+            if (QString warning; !writeTimestamp(failed, now, &warning)) {
+                warn(warning);
+            }
+            *error = result.error();
+            return false;
+        }
+        QFile::remove(failed);
+        if (QString warning; !writeTimestamp(installedPath, now, &warning)) {
+            warn(warning);
+        }
+        *installed = true;
+        // the rest is installed, so only the failed sources wait for the next regular run
+        if (!result.ok()) {
+            *error = result.error();
+            return false;
+        }
+        return true;
+    }
+
+    void notifyPendingUpdates(const QString &checkedPath, const QDateTime &now,
+                              const std::function<ListResponse()> &list, const std::function<void(qsizetype)> &notify) {
+        if (within(checkedPath, notifyInterval, now)) {
+            return;
+        }
+        const ListResponse response = list();
+        // e.g. no network yet right after logging in. The next run tries again.
+        if (response.allFailed()) {
+            return;
+        }
+        if (QString error; !writeTimestamp(checkedPath, now, &error)) {
+            warn(error);
+        }
+        if (const qsizetype count = response.updates.size(); count > 0) {
+            notify(count);
+        }
+    }
 
     QJsonObject ScheduleStatus::toJson() const {
         QJsonObject object{{u"scheduled"_s, scheduled}};
@@ -389,7 +411,7 @@ namespace UltramarineUpdates {
 
     bool runScheduled(const bool tonight, QString *error) {
         if (geteuid() != 0) {
-            *error = u"run-scheduled is run by the system timers as root"_s;
+            *error = i18nc("@info:shell", "run-scheduled is run by the system timers as root.");
             return false;
         }
         Settings settings;
@@ -405,7 +427,7 @@ namespace UltramarineUpdates {
         const QString stateDir = systemStateDir();
         const QString installed = stateDir + "/last-automatic-update"_L1;
         if (tonight && tonightAlreadyInstalled(readTimestamp(installed), readTimestamp(tonightScheduledPath(false)))) {
-            say(u"Updates were already installed since Apply Tonight was scheduled."_s);
+            say(i18nc("@info:status", "Updates were already installed since Apply Tonight was scheduled."));
             systemctl(false, {u"stop"_s, tonightTimer + ".timer"_L1});
             return true;
         }
@@ -423,33 +445,30 @@ namespace UltramarineUpdates {
             return true;
         }
 
-        const auto install = [&settings](QString *installError) {
-            say(u"No one is using the device; installing updates."_s);
-            const ShutdownInhibitor inhibitor(u"Installing system updates"_s);
-            bool updated = false;
-            if (!applySystem(true, settings.offline, &updated, installError)) {
-                return false;
+        const auto install = [&settings] {
+            say(i18nc("@info:progress", "No one is using the device. Installing updates…"));
+            const ShutdownInhibitor inhibitor(
+                i18nc("@info the reason shutting down waits", "Installing system updates"));
+            ApplyResult result = applySystem(true, settings.offline);
+            if (result.installed() && isImageMode()) {
+                say(i18nc("@info:status", "The new system image takes effect after the next restart."));
+            } else if (result.installed() && offlineUpdatePending()) {
+                say(i18nc("@info:status", "System updates will be installed during the next restart."));
             }
-            if (isImageMode()) {
-                say(u"The new system image takes effect after the next restart."_s);
-            } else if (offlineUpdatePending()) {
-                say(u"System updates will be installed during the next restart."_s);
-            }
-            return true;
+            return result;
         };
         bool installedNow = false;
-        if (!installFromTimer(systemLockPath(), stateDir, installed, now, install, &installedNow, error)) {
-            return false;
-        }
+        const bool ok = installFromTimer(systemLockPath(), stateDir, installed, now, install, &installedNow, error);
+        // also when some sources failed, which are retried on the next regular run
         if (tonight && installedNow) {
             systemctl(false, {u"stop"_s, tonightTimer + ".timer"_L1});
         }
-        return true;
+        return ok;
     }
 
     bool runUser(const bool tonight, QString *error) {
         if (geteuid() == 0) {
-            *error = u"run-user is run by the user timers"_s;
+            *error = i18nc("@info:shell", "run-user is run by the user timers.");
             return false;
         }
         Settings settings;
@@ -468,14 +487,21 @@ namespace UltramarineUpdates {
             sessionsKnown && hasActiveSession(sessions, userName) && screenInhibitedInSession();
         writeScreenInhibitedMarker(screenInhibited, now);
         if (!tonight && !settings.automatic) {
-            notifyPendingUpdates(now);
+            notifyPendingUpdates(userStateDir() + "/last-update-check"_L1, now, listUpdates, [](const qsizetype count) {
+                if (const QString notifySend = QStandardPaths::findExecutable(u"notify-send"_s);
+                    !notifySend.isEmpty()) {
+                    showUpdatesNotification(notifySend, count);
+                } else {
+                    say(i18ncp("@info", "1 update is ready to install.", "%1 updates are ready to install.", count));
+                }
+            });
             return true;
         }
 
         const QString stateDir = userStateDir();
         const QString installed = stateDir + "/last-automatic-update"_L1;
         if (tonight && tonightAlreadyInstalled(readTimestamp(installed), readTimestamp(tonightScheduledPath(true)))) {
-            say(u"Your updates were already installed since Apply Tonight was scheduled."_s);
+            say(i18nc("@info:status", "Your updates were already installed since Apply Tonight was scheduled."));
             systemctl(true, {u"stop"_s, tonightUserTimer + ".timer"_L1});
             return true;
         }
@@ -493,19 +519,17 @@ namespace UltramarineUpdates {
             return true;
         }
 
-        const auto install = [](QString *installError) {
-            say(u"You're not using the device; installing your updates."_s);
-            const ShutdownInhibitor inhibitor(u"Installing your updates"_s);
-            return applyUser(true, installError);
+        const auto install = [] {
+            say(i18nc("@info:progress", "You're not using the device. Installing your updates…"));
+            const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing your updates"));
+            return applyUser(true);
         };
         bool installedNow = false;
-        if (!installFromTimer(userLockPath(), stateDir, installed, now, install, &installedNow, error)) {
-            return false;
-        }
+        const bool ok = installFromTimer(userLockPath(), stateDir, installed, now, install, &installedNow, error);
         if (tonight && installedNow) {
             systemctl(true, {u"stop"_s, tonightUserTimer + ".timer"_L1});
         }
-        return true;
+        return ok;
     }
 
     bool scheduleTonight(const bool userManager, QString *error) {
@@ -519,7 +543,8 @@ namespace UltramarineUpdates {
         const QString timer = (userManager ? tonightUserTimer : tonightTimer) + ".timer"_L1;
         // 5: the transient timer isn't loaded, so nothing was scheduled
         if (const int exitCode = systemctl(userManager, {u"stop"_s, timer}); exitCode != 0 && exitCode != 5) {
-            *error = u"systemctl stop %1 failed (exit code %2)"_s.arg(timer).arg(exitCode);
+            *error =
+                i18nc("@info:status %1 is a systemd unit", "systemctl stop %1 failed (exit code %2)", timer, exitCode);
             return false;
         }
         return true;

@@ -29,6 +29,14 @@ namespace OfficeInstaller {
     QStringList packageIdsToInstall(const QList<ResolvedPackage> &resolved, const QStringList &names,
                                     QStringList *missing);
 
+    /**
+     * why a transaction that finished with PkExitEnum @p exit failed, for exits other than
+     * success and cancel. @p error is the details of the transaction's last ErrorCode and
+     * @p unsignedRepository the repository named by RepoSignatureRequired. Both may be empty,
+     * and so may the result.
+     */
+    QString failureReason(uint exit, const QString &error, const QString &unsignedRepository);
+
     /// installs packages through PackageKit's D-Bus API, with the interactive hint set
     class PackageKitInstaller : public Installer {
         Q_OBJECT
@@ -43,6 +51,9 @@ namespace OfficeInstaller {
         // PackageKit's transaction signals, connected by name
         void onPackage(uint info, const QString &packageId, const QString &summary);
         void onErrorCode(uint code, const QString &details);
+        void onRepoSignatureRequired(const QString &packageId, const QString &repositoryName, const QString &keyUrl,
+                                     const QString &keyUserId, const QString &keyId, const QString &keyFingerprint,
+                                     const QString &keyTimestamp, uint type);
         void onFinished(uint exit, uint runtime);
 
     private:
@@ -55,7 +66,10 @@ namespace OfficeInstaller {
         QDBusObjectPath m_transaction;
         QStringList m_packages;
         QList<ResolvedPackage> m_resolved;
+        /// the current transaction's last ErrorCode
         QString m_error;
+        /// the repository whose signing key the current transaction is missing
+        QString m_unsignedRepository;
         bool m_canceled = false;
     };
 

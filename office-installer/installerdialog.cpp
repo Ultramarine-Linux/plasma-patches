@@ -464,6 +464,11 @@ namespace OfficeInstaller {
     }
 
     void InstallerDialog::reject() {
+        if (m_opening) {
+            // closing now would quit while the apps are still starting, so finish that first
+            hide();
+            return;
+        }
         if (!m_installer) {
             unregisterFromBus();
             QDialog::reject();
@@ -561,11 +566,15 @@ namespace OfficeInstaller {
         unregisterFromBus();
         // pick up the new suite's desktop files, so it opens like any other app
         KSycoca::self()->ensureCacheValid();
+        m_opening = true;
         if (openWithInstalledApps(m_urls, this, [this](const QString &error) {
+                m_opening = false;
                 if (error.isEmpty()) {
                     accept();
                     return;
                 }
+                // closed while the documents were opening: show why they didn't
+                show();
                 setBusy(false);
                 // back on the suite list, so be the one installer again (best effort)
                 registerOnBus();
@@ -575,13 +584,14 @@ namespace OfficeInstaller {
             })) {
             return;
         }
+        m_opening = false;
 
         QStringList files;
         files.reserve(m_urls.size());
         std::ranges::transform(m_urls, std::back_inserter(files),
                                [](const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); });
-        const auto [program, arguments] = launchCommand(selectedSuite(), selectedSource(), files);
-        if (!QProcess::startDetached(program, arguments)) {
+        if (const auto [program, arguments] = launchCommand(selectedSuite(), selectedSource(), files);
+            !QProcess::startDetached(program, arguments)) {
             setBusy(false);
             registerOnBus();
             m_error->setMessageType(KMessageWidget::Error);

@@ -20,6 +20,14 @@ build:
 translations:
     ./Messages.sh
 
+# format every tracked C++ file in place with clang-format (uses .clang-format)
+format:
+    git ls-files -z '*.cpp' '*.h' | xargs -0 -r clang-format -i
+
+# fail if any tracked C++ file isn't clang-formatted, without changing anything
+format-check:
+    git ls-files -z '*.cpp' '*.h' | xargs -0 -r clang-format --dry-run --Werror
+
 # run cppcheck with the same checks as CI (.github/workflows/cpp-ci.yml plus the reusable
 # FyraLabs/actions cpp.yml), minus its SARIF output. Keep the flags in sync with both
 cppcheck: build

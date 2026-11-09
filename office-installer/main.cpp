@@ -47,6 +47,9 @@ int main(int argc, char **argv) {
     QApplication::setApplicationName(u"ultramarine-office-installer"_s);
     QApplication::setDesktopFileName(u"org.ultramarine.OfficeInstaller"_s);
     QApplication::setWindowIcon(QIcon::fromTheme(u"system-software-install"_s));
+    // quit only once the documents' apps have started. Closing a window before that, like the dialog
+    // or KIO's untrusted program prompt, would end the launch jobs with the app
+    QApplication::setQuitOnLastWindowClosed(false);
 
     QCommandLineParser parser;
     parser.setApplicationDescription(i18n("Installs an office suite to open office documents with."));
@@ -68,7 +71,8 @@ int main(int argc, char **argv) {
             if (!error.isEmpty()) {
                 KMessageBox::error(nullptr, error);
             }
-            QApplication::quit();
+            // queued: a job can fail before the event loop runs, and quit() does nothing until then
+            QMetaObject::invokeMethod(QCoreApplication::instance(), &QCoreApplication::quit, Qt::QueuedConnection);
         })) {
         return QApplication::exec();
     }
@@ -88,6 +92,7 @@ int main(int argc, char **argv) {
     // only one installer at a time, so two installs can't run at once. If the other one is
     // just opening its documents or closing, it has let go of the name and this one carries on
     InstallerDialog dialog(urls, offered, installedName);
+    QObject::connect(&dialog, &QDialog::finished, &app, [] { QApplication::quit(); });
     if (!dialog.registerOnBus()) {
         if (forwardToRunningInstance(urls)) {
             return 0;

@@ -9,3 +9,7 @@ Type=oneshot
 ExecStart=@ULTRAMARINE_UPDATES_EXECUTABLE@ run-user
 Nice=19
 IOSchedulingClass=idle
+# a run that hangs (e.g. on a stalled download) would keep the timer from ever
+# starting it again, like the system's ultramarine-updates-automatic.service.
+# Notifications don't hold it up, they run in a unit of their own.
+TimeoutStartSec=6h

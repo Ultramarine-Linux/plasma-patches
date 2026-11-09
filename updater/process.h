@@ -8,6 +8,8 @@
 #include <QString>
 #include <QStringList>
 
+#include <chrono>
+
 /// small helpers for running the package managers the updater drives
 namespace UltramarineUpdates {
 
@@ -25,6 +27,13 @@ namespace UltramarineUpdates {
     /// runs @p program to completion and captures its output
     CommandResult capture(const QString &program, const QStringList &arguments,
                           const QProcessEnvironment &environment = QProcessEnvironment::systemEnvironment());
+
+    /**
+     * like capture(), but kills @p program if it runs longer than @p timeout.
+     * It then counts as crashed (exit code -1).
+     */
+    CommandResult captureWithTimeout(const QString &program, const QStringList &arguments,
+                                     std::chrono::milliseconds timeout);
 
     /**
      * runs @p program and returns its trimmed stdout. Exit codes in

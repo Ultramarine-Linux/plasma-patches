@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
+#include <KPluginMetaData>
+
 #include <QSignalSpy>
 #include <QTest>
 
@@ -29,6 +31,8 @@ namespace {
         static void parsesStateErrors();
         static void stripsGoLogTimestamps();
         static void reportsChangeErrors();
+        static void composesErrors();
+        static void destroyingWhileListingIsSafe();
     };
 } // namespace
 
@@ -163,6 +167,29 @@ void TweaksTest::reportsChangeErrors() {
              QStringLiteral("The tweak could not be changed: tweak is locked"));
     QVERIFY(changeErrorMessage(false, 2, QProcess::NormalExit, QStringLiteral("fatal: [localhost]"))
                 .contains(QLatin1String("exit code 2")));
+}
+
+void TweaksTest::composesErrors() {
+    QVERIFY(composeTweaksError({}, {}).isEmpty());
+    QCOMPARE(composeTweaksError(QStringLiteral("change"), {}), QStringLiteral("change"));
+    QCOMPARE(composeTweaksError({}, QStringLiteral("list")), QStringLiteral("list"));
+    QCOMPARE(composeTweaksError(QStringLiteral("change"), QStringLiteral("list")), QStringLiteral("change\nlist"));
+}
+
+void TweaksTest::destroyingWhileListingIsSafe() {
+    // ~QProcess used to emit finished() for the running list into the half-destroyed module,
+    // which then wrote to its already destroyed members
+    auto *tweaks = new Tweaks(nullptr, KPluginMetaData());
+    tweaks->load();
+    if (!tweaks->loading()) {
+        delete tweaks;
+        QSKIP("um isn't installed, so there's no list to interrupt");
+    }
+    const QSignalSpy loadingChanged(tweaks, &Tweaks::loadingChanged);
+    const QSignalSpy errorMessageChanged(tweaks, &Tweaks::errorMessageChanged);
+    delete tweaks;
+    QCOMPARE(loadingChanged.count(), 0);
+    QCOMPARE(errorMessageChanged.count(), 0);
 }
 
 QTEST_GUILESS_MAIN(TweaksTest)

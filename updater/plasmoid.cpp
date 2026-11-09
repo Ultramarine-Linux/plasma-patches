@@ -13,11 +13,14 @@
 #include <KNSCore/SearchRequest>
 #include <KNSCore/Transaction>
 
+#include <KLocalizedString>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QXmlStreamReader>
@@ -93,11 +96,13 @@ namespace UltramarineUpdates {
                                  loop.quit();
                              });
             if (!engine.init(QString::fromLatin1(knsrc))) {
-                *error = failure.isEmpty() ? u"could not load %1"_s.arg(QString::fromLatin1(knsrc)) : failure;
+                *error = failure.isEmpty()
+                    ? i18nc("@info:status %1 is a file name", "Could not load %1", QString::fromLatin1(knsrc))
+                    : failure;
                 return false;
             }
             if (!runLoop(loop, listTimeout)) {
-                *error = u"timed out loading the KDE Store"_s;
+                *error = i18nc("@info:status", "Timed out loading the KDE Store");
                 return false;
             }
             if (!failure.isEmpty()) {
@@ -130,7 +135,7 @@ namespace UltramarineUpdates {
                              });
             stream->fetch();
             if (!runLoop(loop, listTimeout)) {
-                *error = u"timed out checking the KDE Store for updates"_s;
+                *error = i18nc("@info:status", "Timed out checking the KDE Store for updates");
                 return std::nullopt;
             }
             if (!failure.isEmpty()) {
@@ -248,7 +253,8 @@ namespace UltramarineUpdates {
         QStringList failed;
         for (qsizetype index = 0; index < entries->size(); ++index) {
             const KNSCore::Entry &entry = entries->at(index);
-            say(u"Updating widget %1 to %2"_s.arg(entry.name(), entry.updateVersion()));
+            say(i18nc("@info:progress %1 is a widget name, %2 a version", "Updating widget %1 to %2", entry.name(),
+                      entry.updateVersion()));
             QEventLoop loop;
             QString failure;
             const KNSCore::Transaction *transaction = KNSCore::Transaction::installLatest(&engine, entry);
@@ -261,11 +267,12 @@ namespace UltramarineUpdates {
             QObject::connect(transaction, &KNSCore::Transaction::finished, &loop, &QEventLoop::quit);
             const bool timedOut = !runLoop(loop, installTimeout);
             if (timedOut) {
-                failure = u"timed out"_s;
+                failure = i18nc("@info:status", "timed out");
             }
             if (!failure.isEmpty()) {
-                std::fprintf(stderr, "warning: could not update %s: %s\n", qPrintable(entry.name()),
-                             qPrintable(failure));
+                std::fprintf(stderr, "%s\n",
+                             qPrintable(i18nc("@info:status %1 is a widget name, %2 an error message",
+                                              "Warning: could not update %1: %2", entry.name(), failure)));
                 failed.append(entry.name());
             }
             // KNewStuff can't cancel the transaction, so don't start more next to it
@@ -277,7 +284,8 @@ namespace UltramarineUpdates {
             }
         }
         if (!failed.isEmpty()) {
-            *error = u"could not update %1"_s.arg(failed.join(u", "_s));
+            *error = i18nc("@info:status %1 is a list of widget names", "Could not update %1",
+                           QLocale().createSeparatedList(failed));
             return false;
         }
         return true;

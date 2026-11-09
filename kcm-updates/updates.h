@@ -112,6 +112,12 @@ QString composeErrorMessage(const QString &actionError, const QString &refreshEr
 /// decodes helper output, which is always UTF-8, and trims it
 QString helperText(const QByteArray &output);
 
+/**
+ * returns the last non-empty line of @p output, decoded and trimmed. Only the end of the
+ * buffer is looked at, so it's cheap to call for every chunk of a long log.
+ */
+QString lastOutputLine(const QByteArray &output);
+
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int count READ count NOTIFY countChanged)
@@ -453,6 +459,9 @@ private:
     /// only a refresh error is shown, so checking again may fix it
     bool m_errorRetryable = false;
     QString m_successMessage;
+    /// updates were installed, and the message says so once the check after it is done.
+    /// Until then it's not known whether they're only staged for a restart.
+    bool m_successPending = false;
     /// raw output of the running operation, decoded once it exits so multi-byte
     /// characters split across reads survive and stdout still parses as JSON
     QByteArray m_processStdout;
@@ -468,6 +477,9 @@ private:
 
     /// sets the message shown after updates were installed
     void setSuccessMessage(const QString &message);
+
+    /// shows the message for installed updates, if the check after installing is done
+    void showPendingSuccess();
 
     /// reloads whether Apply Tonight is scheduled. Only the latest request's reply is used.
     void refreshSchedule();

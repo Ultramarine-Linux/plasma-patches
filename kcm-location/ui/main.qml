@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
-import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 
 import org.kde.kirigami as Kirigami
@@ -136,32 +135,39 @@ KCMUtils.SimpleKCM {
         }
     }
 
-    // also before the first read, when there's no state to show yet
-    Kirigami.LoadingPlaceholder {
-        anchors.centerIn: parent
-        visible: !kcm.available && (kcm.loading || (!kcm.notInstalled && !kcm.readFailed))
-    }
+    // ScrollablePage anchors each child to its sides, which conflicts with centerIn. So the
+    // placeholders share one child, as tall as the page, and are centered inside it.
+    Item {
+        visible: !kcm.available
+        height: parent ? parent.height : 0
 
-    Kirigami.PlaceholderMessage {
-        anchors.centerIn: parent
-        width: parent.width - Kirigami.Units.gridUnit * 4
-        visible: !kcm.loading && kcm.notInstalled
-        icon.name: "mark-location"
-        text: i18nc("@info:placeholder", "Location services aren't installed")
-        explanation: i18nc("@info:placeholder", "Install the geoclue2 package to let apps request your location.")
-    }
+        // also before the first read, when there's no state to show yet
+        Kirigami.LoadingPlaceholder {
+            anchors.centerIn: parent
+            visible: kcm.loading || (!kcm.notInstalled && !kcm.readFailed)
+        }
 
-    // systemd couldn't be asked. The banner says why.
-    Kirigami.PlaceholderMessage {
-        anchors.centerIn: parent
-        width: parent.width - Kirigami.Units.gridUnit * 4
-        visible: !kcm.loading && kcm.readFailed
-        icon.name: "dialog-error"
-        text: i18nc("@info:placeholder", "Couldn't check whether location services are on")
-        helpfulAction: Kirigami.Action {
-            text: i18nc("@action:button", "Try Again")
-            icon.name: "view-refresh"
-            onTriggered: kcm.load()
+        Kirigami.PlaceholderMessage {
+            anchors.centerIn: parent
+            width: parent.width - Kirigami.Units.gridUnit * 4
+            visible: !kcm.loading && kcm.notInstalled
+            icon.name: "mark-location"
+            text: i18nc("@info:placeholder", "Location services aren't installed")
+            explanation: i18nc("@info:placeholder", "Install the geoclue2 package to let apps request your location.")
+        }
+
+        // systemd couldn't be asked. The banner says why.
+        Kirigami.PlaceholderMessage {
+            anchors.centerIn: parent
+            width: parent.width - Kirigami.Units.gridUnit * 4
+            visible: !kcm.loading && kcm.readFailed
+            icon.name: "dialog-error"
+            text: i18nc("@info:placeholder", "Couldn't check whether location services are on")
+            helpfulAction: Kirigami.Action {
+                text: i18nc("@action:button", "Try Again")
+                icon.name: "view-refresh"
+                onTriggered: kcm.load()
+            }
         }
     }
 }

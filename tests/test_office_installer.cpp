@@ -31,6 +31,7 @@ namespace {
         static void launchCommands();
         static void recognizesInstalledSuites();
         static void picksPackagesToInstall();
+        static void explainsFailures();
     };
 } // namespace
 
@@ -61,14 +62,15 @@ void OfficeInstallerTest::flatpakRefs() {
 void OfficeInstallerTest::launchCommands() {
     const Suite collabora = suiteWithFlatpak(u"com.collaboraoffice.Office"_s);
     QCOMPARE(launchCommand(collabora, Source::Flatpak, {u"/home/a/b c.docx"_s}),
-             (Command{u"flatpak"_s,
-                      {u"run"_s, u"--file-forwarding"_s, u"com.collaboraoffice.Office"_s, u"@@"_s,
-                       u"/home/a/b c.docx"_s, u"@@"_s}}));
+             (Command{.program = u"flatpak"_s,
+                      .arguments = {u"run"_s, u"--file-forwarding"_s, u"com.collaboraoffice.Office"_s, u"@@"_s,
+                                    u"/home/a/b c.docx"_s, u"@@"_s}}));
     QCOMPARE(launchCommand(collabora, Source::Flatpak, {}),
-             (Command{u"flatpak"_s, {u"run"_s, u"com.collaboraoffice.Office"_s}}));
+             (Command{.program = u"flatpak"_s, .arguments = {u"run"_s, u"com.collaboraoffice.Office"_s}}));
     QCOMPARE(launchCommand(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), Source::Rpm, {u"/tmp/x.odt"_s}),
-             (Command{u"libreoffice"_s, {u"/tmp/x.odt"_s}}));
-    QCOMPARE(launchCommand(collabora, Source::Rpm, {u"/tmp/x.odt"_s}), (Command{u"coda-qt"_s, {u"/tmp/x.odt"_s}}));
+             (Command{.program = u"libreoffice"_s, .arguments = {u"/tmp/x.odt"_s}}));
+    QCOMPARE(launchCommand(collabora, Source::Rpm, {u"/tmp/x.odt"_s}),
+             (Command{.program = u"coda-qt"_s, .arguments = {u"/tmp/x.odt"_s}}));
 }
 
 void OfficeInstallerTest::recognizesInstalledSuites() {
@@ -106,6 +108,17 @@ void OfficeInstallerTest::picksPackagesToInstall() {
 
     QCOMPARE(packageIdsToInstall(resolved, {u"collabora-office"_s, u"libreoffice-impress"_s}, &missing), QStringList());
     QCOMPARE(missing, QStringList{u"collabora-office"_s});
+}
+
+void OfficeInstallerTest::explainsFailures() {
+    // PkExitEnum: 2 failed, 4 key required, 8 need untrusted, 9 canceled priority
+    QCOMPARE(failureReason(2, u"Disk full"_s, {}), u"Disk full"_s);
+    QVERIFY(failureReason(2, {}, {}).isEmpty());
+    // these exits often come without an ErrorCode, so they get their own reason
+    QVERIFY(failureReason(4, {}, u"terra"_s).contains(u"terra"_s));
+    QVERIFY(!failureReason(4, {}, {}).isEmpty());
+    QVERIFY(!failureReason(8, {}, {}).isEmpty());
+    QVERIFY(!failureReason(9, {}, {}).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(OfficeInstallerTest)

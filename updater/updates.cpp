@@ -4,6 +4,8 @@
 
 #include "updates.h"
 
+#include <KLocalizedString>
+
 #include <QJsonArray>
 #include <QStandardPaths>
 
@@ -113,40 +115,29 @@ namespace UltramarineUpdates {
         return response;
     }
 
+    void ApplyResult::fail(const QString &message, const bool primary) {
+        failures.append(message);
+        primaryFailed = primaryFailed || primary;
+    }
+
     namespace {
-        /// collects what failed, so one failing package manager doesn't stop the others
-        class Failures {
-        public:
-            void add(const QString &message) { m_messages.append(message); }
-
-            /// true if nothing failed, otherwise sets @p error to every failure, one per line
-            bool report(QString *error) const {
-                if (m_messages.isEmpty()) {
-                    return true;
-                }
-                *error = m_messages.join(u'\n');
-                return false;
-            }
-
-        private:
-            QStringList m_messages;
-        };
-
         /// "dnf upgrade" (or its --downloadonly part), false with @p error if it can't or didn't work
         bool upgradeRpms(const QString &dnf, const bool assumeYes, const bool offline, QString *error) {
             QStringList arguments{u"upgrade"_s, u"--refresh"_s};
             if (offline) {
                 // checked first, so nothing is downloaded for nothing
                 if (packageKitClient().isEmpty()) {
-                    *error = u"Installing updates while restarting needs PackageKit, which isn't installed"_s;
+                    *error = i18nc("@info:status",
+                                   "Installing updates while restarting needs PackageKit, which isn't installed.");
                     return false;
                 }
                 // PackageKit would replace it
                 if (const SystemUpdateTrigger trigger = systemUpdateTrigger();
                     trigger == SystemUpdateTrigger::PackageKitUpgrade || trigger == SystemUpdateTrigger::Other) {
                     *error = trigger == SystemUpdateTrigger::PackageKitUpgrade
-                        ? u"A system upgrade is already scheduled to install while restarting"_s
-                        : u"Another offline update is already scheduled (%1 exists)"_s.arg(PackageKitPaths().trigger);
+                        ? i18nc("@info:status", "A system upgrade is already scheduled to install while restarting.")
+                        : i18nc("@info:status %1 is a file path",
+                                "Another offline update is already scheduled (%1 exists).", PackageKitPaths().trigger);
                     return false;
                 }
                 // download into PackageKit's cache, which then prepares the update from
@@ -160,7 +151,7 @@ namespace UltramarineUpdates {
                 arguments.append(u"-y"_s);
             }
             if (const int exitCode = runForwarded(dnf, arguments); exitCode != 0) {
-                *error = u"RPM update failed (exit code %1)"_s.arg(exitCode);
+                *error = i18nc("@info:status", "Updating RPM packages failed (exit code %1).", exitCode);
                 return false;
             }
             // dnf has finished (and released its locks) before PackageKit starts.
@@ -169,65 +160,82 @@ namespace UltramarineUpdates {
         }
     } // namespace
 
-    bool applyUser(const bool assumeYes, QString *error) {
-        Failures failures;
+    ApplyResult applyUser(const bool assumeYes) {
+        ApplyResult result;
         if (const QString flatpak = QStandardPaths::findExecutable(u"flatpak"_s); !flatpak.isEmpty()) {
+            result.updated = true;
             QStringList arguments{u"update"_s, u"--user"_s};
             if (assumeYes) {
                 arguments.append(u"--noninteractive"_s);
             }
             if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
-                failures.add(u"Flatpak user update failed (exit code %1)"_s.arg(exitCode));
+                result.fail(i18nc("@info:status", "Updating your Flatpaks failed (exit code %1).", exitCode));
+            } else {
+                result.succeed();
             }
         }
         // `nix profile upgrade` doesn't prompt
         if (canManageNixProfile()) {
+            result.updated = true;
             if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
-                failures.add(u"Nix profile upgrade failed (exit code %1)"_s.arg(exitCode));
+                result.fail(i18nc("@info:status", "Updating your Nix profile failed (exit code %1).", exitCode));
+            } else {
+                result.succeed();
             }
         }
         if (canManagePlasmoids()) {
+            result.updated = true;
             if (QString plasmoidError; !upgradePlasmoids(&plasmoidError)) {
-                failures.add(u"Plasma widget update failed: %1"_s.arg(plasmoidError));
+                result.fail(
+                    i18nc("@info:status %1 is an error message", "Updating Plasma widgets failed: %1", plasmoidError));
+            } else {
+                result.succeed();
             }
         }
-        return failures.report(error);
+        return result;
     }
 
-    bool applySystem(const bool assumeYes, const bool offline, bool *updated, QString *error) {
-        *updated = false;
-        Failures failures;
+    ApplyResult applySystem(const bool assumeYes, const bool offline) {
+        ApplyResult result;
         if (isImageMode()) {
             // the new image is always staged for the next boot, so offline doesn't apply
+            result.updated = true;
             if (QString imageError; !upgradeImage(&imageError)) {
-                failures.add(imageError);
+                result.fail(imageError, true);
+            } else {
+                result.succeed();
             }
-            *updated = true;
         } else if (const QString dnf = QStandardPaths::findExecutable(u"dnf"_s); !dnf.isEmpty()) {
+            result.updated = true;
             if (QString rpmError; !upgradeRpms(dnf, assumeYes, offline, &rpmError)) {
-                failures.add(rpmError);
+                result.fail(rpmError, true);
+            } else {
+                result.succeed();
             }
-            *updated = true;
         }
         if (!determinateNixdBinary().isEmpty()) {
             // Nix itself, installed system-wide by the nix tweak. Only upgrades
             // when Determinate Systems advises a newer version.
+            result.updated = true;
             if (const int exitCode = upgradeDeterminateNix(); exitCode != 0) {
-                failures.add(u"Determinate Nix upgrade failed (exit code %1)"_s.arg(exitCode));
+                result.fail(i18nc("@info:status", "Updating Determinate Nix failed (exit code %1).", exitCode));
+            } else {
+                result.succeed();
             }
-            *updated = true;
         }
         if (const QString flatpak = QStandardPaths::findExecutable(u"flatpak"_s); !flatpak.isEmpty()) {
+            result.updated = true;
             QStringList arguments{u"update"_s, u"--system"_s};
             if (assumeYes) {
                 arguments.append(u"--noninteractive"_s);
             }
             if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
-                failures.add(u"Flatpak update failed (exit code %1)"_s.arg(exitCode));
+                result.fail(i18nc("@info:status", "Updating system Flatpaks failed (exit code %1).", exitCode));
+            } else {
+                result.succeed();
             }
-            *updated = true;
         }
-        return failures.report(error);
+        return result;
     }
 
 } // namespace UltramarineUpdates

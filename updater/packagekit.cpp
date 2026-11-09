@@ -4,6 +4,8 @@
 
 #include "packagekit.h"
 
+#include <KLocalizedString>
+
 #include <QFile>
 #include <QFileInfo>
 
@@ -194,7 +196,8 @@ namespace UltramarineUpdates {
     bool prepareOfflineUpdate(QString *error) {
         const QString pkgcli = packageKitClient();
         if (pkgcli.isEmpty()) {
-            *error = u"Installing updates while restarting needs PackageKit, which isn't installed"_s;
+            *error =
+                i18nc("@info:status", "Installing updates while restarting needs PackageKit, which isn't installed.");
             return false;
         }
         const auto run = [&pkgcli, error](const QStringList &arguments) {
@@ -204,15 +207,16 @@ namespace UltramarineUpdates {
             }
             QString message = pkgcliError(result.err.trimmed().isEmpty() ? result.out : result.err);
             if (!result.started) {
-                message = u"pkgcli could not be started"_s;
+                message = i18nc("@info:status", "pkgcli could not be started");
             } else if (message.isEmpty()) {
-                message = u"pkgcli failed (exit code %1)"_s.arg(result.exitCode);
+                message = i18nc("@info:status", "pkgcli failed (exit code %1)", result.exitCode);
             }
-            *error = u"PackageKit could not prepare the update: %1"_s.arg(message);
+            *error =
+                i18nc("@info:status %1 is an error message", "PackageKit could not prepare the update: %1", message);
             return false;
         };
 
-        std::fputs("Preparing the updates to install while restarting...\n", stdout);
+        std::puts(qPrintable(i18nc("@info:progress", "Preparing the updates to install while restarting…")));
         std::fflush(stdout);
         // a running packagekitd keeps the repository metadata it loaded, so a
         // (not forced) refresh rereads it from the cache dnf just updated,

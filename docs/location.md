@@ -33,7 +33,7 @@ proposes Plasma check to grey out Night Light's and the time zone's automatic lo
   `systemctl` reloads the manager by itself. The helper's polkit action,
   `org.ultramarine.location.manage` (`org.ultramarine.location.policy`), matches the helper's
   exact path and is `auth_admin_keep`, so a change asks for the password once.
-  pkexec's exit codes 126 and 127 mean authentication was cancelled or failed and nothing
+  pkexec's exit codes 126 and 127 mean authentication was canceled or failed and nothing
   changed (the helper never exits with those itself). Any other failure says the change may
   have been partly applied. The state is read again after every change.
 

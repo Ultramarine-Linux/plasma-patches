@@ -60,7 +60,7 @@ QString helperErrorMessage(const int exitCode, const QProcess::ExitStatus exitSt
     }
     // the helper never exits with these itself, so they're pkexec's, from before it ran
     if (exitStatus == QProcess::NormalExit && Pkexec::isAuthenticationFailure(exitCode)) {
-        return i18n("Authentication was cancelled or failed. No changes were made.");
+        return i18n("Authentication was canceled or failed. No changes were made.");
     }
     // systemctl may have gotten partway, for example masking GeoClue but failing to stop it
     const QString details = output.trimmed();
@@ -123,15 +123,17 @@ void Location::load() {
             return;
         }
         const QDBusPendingReply<QString> reply = *call;
-        if (reply.isError()) {
-            const LocationState state = parseUnitFileStateError(reply.error().name());
-            if (state == LocationState::ReadFailed) {
-                setErrorMessage(i18n("Could not read the state of location services: %1", reply.error().message()));
-            }
-            setState(state);
-            return;
+        const LocationState state =
+            reply.isError() ? parseUnitFileStateError(reply.error().name()) : parseUnitFileState(reply.value());
+        if (state == LocationState::ReadFailed) {
+            m_readError = i18n("Could not read the state of location services: %1", reply.error().message());
+            setErrorMessage(m_readError);
+        } else if (const QString readError = std::exchange(m_readError, {});
+                   !readError.isEmpty() && m_errorMessage == readError) {
+            // a helper error shown since then stays
+            setErrorMessage({});
         }
-        setState(parseUnitFileState(reply.value()));
+        setState(state);
     });
 }
 

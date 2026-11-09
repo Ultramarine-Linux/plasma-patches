@@ -6,10 +6,15 @@ Discover's own Updates page and directs users to
 
 ## Patch versions
 
-- [`../discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch`](../discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch): Discover 6.8.x (tested with 6.8.1); intended for UM45.
-- [`../discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch`](../discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch): Discover 6.7.5, kept for testing against the installed UM44-era build.
+- [`../discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch`](../discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch): Discover 6.8.x, made against 6.8.2 (on top of Fedora's
+  patches); it also applies to 6.8.1 and the `Plasma/6.8` and `master` branches. Intended for UM45.
+- [`../discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch`](../discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch): Discover 6.7.x (6.7.0 through 6.7.6),
+  kept for testing against the installed UM44-era build. 6.7.6 changed the sidebar's
+  Updates entry, so instead of deleting its update count and fetching icon like the 6.8
+  patch does, this one sets the entry's `stateObject` to `null`. That leaves the 6.7.6
+  lines alone, so one patch fits every 6.7 release.
 
-Both patches apply with `--fuzz=0` (the 6.8 one also applies to 6.8.2). They:
+Both patches apply with `--fuzz=0`. They:
 
 - remove the Updates mode and replace the sidebar/tab entry with a link to
   System Settings > Updates;
@@ -19,7 +24,11 @@ Both patches apply with `--fuzz=0` (the 6.8 one also applies to 6.8.2). They:
 - retarget "Configure Updates…";
 - make `--headless-update` exit with an error directing users to System Settings > Updates;
 - drop the "*Distro* N is now available" message with **Upgrade Now** from the
-  Home page. It would start a PackageKit system upgrade in Discover's hidden updater.
+  Home page. It would start a PackageKit system upgrade in Discover's hidden updater;
+- stop the notifier's PackageKit plugin from checking for a new distro release, so
+  there's no "Upgrade available" notification either. Its **Upgrade** button only
+  opened `--mode update`. Discover's rpm-ostree backend (atomic systems) still offers
+  upgrades, which this patch doesn't touch.
 
 ## Packaging
 

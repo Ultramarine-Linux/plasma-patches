@@ -4,6 +4,8 @@
 
 #include "image.h"
 
+#include <KLocalizedString>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -16,6 +18,7 @@
 #include <unistd.h>
 
 #include "activity.h"
+#include "lock.h"
 #include "process.h"
 
 using namespace Qt::StringLiterals;
@@ -47,7 +50,7 @@ namespace UltramarineUpdates {
                     }
                 }
             }
-            return u"System image"_s;
+            return i18nc("@item the name of the operating system when it's unknown", "System image");
         }
 
         QString bootcStatusCachePath() { return systemStateDir() + "/bootc-status.json"_L1; }
@@ -108,8 +111,8 @@ namespace UltramarineUpdates {
             state.stagedVersion = versionOf(stagedImage, u"imageDigest"_s);
         }
         const QJsonObject cached = booted.value("cachedUpdate"_L1).toObject();
-        const QString cachedDigest = cached.value("imageDigest"_L1).toString();
-        if (cached.isEmpty() || cachedDigest == bootedDigest || (state.staged && cachedDigest == stagedDigest)) {
+        if (const QString cachedDigest = cached.value("imageDigest"_L1).toString();
+            cached.isEmpty() || cachedDigest == bootedDigest || (state.staged && cachedDigest == stagedDigest)) {
             return state;
         }
         const QString image = cached.value("image"_L1).toObject().value("image"_L1).toString();
@@ -125,8 +128,7 @@ namespace UltramarineUpdates {
         QJsonObject booted;
         QJsonObject pending;
         for (const QJsonArray deployments = root.value("deployments"_L1).toArray(); const auto &value: deployments) {
-            const QJsonObject deployment = value.toObject();
-            if (deployment.value("booted"_L1).toBool()) {
+            if (const QJsonObject deployment = value.toObject(); deployment.value("booted"_L1).toBool()) {
                 booted = deployment;
             } else if (deployment.value("staged"_L1).toBool()) {
                 pending = deployment;
@@ -142,8 +144,8 @@ namespace UltramarineUpdates {
         if (cached.isEmpty()) {
             return state;
         }
-        const QJsonValue checksum = cached.value("checksum"_L1);
-        if ((!booted.isEmpty() && booted.value("checksum"_L1) == checksum) ||
+        if (const QJsonValue checksum = cached.value("checksum"_L1);
+            (!booted.isEmpty() && booted.value("checksum"_L1) == checksum) ||
             (state.staged && pending.value("checksum"_L1) == checksum)) {
             return state;
         }
@@ -181,24 +183,34 @@ namespace UltramarineUpdates {
             return;
         }
         const CommandResult result = capture(bootc, {u"status"_s, u"--format=json"_s});
+        // a timer's refresh and an install's can overlap. The cache has a lock of its own,
+        // so refreshing it never turns away an install, which takes the system lock.
+        InstallLock lock(statusCacheLockPath());
+        if (QString error; lock.tryLock(&error, std::chrono::minutes(1)) != InstallLock::Result::Acquired) {
+            return;
+        }
         const QString path = bootcStatusCachePath();
         if (!result.succeeded() || !QJsonDocument::fromJson(result.out).isObject()) {
             QFile::remove(path);
             return;
         }
-        const QByteArray cache = bootcStatusCache(result.out, bootId());
-        if (QFile existing(path); existing.open(QIODevice::ReadOnly) && existing.readAll() == cache) {
-            return;
-        }
         const QString directory = QFileInfo(path).absolutePath();
-        const bool created = !QFileInfo::exists(directory);
         if (!QDir().mkpath(directory)) {
             return;
         }
-        // users list updates through this copy, whatever root's umask
-        const auto readable = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
-        if (created) {
-            QFile::setPermissions(directory, readable | QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther);
+        // users list updates through this copy. The directory may have been created
+        // by anything running as root (e.g. through pkexec, which keeps the caller's
+        // umask), so make sure everyone can look inside, whoever created it.
+        constexpr auto readable = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
+        constexpr auto traversable = QFile::ReadGroup | QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther;
+        if (const QFileDevice::Permissions permissions = QFile::permissions(directory);
+            (permissions & traversable) != traversable) {
+            QFile::setPermissions(directory, permissions | traversable);
+        }
+        const QByteArray cache = bootcStatusCache(result.out, bootId());
+        if (QFile existing(path); existing.open(QIODevice::ReadOnly) && existing.readAll() == cache &&
+            existing.permissions().testFlag(QFile::ReadOther)) {
+            return;
         }
         if (QSaveFile file(path);
             file.open(QIODevice::WriteOnly) && file.write(cache) == cache.size() && file.commit()) {
@@ -248,7 +260,8 @@ namespace UltramarineUpdates {
             }
             if (parsed && !parsed->image.isEmpty()) {
                 if (const CommandResult result = capture(bootc, {u"upgrade"_s, u"--check"_s}); !result.succeeded()) {
-                    *error = u"bootc upgrade --check failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
+                    *error = i18nc("@info:status %1 is an error message", "Checking for a new system image failed: %1",
+                                   QString::fromUtf8(result.err).trimmed());
                     return false;
                 }
                 return true;
@@ -256,13 +269,14 @@ namespace UltramarineUpdates {
         }
         const QString rpmOstree = QStandardPaths::findExecutable(u"rpm-ostree"_s);
         if (rpmOstree.isEmpty()) {
-            *error = u"neither bootc nor rpm-ostree is installed"_s;
+            *error = i18nc("@info:status", "Neither bootc nor rpm-ostree is installed.");
             return false;
         }
         // exits with 77 when there's no update
         if (const CommandResult result = capture(rpmOstree, {u"upgrade"_s, u"--check"_s});
             !result.started || (result.exitCode != 0 && result.exitCode != 77)) {
-            *error = u"rpm-ostree upgrade --check failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
+            *error = i18nc("@info:status %1 is an error message", "Checking for a new system image failed: %1",
+                           QString::fromUtf8(result.err).trimmed());
             return false;
         }
         return true;
@@ -276,11 +290,11 @@ namespace UltramarineUpdates {
                 // rebuilds the derivation on top of the new base image, then runs bootc
                 const QString um = QStandardPaths::findExecutable(u"um"_s);
                 if (um.isEmpty()) {
-                    *error = u"this system uses um env, but um is not installed"_s;
+                    *error = i18nc("@info:status", "This system uses um env, but um is not installed.");
                     return false;
                 }
                 if (const int exitCode = runForwarded(um, {u"env"_s, u"update"_s}); exitCode != 0) {
-                    *error = u"um env update failed (exit code %1)"_s.arg(exitCode);
+                    *error = i18nc("@info:status", "Updating the um env image failed (exit code %1).", exitCode);
                     return false;
                 }
                 updateBootcStatusCache();
@@ -288,7 +302,7 @@ namespace UltramarineUpdates {
             }
             if (parsed && !parsed->image.isEmpty()) {
                 if (const int exitCode = runForwarded(bootc, {u"upgrade"_s}); exitCode != 0) {
-                    *error = u"bootc upgrade failed (exit code %1)"_s.arg(exitCode);
+                    *error = i18nc("@info:status", "Updating the system image failed (exit code %1).", exitCode);
                     return false;
                 }
                 updateBootcStatusCache();
@@ -298,11 +312,11 @@ namespace UltramarineUpdates {
         // not tracking a bootc image (or no bootc): a classic rpm-ostree system
         const QString rpmOstree = QStandardPaths::findExecutable(u"rpm-ostree"_s);
         if (rpmOstree.isEmpty()) {
-            *error = u"neither bootc nor rpm-ostree is installed"_s;
+            *error = i18nc("@info:status", "Neither bootc nor rpm-ostree is installed.");
             return false;
         }
         if (const int exitCode = runForwarded(rpmOstree, {u"upgrade"_s}); exitCode != 0) {
-            *error = u"rpm-ostree upgrade failed (exit code %1)"_s.arg(exitCode);
+            *error = i18nc("@info:status", "Updating the system image failed (exit code %1).", exitCode);
             return false;
         }
         return true;

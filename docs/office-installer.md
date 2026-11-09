@@ -55,7 +55,14 @@ rpm-ostree) systems, where `/run/ostree-booted` exists.
 - **Afterwards:** the installer refreshes KSycoca and opens the documents with the new
   suite. If KSycoca doesn't know about the suite yet, it runs the suite directly
   (`flatpak run --file-forwarding`, `coda-qt` or `libreoffice`). If an app fails to
-  start, the error is shown instead of quitting silently.
+  start, the error is shown instead of quitting silently. The installer only quits once
+  the apps have started: closing the dialog while it says "Opening…" hides it until then
+  (and shows it again if an app failed), and closing KIO's prompt for an untrusted desktop
+  file doesn't stop the launch either.
+- **Errors:** an install failure shows PackageKit's or libflatpak's reason. PackageKit
+  sometimes only gives an exit code, so those are explained by the installer: a repository
+  whose signing key isn't trusted yet (named from `RepoSignatureRequired`), packages that
+  aren't signed with a trusted key, or another transaction that took priority.
 - **One at a time:** the dialog exports its `addDocuments` method, then takes
   `org.ultramarine.OfficeInstaller` on the session bus, so a launch that sees the name can
   always reach it. Opening more documents while it's open hands them to it, so they open

@@ -4,6 +4,8 @@
 
 #include "inhibit.h"
 
+#include <KLocalizedString>
+
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusReply>
@@ -21,7 +23,8 @@ namespace UltramarineUpdates {
     ShutdownInhibitor::ShutdownInhibitor(const QString &why) {
         QDBusConnection bus = QDBusConnection::systemBus();
         if (!bus.isConnected()) {
-            std::fprintf(stderr, "warning: could not keep the device awake: no system bus\n");
+            std::fprintf(stderr, "%s\n",
+                         qPrintable(i18nc("@info:status", "Warning: could not keep the device awake: no system bus")));
             return;
         }
         QDBusMessage call = QDBusMessage::createMethodCall(u"org.freedesktop.login1"_s, u"/org/freedesktop/login1"_s,
@@ -31,8 +34,10 @@ namespace UltramarineUpdates {
         call.setInteractiveAuthorizationAllowed(false);
         const QDBusReply<QDBusUnixFileDescriptor> reply = bus.call(call);
         if (!reply.isValid() || !reply.value().isValid()) {
-            std::fprintf(stderr, "warning: could not keep the device awake while installing: %s\n",
-                         qPrintable(reply.error().message()));
+            std::fprintf(stderr, "%s\n",
+                         qPrintable(i18nc("@info:status %1 is an error message",
+                                          "Warning: could not keep the device awake while installing: %1",
+                                          reply.error().message())));
             return;
         }
         // the reply's descriptor closes with it. The inhibitor lasts until our copy is closed.

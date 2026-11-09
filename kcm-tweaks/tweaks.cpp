@@ -135,9 +135,9 @@ QString changeErrorMessage(const bool script, const int exitCode, const QProcess
     if (UmCli::isAuthenticationFailure(exitCode)) {
         // um maps a playbook's 126 and 127 to 1, so for toggles and one-time changes these are
         // pkexec's. um execs script.sh directly though, so a script can exit with them too.
-        return script ? i18n("Authentication was cancelled or failed, or the maintenance task failed. See the "
+        return script ? i18n("Authentication was canceled or failed, or the maintenance task failed. See the "
                              "output for details.")
-                      : i18n("Authentication was cancelled or failed. No changes were made.");
+                      : i18n("Authentication was canceled or failed. No changes were made.");
     }
     if (const QString error = lastUmError(output); !error.isEmpty()) {
         return script ? i18n("The maintenance task failed: %1", error)
@@ -145,6 +145,13 @@ QString changeErrorMessage(const bool script, const int exitCode, const QProcess
     }
     return script ? i18n("The maintenance task failed (exit code %1). See the output for details.", exitCode)
                   : i18n("The tweak could not be changed (exit code %1). See the output for details.", exitCode);
+}
+
+QString composeTweaksError(const QString &changeError, const QString &listError) {
+    if (changeError.isEmpty() || listError.isEmpty()) {
+        return changeError.isEmpty() ? listError : changeError;
+    }
+    return changeError + QLatin1Char('\n') + listError;
 }
 
 TweaksModel::TweaksModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -235,7 +242,8 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
         if (error == QProcess::FailedToStart) {
             setLoading(false);
             m_reloadPending = false;
-            setErrorMessage(i18n("Could not start um."));
+            setListError(i18n("Could not start um."));
+            setListState(m_loaded, true);
         }
     });
 
@@ -254,12 +262,21 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
             m_tweaks.setBusyId({});
             setRunning(false);
             setStatus({});
-            setErrorMessage(i18n("Could not start um."));
+            setChangeError(i18n("Could not start um."));
         }
     });
 }
 
 Tweaks::~Tweaks() {
+    // ~QProcess kills a running list and waits for it, which emits finished(). As a member it's
+    // destroyed after the members declared below it, so listFinished() would run on a
+    // half-destroyed module. Listing is read-only, so stop it here instead.
+    m_listProcess.disconnect(this);
+    if (m_listProcess.state() != QProcess::NotRunning) {
+        m_listProcess.kill();
+        m_listProcess.waitForFinished();
+    }
+
     if (m_changeProcess->state() == QProcess::NotRunning) {
         return;
     }
@@ -284,6 +301,10 @@ TweaksModel *Tweaks::tweaks() { return &m_tweaks; }
 
 bool Tweaks::loading() const { return m_loading; }
 
+bool Tweaks::loaded() const { return m_loaded; }
+
+bool Tweaks::listFailed() const { return m_listFailed; }
+
 bool Tweaks::running() const { return m_running; }
 
 const QString &Tweaks::status() const { return m_status; }
@@ -300,7 +321,8 @@ void Tweaks::refresh() {
     }
     const QString um = UmCli::executable();
     if (um.isEmpty()) {
-        setErrorMessage(i18n("um is not installed."));
+        setListError(i18n("um is not installed."));
+        setListState(m_loaded, true);
         return;
     }
     setLoading(true);
@@ -337,7 +359,7 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     }
     const QString um = UmCli::executable();
     if (um.isEmpty()) {
-        setErrorMessage(i18n("um is not installed."));
+        setChangeError(i18n("um is not installed."));
         return;
     }
 
@@ -349,12 +371,12 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
                                                .arg(QUuid::createUuid().toString(QUuid::WithoutBraces))));
     if (!m_outputFile.open(QIODevice::ReadWrite | QIODevice::NewOnly | QIODevice::Unbuffered,
                            QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
-        setErrorMessage(i18n("Could not create a file for um's output: %1", m_outputFile.errorString()));
+        setChangeError(i18n("Could not create a file for um's output: %1", m_outputFile.errorString()));
         return;
     }
     m_changeProcess->setStandardOutputFile(m_outputFile.fileName());
 
-    setErrorMessage({});
+    setChangeError({});
     m_output.clear();
     Q_EMIT outputChanged();
     m_changeDecoder.resetState();
@@ -387,7 +409,7 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
     if (exitStatus != QProcess::NormalExit || exitCode != 0 || !parseTweaksOutput(stdOut, &items)) {
         // older um releases have no --json flag, so point that out rather than showing a parse error
         if (stdErr.contains(QLatin1String("flag provided but not defined"))) {
-            setErrorMessage(i18n("This version of um is too old to manage tweaks from System Settings."));
+            setListError(i18n("This version of um is too old to manage tweaks from System Settings."));
         } else {
             // um's errors go through Go's log package, which puts a timestamp in front
             QStringList errorLines;
@@ -396,12 +418,16 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
                 errorLines.append(stripGoLogTimestamp(line));
             }
             const QString error = errorLines.join(QLatin1Char('\n'));
-            setErrorMessage(error.isEmpty() ? i18n("Could not load the list of tweaks.")
-                                            : i18n("Could not load the list of tweaks: %1", error));
+            setListError(error.isEmpty() ? i18n("Could not load the list of tweaks.")
+                                         : i18n("Could not load the list of tweaks: %1", error));
         }
+        setListState(m_loaded, true);
         return;
     }
     m_tweaks.setTweaks(std::move(items));
+    // a change's error stays, since loading the list again doesn't fix it
+    setListError({});
+    setListState(true, false);
 }
 
 void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
@@ -414,7 +440,7 @@ void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitS
     m_partialLine.clear();
     if (const QString message = changeErrorMessage(m_runningScript, exitCode, exitStatus, m_output);
         !message.isEmpty()) {
-        setErrorMessage(message);
+        setChangeError(message);
     }
 
     // always reload: um records state only after a playbook succeeds
@@ -496,12 +522,36 @@ void Tweaks::setStatus(const QString &value) {
     Q_EMIT statusChanged();
 }
 
-void Tweaks::clearError() { setErrorMessage({}); }
+void Tweaks::clearError() {
+    m_listError.clear();
+    m_changeError.clear();
+    updateErrorMessage();
+}
 
-void Tweaks::setErrorMessage(const QString &message) {
+void Tweaks::setListError(const QString &message) {
+    m_listError = message;
+    updateErrorMessage();
+}
+
+void Tweaks::setChangeError(const QString &message) {
+    m_changeError = message;
+    updateErrorMessage();
+}
+
+void Tweaks::updateErrorMessage() {
+    const QString message = composeTweaksError(m_changeError, m_listError);
     if (m_errorMessage == message) {
         return;
     }
     m_errorMessage = message;
     Q_EMIT errorMessageChanged();
+}
+
+void Tweaks::setListState(const bool loaded, const bool failed) {
+    if (m_loaded == loaded && m_listFailed == failed) {
+        return;
+    }
+    m_loaded = loaded;
+    m_listFailed = failed;
+    Q_EMIT listStateChanged();
 }

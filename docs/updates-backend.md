@@ -35,7 +35,9 @@ local image, so their base image updates show up only when installing.
 first). So the system timer, `bootc upgrade --check` and installing keep a
 world-readable copy of its output in
 `/var/lib/ultramarine-updates/bootc-status.json`, tagged with the boot ID, which
-the listing reads as the user. A copy from a previous boot is ignored, and
+the listing reads as the user. Writing it makes sure the directory can be
+listed by everyone, whoever created it and with whatever umask (pkexec keeps
+the caller's). A copy from a previous boot is ignored, and
 without one, or on hosts where bootc doesn't track an image (`spec.image` is
 null), the listing falls back to `rpm-ostree status`.
 
@@ -88,7 +90,9 @@ them is (see [Automatic updates and Apply Tonight](#automatic-updates-and-apply-
 Run as root, it only checks the system's timer.
 
 `apply` and the timers run every package manager even if an earlier one failed,
-and report all failures at the end. The only ordering is within RPM offline
+and report all failures at the end (see [Automatic updates and Apply
+Tonight](#automatic-updates-and-apply-tonight) for what the timers do after a
+partial failure). The only ordering is within RPM offline
 updates: PackageKit prepares the update only if dnf's download worked. Run as
 the user, `apply` installs the user's updates even if the system part failed
 (but not if authentication was dismissed or refused), and exits with the system
@@ -162,7 +166,9 @@ CMake's `ULTRAMARINE_UPDATES_EXECUTABLE` says (default
 escalated through it (the KCM) always use the real settings and state. sudo (in
 a terminal) is passed `ULTRAMARINE_UPDATES_CONFIG` and `ULTRAMARINE_UPDATES_STATE`
 on its command line, so a development override also applies to the root part
-there. Changing `settings` with `ULTRAMARINE_UPDATES_CONFIG` set doesn't escalate
+there. `schedule` passes them on to the transient tonight units too
+(`systemd-run --setenv`), which otherwise start with a clean environment.
+Changing `settings` with `ULTRAMARINE_UPDATES_CONFIG` set doesn't escalate
 at all.
 
 The helper ignores `SIGPIPE`, and so do the package managers it runs, so closing
@@ -185,7 +191,7 @@ command first when escalating.
 Offline updates need no actions of their own: the helper talks to PackageKit as
 root, and the logout screen uses PackageKit's
 `org.freedesktop.packagekit.trigger-offline-update` (no password in the active
-session) for "Install Updates and Restart" and cancelling.
+session) for "Install Updates and Restart" and canceling.
 
 ## Automatic updates and Apply Tonight
 
@@ -205,19 +211,31 @@ Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
   `run-scheduled` every 5 minutes. It installs system updates once no one has
   used the device for `inactive_minutes`, inside the optional window, on AC power,
   at most once every 20 hours. After a failed install (often no network), it
-  waits an hour before trying again.
+  waits an hour before trying again. An install counts as done (and the next
+  one waits 20 hours) once the main system update, RPMs or the image, worked,
+  even if another source failed, say a Flatpak remote that's down. That
+  failure is still reported (the service fails), and the failed source is
+  retried with the next regular install instead of everything every hour.
+  Without a main system update (the user's timer), it counts as done once any
+  source worked.
 - `ultramarine-updates-user.timer` (user, started by the
   `ultramarine-updates-user` autostart entry) runs `run-user`. With automatic
   updates on, it does the same for the user's Flatpaks, Nix profile and Plasma
   widgets. With them
   off ("Ask me"), it checks once a day and shows a notification with an
-  "Open Updates" action.
+  "Open Updates" action. A check where every source failed (no network yet
+  right after logging in) isn't counted, so the next run tries again.
+  `notify-send` waits until the notification is acted on or closed, so it runs
+  in a transient user service of its own (which also opens System Settings)
+  instead of holding up `run-user`. Without `systemd-run`, the helper waits for
+  it at most 4 minutes.
 - **Apply Tonight** (`schedule`) creates a transient
   `ultramarine-updates-tonight` timer in the system manager and
   `ultramarine-updates-tonight-user` in the user's. They install once tonight
   (22:00–06:00, or the configured window) while the device is unused, even with
   automatic updates off, then stop. A failed attempt is retried at most once an
-  hour. If the automatic timer already installed updates after Apply Tonight was
+  hour. A partial failure (see above) still counts as installed, so the timer
+  stops instead of retrying every night. If the automatic timer already installed updates after Apply Tonight was
   scheduled (recorded in `tonight-scheduled` in the state directories), the
   tonight timer stops without installing again. The system's tonight service
   waits for `network-online.target`, like the automatic one. Scheduling again
@@ -294,7 +312,9 @@ service have `TimeoutStopSec=30min`: rpm finishes its transaction before
 handling `SIGTERM`, and the default 90 seconds could cut that short. They also
 have `TimeoutStartSec=6h` (oneshot services otherwise never time out), so a run
 stuck on a stalled download can't keep the timer from starting it again. That's
-stopped the same way, so a running rpm transaction still finishes.
+stopped the same way, so a running rpm transaction still finishes. The user's
+`ultramarine-updates-user.service` and tonight's user service have
+`TimeoutStartSec=6h` too.
 
 Installs take a lock first, `/run/ultramarine-updates.lock` for system updates
 (root only) and `$XDG_RUNTIME_DIR/ultramarine-updates.lock` for the user's. So
@@ -303,9 +323,20 @@ twice at the same time, and the same goes for each user's own. The two locks are
 separate, so the system's and a user's updates can install at the same time
 (each package manager guards its own installation). Listing takes no lock, so
 the KCM's `dnf check-update` can run during an install. A timer that finds the
-lock held skips that run; `apply` fails with a message. The system timer only
-writes the bootc status cache while holding the system lock, and skips its
-image check while an install holds it.
+lock held skips that run; `apply` fails with a message. The bootc status cache
+has a lock of its own, `/run/ultramarine-updates-status.lock`, so refreshing it
+never turns away an install. Before checking for a new image, the system timer
+takes the system lock for a moment to see whether an install is running, and
+skips the check if one is. `apply` waits up to 2 seconds for the system lock,
+so that moment can't turn it away either.
+
+## Translations
+
+Messages the KCM shows (progress, failures, the notification and the reason
+given to logind's inhibitor) are translated in the `ultramarine-plasma-settings`
+domain, like the KCMs. The `--help` text and the plain-text `settings` output
+are for the command line and aren't. pkexec keeps `LANG` and `LC_*`, so the
+root part speaks the same language.
 
 ## Installed files
 

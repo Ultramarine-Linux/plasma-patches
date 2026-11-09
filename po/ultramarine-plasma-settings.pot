@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: ultramarine-plasma-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/Ultramarine-Linux/plasma-patches/"
 "issues\n"
-"POT-Creation-Date: 2026-11-03 13:38-0700\n"
+"POT-Creation-Date: 2026-11-08 22:04-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,55 +19,78 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 is a download size, %2 an installed or freed size"
 msgid "%1 - %2"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 source, %2 new version"
 msgid "%1 - %2"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 - %2 → %3"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 is a size like 500 MB"
 msgid "%1 Download"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 is a size like 20 MB"
 msgid "%1 Freed"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 is a size like 20 MB"
 msgid "%1 Installed"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %1 is an office suite, %2 a file name"
 msgid "%1 can't open “%2”. Install another office suite to open it."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %1 is an office suite"
 msgid "%1 could not be installed."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %1 is an office suite, %2 the installer's error"
 msgid "%1 could not be installed: %2"
 msgstr ""
 
+#: updater/process.cpp
+#, kde-format
+msgctxt "@info:status %1 is a program"
+msgid "%1 could not be started"
+msgstr ""
+
 #: dgpu-launch/main.cpp
+#, kde-format
 msgid "%1 doesn't say how to start it."
 msgstr ""
 
+#: updater/process.cpp
+#, kde-format
+msgctxt "@info:status %1 is a program, %2 its error message"
+msgid "%1 failed: %2"
+msgstr ""
+
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@item:valuesuffix"
 msgid "%1 minute"
 msgid_plural "%1 minutes"
@@ -75,6 +98,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "%1 update available"
 msgid_plural "%1 updates available"
@@ -82,32 +106,38 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "%1 update available."
 msgid_plural "%1 updates available."
 msgstr[0] ""
 msgstr[1] ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %1 is an office suite"
 msgid "%1 was installed, but could not be started."
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@info %1 source, %2 version"
 msgid "%1 · %2"
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 · %2 → %3"
 msgstr ""
 
 #: office-installer/flatpakinstaller.cpp
+#, kde-format
 msgctxt "@info:progress %1 is a Flatpak app or runtime, %2 a percentage"
 msgid "%1: %2%"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %2 is an office suite"
 msgid "%2 can't open this document. Install another office suite to open it."
 msgid_plural ""
@@ -115,37 +145,81 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:shell"
+msgid "--automatic must be true or false."
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:shell"
+msgid "--inactive-minutes must be a number."
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:shell"
+msgid "--offline must be true or false."
+msgstr ""
+
 #: updater/schedule.cpp
+#, kde-format
+msgctxt "@info"
 msgid "1 update is ready to install."
 msgid_plural "%1 updates are ready to install."
 msgstr[0] ""
 msgstr[1] ""
 
 #: office-installer/suites.cpp
+#, kde-format
 msgid "A simple, modern interface built on LibreOffice"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "A system update is ready. Restart to start using it."
 msgstr ""
 
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "A system upgrade is already scheduled to install while restarting."
+msgstr ""
+
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "A time window needs both a start and an end."
+msgstr ""
+
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "A time window's start and end must differ."
+msgstr ""
+
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "Add-ons"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Advanced Settings"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@title"
 msgid "Advanced Update Settings"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@label"
 msgid "Advanced update settings"
 msgstr ""
@@ -156,59 +230,91 @@ msgid "Allow apps to request your approximate location"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Allow apps to request your approximate location"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info tweak stability"
 msgid "Alpha"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Already applied"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@info"
 msgid "Also used for Apply Tonight."
 msgstr ""
 
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status %1 is a file path"
+msgid "Another offline update is already scheduled (%1 exists)."
+msgstr ""
+
+#: office-installer/packagekit.cpp
+#, kde-format
+msgctxt "@info"
+msgid ""
+"Another software install or update took priority. Try again once it has "
+"finished."
+msgstr ""
+
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Applied"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Apply"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button install updates now"
 msgid "Apply"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button install updates tonight"
 msgid "Apply Tonight"
 msgstr ""
 
+#: kcm-tweaks/ui/main.qml
+#, kde-format
+msgctxt "@action:button accessible name, %1 is a tweak"
+msgid "Apply “%1”"
+msgstr ""
+
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Applying updates…"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Applying “%1”…"
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "Apps"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@option:radio"
 msgid "Ask me"
 msgstr ""
@@ -230,49 +336,58 @@ msgid "Authentication is required to turn location services on or off"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid ""
-"Authentication was cancelled or failed, or the maintenance task failed. See "
+"Authentication was canceled or failed, or the maintenance task failed. See "
 "the output for details."
 msgstr ""
 
 #: kcm-location/location.cpp kcm-tweaks/tweaks.cpp
-msgid "Authentication was cancelled or failed. No changes were made."
+#, kde-format
+msgid "Authentication was canceled or failed. No changes were made."
 msgstr ""
 
 #: kcm-updates/updates.cpp
-msgid "Authentication was cancelled or failed. No updates were installed."
+#, kde-format
+msgid "Authentication was canceled or failed. No updates were installed."
 msgstr ""
 
 #: kcm-updates/updates.cpp
-msgid "Authentication was cancelled or failed. The settings were not saved."
+#, kde-format
+msgid "Authentication was canceled or failed. The settings were not saved."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid ""
-"Authentication was cancelled or failed. Tonight's updates are still "
-"scheduled."
+"Authentication was canceled or failed. Tonight's updates are still scheduled."
 msgstr ""
 
 #: kcm-updates/updates.cpp
-msgid "Authentication was cancelled or failed. Updates were not scheduled."
+#, kde-format
+msgid "Authentication was canceled or failed. Updates were not scheduled."
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@label"
 msgid "Automatic Updates"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info tweak stability"
 msgid "Beta"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Cancel"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info:status"
 msgid "Canceling…"
 msgstr ""
@@ -286,121 +401,178 @@ msgstr ""
 msgid "Check for and install system and app updates"
 msgstr ""
 
+#: updater/image.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Checking for a new system image failed: %1"
+msgstr ""
+
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Checking for updates failed (exit code %1)."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Checking for updates failed (exit code %1). %2"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Checking for updates failed: the update helper stopped unexpectedly."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid ""
 "Checking for updates failed: the update helper’s output could not be read."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Checking for updates…"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@info"
 msgid "Choose different start and end times."
 msgstr ""
 
 #: office-installer/suites.cpp
+#, kde-format
 msgctxt "@option:radio office suite"
 msgid "Collabora Office"
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Copy"
 msgstr ""
 
 #: kcm-location/location.cpp
+#, kde-format
 msgid ""
 "Could not change location services. The change may have been partly applied."
 msgstr ""
 
 #: kcm-location/location.cpp
+#, kde-format
 msgid ""
 "Could not change location services. The change may have been partly applied: "
 "%1"
 msgstr ""
 
 #: kcm-location/location.cpp
+#, kde-format
 msgid "Could not change location services: %1 is not installed."
 msgstr ""
 
 #: kcm-location/location.cpp
+#, kde-format
 msgid "Could not change location services: pkexec is not installed."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Could not check for updates from: %1"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp
-msgid "Could not create a file for um's output: %1"
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status %1 is a directory"
+msgid "Could not create %1"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
+msgid "Could not create a file for um's output: %1"
+msgstr ""
+
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:status %1 is a file name"
+msgid "Could not load %1"
+msgstr ""
+
+#: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Could not load the list of tweaks."
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Could not load the list of tweaks: %1"
 msgstr ""
 
 #: kcm-location/location.cpp
+#, kde-format
 msgid "Could not read the state of location services: %1"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Could not restart: %1"
 msgstr ""
 
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is a program"
+msgid "Could not run %1"
+msgstr ""
+
 #: kcm-location/location.cpp
+#, kde-format
 msgid "Could not start pkexec."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Could not start the update helper."
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Could not start um."
 msgstr ""
 
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:status %1 is a list of widget names"
+msgid "Could not update %1"
+msgstr ""
+
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info:placeholder"
 msgid "Couldn't check whether location services are on"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info:tooltip"
 msgid "Disable this tweak"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Disabling “%1”…"
 msgstr ""
 
 #: office-installer/main.cpp
+#, kde-format
 msgid "Documents to open once an office suite is installed."
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Don’t Apply Tonight"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Enable"
 msgstr ""
@@ -411,58 +583,95 @@ msgid "Enable optional Ultramarine system tweaks"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info:tooltip"
 msgid "Enable this tweak"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Enabling “%1”…"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label:listbox"
 msgid "End time"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label:listbox the end of the update time range"
 msgid "Ending at:"
 msgstr ""
 
-#: kcm-updates/updates.cpp
-msgid "Flatpak"
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Failed to cancel the updates: %1"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Failed to cancel your updates: %1"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Failed to save the settings: %1"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Failed to schedule the updates: %1"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Failed to schedule your updates: %1"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@item:inlistbox install source"
 msgid "Flatpak"
 msgstr ""
 
 #: office-installer/suites.cpp
+#, kde-format
 msgid "Focused on compatibility with Microsoft Office documents"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "How?"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info tweak stability"
 msgid "In development"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@action:button"
 msgid "Install"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@title"
 msgid "Install Another Office Suite"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@title:window"
 msgid "Install an Office Suite"
 msgstr ""
@@ -473,26 +682,31 @@ msgid ""
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgid ""
 "Install an office suite to open documents, spreadsheets and presentations."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgid "Install an office suite to open this document."
 msgid_plural "Install an office suite to open these %1 documents."
 msgstr[0] ""
 msgstr[1] ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgid "Install an office suite to open “%1”."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %1 is an office suite"
 msgid "Install an office suite to use alongside %1."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@label:listbox"
 msgid "Install from:"
 msgstr ""
@@ -502,16 +716,19 @@ msgid "Install system updates"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info:placeholder"
 msgid "Install the geoclue2 package to let apps request your location."
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label:spinbox"
 msgid "Install when unused for:"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@option:check"
 msgid "Install while restarting"
 msgstr ""
@@ -522,22 +739,57 @@ msgid ""
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info %1 is an office suite"
 msgid "Installing %1 was canceled."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info:status %1 is an office suite"
 msgid "Installing %1…"
 msgstr ""
 
+#: updater/main.cpp updater/schedule.cpp
+#, kde-format
+msgctxt "@info the reason shutting down waits"
+msgid "Installing system updates"
+msgstr ""
+
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Installing tonight when the device isn’t in use"
 msgstr ""
 
+#: updater/packagekit.cpp updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid ""
+"Installing updates while restarting needs PackageKit, which isn't installed."
+msgstr ""
+
+#: updater/main.cpp updater/schedule.cpp
+#, kde-format
+msgctxt "@info the reason shutting down waits"
+msgid "Installing your updates"
+msgstr ""
+
 #: office-installer/main.cpp
+#, kde-format
 msgid "Installs an office suite to open office documents with."
+msgstr ""
+
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status %1 is a file path, %2 an error message"
+msgid "Invalid %1: %2"
+msgstr ""
+
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status %1 is what was entered. Don't translate HH:MM."
+msgid "Invalid time \"%1\", expected HH:MM."
 msgstr ""
 
 #: dgpu-launch/data/ultramarine-dgpu-launch.desktop.in
@@ -545,21 +797,25 @@ msgid "Launch Using Dedicated Graphics Card"
 msgstr ""
 
 #: dgpu-launch/main.cpp
+#, kde-format
 msgctxt "@title:window"
 msgid "Launch Using Dedicated Graphics Card"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Let apps know roughly where you are"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@option:radio"
 msgid "Let your device decide"
 msgstr ""
 
 #: office-installer/suites.cpp
+#, kde-format
 msgctxt "@option:radio office suite"
 msgid "LibreOffice"
 msgstr ""
@@ -570,55 +826,85 @@ msgid "Location Services"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@option:check"
 msgid "Location Services"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@title"
 msgid "Location Services"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info:placeholder"
 msgid "Location services aren't installed"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "Maintenance Tasks"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Nearby Wi-Fi networks are searched on beaconDB to find your location"
 msgstr ""
 
-#: kcm-updates/updates.cpp
-msgid "Nix"
+#: updater/image.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Neither bootc nor rpm-ostree is installed."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@title"
 msgid "No Office Suite Installed"
 msgstr ""
 
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:progress"
+msgid "No one is using the device. Installing updates…"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "No supported package manager was found."
+msgstr ""
+
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info:placeholder"
 msgid "No tweaks available"
 msgstr ""
 
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "No updates are scheduled."
+msgstr ""
+
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Nothing right now"
 msgstr ""
 
 #: office-installer/suites.cpp
+#, kde-format
 msgctxt "@option:radio office suite"
 msgid "ONLYOFFICE"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid ""
 "Occasional updates for your system and apps to keep things running smoothly "
@@ -630,108 +916,157 @@ msgid "Office Suite Installer"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "One-Time Changes"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@option:check"
 msgid "Only during these hours"
 msgstr ""
 
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid ""
+"Only some of tonight's updates are still scheduled. Schedule them again to "
+"install all of them."
+msgstr ""
+
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Only the apps that ask for it, like a website you visit"
 msgstr ""
 
 #: updater/schedule.cpp
+#, kde-format
+msgctxt "@action:button"
 msgid "Open Updates"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info:status %1 is an office suite"
 msgid "Opening %1…"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "Other"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@title:window"
 msgid "Output"
 msgstr ""
 
 #: office-installer/packagekit.cpp
+#, kde-format
 msgctxt "@info %1 is a version number"
 msgid "PackageKit %1 isn't supported. Only PackageKit 1 is."
 msgstr ""
 
+#: updater/packagekit.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "PackageKit could not prepare the update: %1"
+msgstr ""
+
 #: office-installer/packagekit.cpp
+#, kde-format
 msgctxt "@info %1 is a list of package names"
 msgid "Packages not found: %1"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgctxt "@info update source"
 msgid "Plasma Widget"
 msgstr ""
 
+#: updater/packagekit.cpp
+#, kde-format
+msgctxt "@info:progress"
+msgid "Preparing the updates to install while restarting…"
+msgstr ""
+
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "Privacy"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@item:inlistbox install source"
 msgid "RPM"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgctxt "@info:status office suite"
 msgid "Recommended"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@title"
 msgid "Regular Updates"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Reload"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Restart to finish updating"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Restart to install updates"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Restart…"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Run"
 msgstr ""
 
+#: kcm-tweaks/ui/main.qml
+#, kde-format
+msgctxt "@action:button accessible name, %1 is a tweak"
+msgid "Run “%1”"
+msgstr ""
+
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "Running “%1”…"
 msgstr ""
 
 #: dgpu-launch/main.cpp
+#, kde-format
 msgid "Runs an app on the discrete GPU."
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "Runtimes"
 msgstr ""
@@ -741,138 +1076,217 @@ msgid "Schedule system updates"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Show Output"
 msgstr ""
 
 #: office-installer/flatpakinstaller.cpp
+#, kde-format
 msgctxt "@info:progress %1 is a Flatpak runtime or extension, %2 the error"
 msgid "Skipped %1: %2"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@title"
 msgid "Software to Be Updated"
 msgstr ""
 
+#: office-installer/packagekit.cpp
+#, kde-format
+msgctxt "@info"
+msgid "Some packages aren't signed with a trusted key."
+msgstr ""
+
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Some updates are still scheduled to install tonight"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label:listbox"
 msgid "Start time"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label:listbox the start of the update time range"
 msgid "Starting at:"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "State unknown: %1"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
+msgctxt "@info update source, the operating system"
 msgid "System"
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "System Packages"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@title:group"
 msgid "System Tweaks"
 msgstr ""
 
+#: updater/image.cpp
+#, kde-format
+msgctxt "@item the name of the operating system when it's unknown"
+msgid "System image"
+msgstr ""
+
+#: updater/main.cpp updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "System updates will be installed during the next restart."
+msgstr ""
+
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label"
 msgid "System updates:"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button opens a list of all updates"
 msgid "Technical Information"
 msgstr ""
 
 #: kcm-updates/ui/TechnicalInformation.qml
+#, kde-format
 msgctxt "@title"
 msgid "Technical Information"
 msgstr ""
 
 #: dgpu-launch/main.cpp
+#, kde-format
 msgid "The app's desktop file, as a path or file: URL."
 msgstr ""
 
 #: office-installer/suites.cpp
+#, kde-format
 msgid "The full-featured LibreOffice suite"
 msgstr ""
 
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "The inactive time must be between 0 and %1 minutes."
+msgstr ""
+
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "The maintenance task failed (exit code %1). See the output for details."
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "The maintenance task failed: %1"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "The maintenance task stopped unexpectedly. See the output for details."
 msgstr ""
 
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "The new system image takes effect after the next restart."
+msgstr ""
+
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "The settings could not be saved."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "The settings could not be saved: %1"
 msgstr ""
 
+#: office-installer/packagekit.cpp
+#, kde-format
+msgctxt "@info"
+msgid "The signing key of a package repository isn't trusted yet."
+msgstr ""
+
+#: office-installer/packagekit.cpp
+#, kde-format
+msgctxt "@info %1 is a package repository"
+msgid "The signing key of the “%1” repository isn't trusted yet."
+msgstr ""
+
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid ""
 "The tweak could not be changed (exit code %1). See the output for details."
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid ""
 "The tweak could not be changed because um stopped unexpectedly. See the "
 "output for details."
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "The tweak could not be changed: %1"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "The update helper (ultramarine-updates) is not installed."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "The update settings could not be loaded. Showing the defaults."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "The update settings could not be loaded. Showing the defaults. %1"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "The updates could not be installed while restarting: %1"
 msgstr ""
 
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status Don't translate HH:MM-HH:MM."
+msgid "The window must be HH:MM-HH:MM, or empty for any time."
+msgstr ""
+
 #: office-installer/installerdialog.cpp
+#, kde-format
 msgid "This can take a few minutes. You may be asked to authenticate."
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "This change cannot be undone from here."
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@info"
 msgid ""
 "This system updates as a whole: the new version is prepared in the "
@@ -880,39 +1294,77 @@ msgid ""
 "restarted for you."
 msgstr ""
 
+#: updater/image.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "This system uses um env, but um is not installed."
+msgstr ""
+
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "This tweak comes with no guarantees. Use it at your own risk."
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "This tweak is marked as “%1” and may be unstable."
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "This tweak is still in development and may be unstable."
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "This version of um is too old to manage tweaks from System Settings."
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "This will run a maintenance script with administrator privileges."
 msgstr ""
 
-#: kcm-updates/updates.cpp
-msgid "Tonight's updates could not be cancelled."
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Timed out checking the KDE Store for updates"
+msgstr ""
+
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Timed out loading the KDE Store"
+msgstr ""
+
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Tonight's updates are being installed right now."
 msgstr ""
 
 #: kcm-updates/updates.cpp
-msgid "Tonight's updates could not be cancelled: %1"
+#, kde-format
+msgid "Tonight's updates could not be canceled."
+msgstr ""
+
+#: kcm-updates/updates.cpp
+#, kde-format
+msgid "Tonight's updates could not be canceled: %1"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Tonight's updates were canceled."
 msgstr ""
 
 #: kcm-location/ui/main.qml kcm-updates/ui/ErrorMessage.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Try Again"
 msgstr ""
@@ -922,11 +1374,13 @@ msgid "Turn location services on or off"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Turning off…"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Turning on…"
 msgstr ""
@@ -937,6 +1391,7 @@ msgid "Tweaks"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@title"
 msgid "Tweaks"
 msgstr ""
@@ -946,20 +1401,38 @@ msgid "Ultramarine Updates"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@label"
 msgid "Update times:"
 msgstr ""
 
-#: updater/schedule.cpp
+#. name of the page in System Settings
+#: kcm-updates/kcm_ultramarine_updates.json.in
 msgid "Updates"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@title"
 msgid "Updates"
 msgstr ""
 
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@title the app name in notifications"
+msgid "Updates"
+msgstr ""
+
+#: updater/lock.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid ""
+"Updates are already being installed (automatic updates or Apply Tonight). "
+"Try again once they're done."
+msgstr ""
+
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@info"
 msgid ""
 "Updates are downloaded ahead of time and installed the next time you "
@@ -967,28 +1440,41 @@ msgid ""
 msgstr ""
 
 #: updater/schedule.cpp
+#, kde-format
+msgctxt "@title"
 msgid "Updates are ready"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Updates are ready to install. Restart to install them."
 msgstr ""
 
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updates are scheduled to install tonight."
+msgstr ""
+
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Updates automatically install when you’re not active"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Updates could not be scheduled."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Updates could not be scheduled: %1"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info:tooltip"
 msgid ""
 "Updates install tonight once the device hasn’t been used for a while and is "
@@ -996,6 +1482,7 @@ msgid ""
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@info"
 msgid ""
 "Updates install whenever the device isn’t in use. Apply Tonight installs "
@@ -1003,32 +1490,105 @@ msgid ""
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Updates installed."
 msgstr ""
 
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updates were already installed since Apply Tonight was scheduled."
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updates will be installed tonight, when the device isn't in use."
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating Determinate Nix failed (exit code %1)."
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Updating Plasma widgets failed: %1"
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating RPM packages failed (exit code %1)."
+msgstr ""
+
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Updating failed (exit code %1)."
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Updating failed (exit code %1). %2"
 msgstr ""
 
 #: kcm-updates/updates.cpp
+#, kde-format
 msgid "Updating failed: the update helper stopped unexpectedly."
 msgstr ""
 
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating system Flatpaks failed (exit code %1)."
+msgstr ""
+
+#: updater/image.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating the system image failed (exit code %1)."
+msgstr ""
+
+#: updater/image.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating the um env image failed (exit code %1)."
+msgstr ""
+
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:progress %1 is a widget name, %2 a version"
+msgid "Updating widget %1 to %2"
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating your Flatpaks failed (exit code %1)."
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Updating your Nix profile failed (exit code %1)."
+msgstr ""
+
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info tweak stability"
 msgid "Use at your own risk"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Use “um tweaks” in a terminal"
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
+#, kde-format
 msgctxt "@info"
 msgid ""
 "Used for automatic updates and Apply Tonight. The device counts as in use "
@@ -1036,46 +1596,103 @@ msgid ""
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 is a system version"
 msgid "Version %1 is ready. Restart to start using it."
 msgstr ""
 
+#: updater/main.cpp updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status %1 is a warning message"
+msgid "Warning: %1"
+msgstr ""
+
+#: updater/inhibit.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Warning: could not keep the device awake while installing: %1"
+msgstr ""
+
+#: updater/inhibit.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Warning: could not keep the device awake: no system bus"
+msgstr ""
+
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:status %1 is a widget name, %2 an error message"
+msgid "Warning: could not update %1: %2"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is a source and its error message"
+msgid "Warning: failed to list updates from %1"
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Warning: the updates installed while restarting failed: %1"
+msgstr ""
+
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "What?"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Where?"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Who?"
 msgstr ""
 
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:progress"
+msgid "You're not using the device. Installing your updates…"
+msgstr ""
+
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Your approximate coordinates and how accurate they are"
 msgstr ""
 
 #: kcm-location/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Your entire system"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "Your system is up to date"
 msgstr ""
 
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Your updates were already installed since Apply Tonight was scheduled."
+msgstr ""
+
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info"
 msgid "You’re notified when updates are ready to go"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@info %1 is the number of updates not listed above"
 msgid "and <b>%1</b> more update"
 msgid_plural "and <b>%1</b> more updates"
@@ -1088,6 +1705,48 @@ msgctxt "X-KDE-Keywords"
 msgid "location,geolocation,geoclue,gps,beacondb,privacy,position,where"
 msgstr ""
 
+#: updater/packagekit.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "pkgcli could not be started"
+msgstr ""
+
+#: updater/packagekit.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "pkgcli failed (exit code %1)"
+msgstr ""
+
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:shell"
+msgid "run-scheduled is run by the system timers as root."
+msgstr ""
+
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:shell"
+msgid "run-user is run by the user timers."
+msgstr ""
+
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status %1 is a systemd unit"
+msgid "systemctl stop %1 failed (exit code %2)"
+msgstr ""
+
+#: updater/schedule.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "systemd-run failed: %1"
+msgstr ""
+
+#: updater/plasmoid.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "timed out"
+msgstr ""
+
 #. comma-separated search keywords for the page in System Settings. Keep the English keywords and add translated ones, separated by commas
 #: kcm-tweaks/kcm_ultramarine_tweaks.json.in
 msgctxt "X-KDE-Keywords"
@@ -1095,6 +1754,7 @@ msgid "tweaks,ultramarine,um,kernel,nix,system,configuration"
 msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "um is not installed."
 msgstr ""
 
@@ -1104,6 +1764,13 @@ msgctxt "X-KDE-Keywords"
 msgid "update,updates,upgrade,software,dnf,flatpak,nix,bootc,packages,widgets,plasmoids,restart"
 msgstr ""
 
+#: kcm-tweaks/ui/main.qml
+#, kde-format
+msgctxt "@action:button accessible name, %1 is a tweak"
+msgid "“%1” applied"
+msgstr ""
+
 #: dgpu-launch/main.cpp
+#, kde-format
 msgid "“%1” isn't an app."
 msgstr ""

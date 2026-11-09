@@ -1,5 +1,5 @@
 diff --git a/discover/DiscoverObject.cpp b/discover/DiscoverObject.cpp
-index a412202..e9612e1 100644
+index a412202..2f225a8 100644
 --- a/discover/DiscoverObject.cpp
 +++ b/discover/DiscoverObject.cpp
 @@ -266,6 +266,14 @@ void DiscoverObject::openMode(const QString &_mode)
@@ -47,51 +47,19 @@ index ce3c391..ce923fe 100644
              QTextStream(stdout) << i18n("Available backends:\n");
              DiscoverBackendsFactory f;
 diff --git a/discover/qml/DiscoverDrawer.qml b/discover/qml/DiscoverDrawer.qml
-index 760583b..aa66dc2 100644
+index 5386607..8c5b045 100644
 --- a/discover/qml/DiscoverDrawer.qml
 +++ b/discover/qml/DiscoverDrawer.qml
-@@ -130,41 +130,6 @@ Kirigami.GlobalDrawer {
-             objectName: "updateButton"
+@@ -132,7 +132,8 @@ Kirigami.GlobalDrawer {
              action: updateAction
              visible: enabled && drawer.wideScreen
--
+ 
 -            stateObject: Discover.ResourcesModel.fetchingUpdatesProgress < 100 ? updatesIcon : updatesCountLabel
--
--            Component {
--                id: updatesIcon
--
--                Kirigami.Icon {
--                    anchors.right: parent.right
--                    anchors.verticalCenter: parent.verticalCenter
--                    source: "view-refresh"
--                    implicitWidth: Kirigami.Units.iconSizes.sizeForLabels
--                    implicitHeight: Kirigami.Units.iconSizes.sizeForLabels
--                }
--            }
--
--            Component {
--                id: updatesCountLabel
--
--                Kirigami.Badge {
--                    visible: Discover.ResourcesModel.updatesCount > 0
--
--                    type: Discover.ResourcesModel.hasSecurityUpdates
--                        ? Kirigami.Badge.Type.Warning
--                        : Kirigami.Badge.Type.Information
--
--                    text: Discover.ResourcesModel.updatesCount
--
--                    QQC2.ToolTip.text: Discover.ResourcesModel.hasSecurityUpdates
--                        ? i18n("Security updates available")
--                        : i18n("Updates available")
--                    QQC2.ToolTip.visible: activeFocus || hovered
--                    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
--
--                }
--            }
-         },
-         ActionListItem {
-             action: sourcesAction
++            // Ultramarine: the entry only links to System Settings, so no update count or fetching icon
++            stateObject: null
+ 
+             Component {
+                 id: updatesIcon
 diff --git a/discover/qml/DiscoverWindow.qml b/discover/qml/DiscoverWindow.qml
 index 47c84de..d2a2da8 100644
 --- a/discover/qml/DiscoverWindow.qml
@@ -174,7 +142,7 @@ index 7900fdc..55269c0 100644
      }
  
 diff --git a/libdiscover/backends/PackageKitBackend/PackageKitBackend.cpp b/libdiscover/backends/PackageKitBackend/PackageKitBackend.cpp
-index d0fd3c4..5c5d6ca 100644
+index d0fd3c4..c18ad67 100644
 --- a/libdiscover/backends/PackageKitBackend/PackageKitBackend.cpp
 +++ b/libdiscover/backends/PackageKitBackend/PackageKitBackend.cpp
 @@ -1014,19 +1014,8 @@ void PackageKitBackend::getUpdatesFinished(PackageKit::Transaction::Exit, uint)
@@ -199,3 +167,19 @@ index d0fd3c4..5c5d6ca 100644
  }
  
  void PackageKitBackend::foundNewMajorVersion(const AppStream::Release &release)
+diff --git a/libdiscover/backends/PackageKitBackend/PackageKitNotifier.cpp b/libdiscover/backends/PackageKitBackend/PackageKitNotifier.cpp
+index 4b512c8..c49cea7 100644
+--- a/libdiscover/backends/PackageKitBackend/PackageKitNotifier.cpp
++++ b/libdiscover/backends/PackageKitBackend/PackageKitNotifier.cpp
+@@ -307,9 +307,8 @@ void PackageKitNotifier::refreshDatabase()
+         connect(m_refresher.data(), &PackageKit::Transaction::finished, this, &PackageKitNotifier::recheckSystemUpdateNeeded);
+     }
+ 
+-    if (PackageKit::Daemon::roles() & PackageKit::Transaction::RoleUpgradeSystem) {
+-        checkDistroUpgrade();
+-    }
++    // Ultramarine: no "Upgrade available" notification either. Distro upgrades go
++    // through System Settings > Updates, not Discover
+ }
+ 
+ QProcess *PackageKitNotifier::checkAptVariable(const QString &aptconfig, const QLatin1String &varname, const std::function<void(const QStringView &val)> &func)

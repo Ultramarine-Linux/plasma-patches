@@ -29,6 +29,7 @@ namespace {
         static void installErrorMessages();
         static void previewModelLimitsRows();
         static void composesErrorMessages();
+        static void findsLastOutputLine();
     };
 } // namespace
 
@@ -214,7 +215,7 @@ void UpdatesTest::refreshErrorMessages() {
 }
 
 void UpdatesTest::upgradeSettingsDefaults() {
-    const UpgradeSettings defaults;
+    constexpr UpgradeSettings defaults;
     QVERIFY(defaults.automatic);
     QVERIFY(!defaults.offline);
     QCOMPARE(defaults.inactiveMinutes, 5);
@@ -350,6 +351,17 @@ void UpdatesTest::composesErrorMessages() {
     QCOMPARE(composeErrorMessage({}, QStringLiteral("check")), QStringLiteral("check"));
     // the install error comes first and the check's error below it, each shown once
     QCOMPARE(composeErrorMessage(QStringLiteral("install"), QStringLiteral("check")), QStringLiteral("install\ncheck"));
+}
+
+void UpdatesTest::findsLastOutputLine() {
+    QVERIFY(lastOutputLine({}).isEmpty());
+    QVERIFY(lastOutputLine(" \n\t\r\n").isEmpty());
+    QCOMPARE(lastOutputLine("only"), QStringLiteral("only"));
+    QCOMPARE(lastOutputLine("first\nsecond\n"), QStringLiteral("second"));
+    // trailing blank lines and padding are skipped
+    QCOMPARE(lastOutputLine("first\n  Downloading foo  \r\n\n \n"), QStringLiteral("Downloading foo"));
+    QCOMPARE(lastOutputLine("\nlast"), QStringLiteral("last"));
+    QCOMPARE(lastOutputLine("a\nWird ausgeführt\n"), QStringLiteral("Wird ausgeführt"));
 }
 
 QTEST_GUILESS_MAIN(UpdatesTest)

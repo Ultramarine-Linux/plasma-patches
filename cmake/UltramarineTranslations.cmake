@@ -52,19 +52,25 @@ file(CONFIGURE OUTPUT ${UM_PO_DIR}/LINGUAS CONTENT "${_linguas}\n" @ONLY)
 
 add_custom_target(um_translations ALL DEPENDS ${UM_PO_FILES} ${UM_MO_FILES})
 
-# um_install_translations(<domain> [COMPONENT <component>])
-# install the catalog as <domain>.mo for every language
+# um_install_translations(<domain> [COMPONENTS <component>...])
+# install the catalog as <domain>.mo for every language. A domain shared by several
+# install components is installed once per component, so each one works on its own
+# with cmake --install --component.
 function(um_install_translations domain)
-    cmake_parse_arguments(ARG "" "COMPONENT" "" ${ARGN})
-    set(_component)
-    if (ARG_COMPONENT)
-        set(_component COMPONENT ${ARG_COMPONENT})
+    cmake_parse_arguments(ARG "" "" "COMPONENTS" ${ARGN})
+    # without COMPONENTS, install once into CMake's default (Unspecified) component
+    set(_components ${ARG_COMPONENTS})
+    if (NOT _components)
+        set(_components Unspecified)
     endif ()
-    foreach (_lang ${UM_LANGUAGES})
-        install(FILES ${UM_PO_DIR}/${_lang}.mo
-                DESTINATION ${KDE_INSTALL_LOCALEDIR}/${_lang}/LC_MESSAGES
-                RENAME ${domain}.mo
-                ${_component})
+    foreach (_component IN LISTS _components)
+        set(_component_args COMPONENT ${_component})
+        foreach (_lang ${UM_LANGUAGES})
+            install(FILES ${UM_PO_DIR}/${_lang}.mo
+                    DESTINATION ${KDE_INSTALL_LOCALEDIR}/${_lang}/LC_MESSAGES
+                    RENAME ${domain}.mo
+                    ${_component_args})
+        endforeach ()
     endforeach ()
 endfunction()
 

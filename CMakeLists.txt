@@ -47,7 +47,8 @@ include(CTest)
 # the Weblate catalog (po/<lang>.po), see docs/translations.md. The KCMs install it as
 # their own domains, the update helper, dGPU launcher and office installer share this one.
 include(UltramarineTranslations)
-um_install_translations(${UM_TRANSLATION_DOMAIN})
+um_install_translations(${UM_TRANSLATION_DOMAIN}
+        COMPONENTS ultramarine-updates ultramarine-dgpu-launch ultramarine-office-installer)
 
 # absolute path of the um CLI, used by the Tweaks KCM. umcli's polkit action
 # (org.ultramarine.um.manage) matches this exact path when um escalates through pkexec.

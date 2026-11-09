@@ -7,9 +7,11 @@
 #include <QDateTime>
 
 #include <chrono>
+#include <functional>
 #include <optional>
 
 #include "settings.h"
+#include "updates.h"
 
 /**
  * automatic updates and Apply Tonight.
@@ -60,6 +62,28 @@ namespace UltramarineUpdates {
     /// when it shouldn't. Separate from the side effects so it can be tested.
     bool readyToInstall(const Settings &settings, bool tonight, bool inUse, std::chrono::seconds inactive,
                         bool installedRecently, const QDateTime &now, QString *reason = nullptr);
+
+    /**
+     * runs @p install for a timer once it's ready, unless an install is already
+     * running (that's not an error) or the last failed one was less than an hour
+     * ago: tonight's timers poll every 5 minutes, and a failure shouldn't retry
+     * all night. Once ApplyResult::installed() (even with some sources failing,
+     * which are then reported in @p error), remembers the time in @p installedPath
+     * and sets @p installed, so the timers wait for their next regular run.
+     * Otherwise it's retried after an hour. Returns false if anything failed.
+     */
+    bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
+                          const QDateTime &now, const std::function<ApplyResult()> &install, bool *installed,
+                          QString *error);
+
+    /**
+     * "Ask me": lists updates (@p list) at most once a day and passes how many
+     * there are to @p notify, if any. The check is remembered in @p checkedPath
+     * only once a listing worked, so a failed one (no network yet) is retried on
+     * the next run.
+     */
+    void notifyPendingUpdates(const QString &checkedPath, const QDateTime &now,
+                              const std::function<ListResponse()> &list, const std::function<void(qsizetype)> &notify);
 
     /// installs system updates from the automatic or tonight timer. Runs as root.
     bool runScheduled(bool tonight, QString *error);

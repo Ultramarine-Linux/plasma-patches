@@ -15,6 +15,7 @@
 #include <QLocale>
 
 #include <algorithm>
+#include <array>
 #include <optional>
 
 using namespace Qt::StringLiterals;
@@ -34,6 +35,9 @@ namespace OfficeInstaller {
         // PkExitEnum
         constexpr uint ExitSuccess = 1;
         constexpr uint ExitCancelled = 3;
+        constexpr uint ExitKeyRequired = 4;
+        constexpr uint ExitNeedUntrusted = 8;
+        constexpr uint ExitCancelledPriority = 9;
         // PkFilterEnum, as bit numbers: native arch, no source packages, newest version only
         constexpr qulonglong FilterNotSource = 1ULL << 21U;
         constexpr qulonglong FilterArch = 1ULL << 18U;
@@ -45,6 +49,22 @@ namespace OfficeInstaller {
         constexpr int CallTimeout = 10 * 60 * 1000;
 
         QString packageName(const QString &packageId) { return packageId.section(u';', 0, 0); }
+
+        /// the transaction signals we follow, with the slots they're connected to by name
+        struct TransactionSignal {
+            const char *name;
+            const char *slot;
+        };
+        std::array<TransactionSignal, 4> transactionSignals() {
+            return {{
+                {.name = "Package", .slot = SLOT(onPackage(uint, QString, QString))},
+                {.name = "ErrorCode", .slot = SLOT(onErrorCode(uint, QString))},
+                {.name = "RepoSignatureRequired",
+                 .slot = SLOT(
+                     onRepoSignatureRequired(QString, QString, QString, QString, QString, QString, QString, uint))},
+                {.name = "Finished", .slot = SLOT(onFinished(uint, uint))},
+            }};
+        }
 
         /// the daemon's major version, which also starts it if it isn't running
         std::optional<uint> daemonVersionMajor(QString *error) {
@@ -77,6 +97,23 @@ namespace OfficeInstaller {
             }
         }
         return ids;
+    }
+
+    QString failureReason(const uint exit, const QString &error, const QString &unsignedRepository) {
+        switch (exit) {
+        case ExitKeyRequired:
+            if (!unsignedRepository.isEmpty()) {
+                return i18nc("@info %1 is a package repository",
+                             "The signing key of the “%1” repository isn't trusted yet.", unsignedRepository);
+            }
+            return i18nc("@info", "The signing key of a package repository isn't trusted yet.");
+        case ExitNeedUntrusted:
+            return i18nc("@info", "Some packages aren't signed with a trusted key.");
+        case ExitCancelledPriority:
+            return i18nc("@info", "Another software install or update took priority. Try again once it has finished.");
+        default:
+            return error;
+        }
     }
 
     PackageKitInstaller::PackageKitInstaller(const QStringList &packages, QObject *parent) :
@@ -117,14 +154,15 @@ namespace OfficeInstaller {
     bool PackageKitInstaller::startTransaction(const QString &method, const QVariantList &arguments) {
         QDBusConnection bus = QDBusConnection::systemBus();
         if (!m_transaction.path().isEmpty()) {
-            for (const auto &[name, slot]: {std::pair{"Package", SLOT(onPackage(uint, QString, QString))},
-                                            std::pair{"ErrorCode", SLOT(onErrorCode(uint, QString))},
-                                            std::pair{"Finished", SLOT(onFinished(uint, uint))}}) {
+            for (const auto &[name, slot]: transactionSignals()) {
                 bus.disconnect(Service, m_transaction.path(), TransactionInterface, QString::fromLatin1(name), this,
                                slot);
             }
             m_transaction = {};
         }
+        // what went wrong is told per transaction, so don't carry it over from the last one
+        m_error.clear();
+        m_unsignedRepository.clear();
 
         const QDBusReply<QDBusObjectPath> transaction = bus.call(
             QDBusMessage::createMethodCall(Service, u"/org/freedesktop/PackageKit"_s, Service, u"CreateTransaction"_s));
@@ -134,9 +172,9 @@ namespace OfficeInstaller {
         }
         m_transaction = transaction.value();
         const QString path = m_transaction.path();
-        bus.connect(Service, path, TransactionInterface, u"Package"_s, this, SLOT(onPackage(uint, QString, QString)));
-        bus.connect(Service, path, TransactionInterface, u"ErrorCode"_s, this, SLOT(onErrorCode(uint, QString)));
-        bus.connect(Service, path, TransactionInterface, u"Finished"_s, this, SLOT(onFinished(uint, uint)));
+        for (const auto &[name, slot]: transactionSignals()) {
+            bus.connect(Service, path, TransactionInterface, QString::fromLatin1(name), this, slot);
+        }
 
         // interactive lets polkit ask for a password instead of refusing
         QDBusMessage hints = QDBusMessage::createMethodCall(Service, path, TransactionInterface, u"SetHints"_s);
@@ -148,7 +186,7 @@ namespace OfficeInstaller {
 
         QDBusMessage call = QDBusMessage::createMethodCall(Service, path, TransactionInterface, method);
         call.setArguments(arguments);
-        auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(call, CallTimeout), this);
+        const auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(call, CallTimeout), this);
         connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *watcher) {
             watcher->deleteLater();
             if (const QDBusPendingReply<> reply = *watcher; reply.isError()) {
@@ -172,6 +210,21 @@ namespace OfficeInstaller {
         m_error = details;
     }
 
+    void PackageKitInstaller::onRepoSignatureRequired(const QString &packageId, const QString &repositoryName,
+                                                      const QString &keyUrl, const QString &keyUserId,
+                                                      const QString &keyId, const QString &keyFingerprint,
+                                                      const QString &keyTimestamp, const uint type) {
+        Q_UNUSED(packageId)
+        Q_UNUSED(keyUrl)
+        Q_UNUSED(keyUserId)
+        Q_UNUSED(keyId)
+        Q_UNUSED(keyFingerprint)
+        Q_UNUSED(keyTimestamp)
+        Q_UNUSED(type)
+        // the transaction then finishes with KEY_REQUIRED, which failureReason() explains with this
+        m_unsignedRepository = repositoryName;
+    }
+
     void PackageKitInstaller::onFinished(const uint exit, const uint runtime) {
         Q_UNUSED(runtime)
         if (m_step == Step::Idle) {
@@ -181,7 +234,7 @@ namespace OfficeInstaller {
             if (exit == ExitCancelled) {
                 m_canceled = true;
             }
-            fail(m_error);
+            fail(failureReason(exit, m_error, m_unsignedRepository));
             return;
         }
         if (m_step == Step::Installing) {

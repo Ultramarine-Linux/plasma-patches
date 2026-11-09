@@ -92,7 +92,11 @@ packages the rest of the tree already needs.
   as the app has GPU access (`--device=dri`).
 - Users can hide the action by placing a file named `ultramarine-dgpu-launch.desktop` with no
   `Actions=` in `~/.local/share/plasma/kickeractions/`. User files shadow system
-  files with the same name.
+  files with the same name. Plasma lists the `kickeractions` directories only once,
+  the first time a launcher menu opens (a `static` in kicker's `additionalActions()`),
+  so if `~/.local/share/plasma/kickeractions/` didn't exist yet, restart plasmashell
+  (`systemctl --user restart plasma-plasmashell`) after creating it. Files added to a
+  directory Plasma already knows about are picked up the next time a menu opens.
 
 ## Testing
 

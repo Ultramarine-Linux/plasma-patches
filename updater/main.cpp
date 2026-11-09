@@ -13,7 +13,6 @@
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QSet>
 #include <QStandardPaths>
 
 #include <csignal>
@@ -21,6 +20,7 @@
 
 #include <unistd.h>
 
+#include "cli.h"
 #include "image.h"
 #include "inhibit.h"
 #include "lock.h"
@@ -84,24 +84,11 @@ namespace {
         std::fflush(stderr);
         const int exitCode = runForwarded(program, argv);
         if (exitCode < 0) {
-            std::fprintf(stderr, "could not run %s\n", qPrintable(program));
+            std::fprintf(stderr, "%s\n",
+                         qPrintable(i18nc("@info:status %1 is a program", "Could not run %1", program)));
             return 1;
         }
         return exitCode;
-    }
-
-    /// this command line, rebuilt for runAsRoot() with the command first
-    QStringList commandLine(const QString &command, const QCommandLineParser &parser) {
-        static const QSet<QString> valueOptions{u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s};
-        QStringList arguments{command};
-        for (const QStringList names = parser.optionNames(); const QString &name: names) {
-            if (valueOptions.contains(name)) {
-                arguments << u"--%1=%2"_s.arg(name, parser.value(name));
-            } else {
-                arguments << (name == "y"_L1 ? u"--yes"_s : u"--"_s + name);
-            }
-        }
-        return arguments;
     }
 
     std::optional<bool> parseBool(const QString &value) {
@@ -124,11 +111,15 @@ namespace {
                 print(u"%1: %2 -> %3 (%4)\n"_s.arg(update.name, update.oldVersion, update.newVersion, update.source));
             }
             for (const QString &error: response.errors) {
-                std::fprintf(stderr, "warning: failed to list updates from %s\n", qPrintable(error));
+                std::fprintf(stderr, "%s\n",
+                             qPrintable(i18nc("@info:status %1 is a source and its error message",
+                                              "Warning: failed to list updates from %1", error)));
             }
             if (!response.offlineError.isEmpty()) {
-                std::fprintf(stderr, "warning: the updates installed while restarting failed: %s\n",
-                             qPrintable(response.offlineError));
+                std::fprintf(stderr, "%s\n",
+                             qPrintable(i18nc("@info:status %1 is an error message",
+                                              "Warning: the updates installed while restarting failed: %1",
+                                              response.offlineError)));
             }
         }
         // only fail when nothing could be queried at all
@@ -145,39 +136,44 @@ namespace {
             }
             // system updates first: if authentication is canceled, nothing is
             // installed, and pkexec's exit codes are passed on
-            const int systemExitCode = runAsRoot(commandLine(command, parser));
+            const int systemExitCode = runAsRoot(escalatedCommandLine(command, parser));
             if (systemExitCode == pkexecDismissed || systemExitCode == pkexecNotAuthorized) {
                 return systemExitCode;
             }
             // user-level updates must run as the invoking user. They're installed
             // even if some system updates failed, which the root part already reported.
-            const ShutdownInhibitor inhibitor(u"Installing your updates"_s);
-            if (!applyUser(assumeYes, &error)) {
-                fail(error);
+            const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing your updates"));
+            if (const ApplyResult result = applyUser(assumeYes); !result.ok()) {
+                fail(result.error());
                 return systemExitCode != 0 ? systemExitCode : 1;
             }
             return systemExitCode;
         }
 
+        // the system timer holds this lock for a moment to see whether an install
+        // runs before checking for a new image, so wait that long for it
+        constexpr std::chrono::seconds probeWait{2};
         InstallLock systemLock(systemLockPath());
-        if (const InstallLock::Result locked = systemLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
+        if (const InstallLock::Result locked = systemLock.tryLock(&error, probeWait);
+            locked != InstallLock::Result::Acquired) {
             return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
         }
         // read as root: pkexec cleared any development override, sudo forwards it
         Settings settings;
         if (!loadSettings(&settings, &error)) {
-            std::fprintf(stderr, "warning: %s\n", qPrintable(error));
+            std::fprintf(stderr, "%s\n",
+                         qPrintable(i18nc("@info:status %1 is a warning message", "Warning: %1", error)));
         }
-        bool updated = false;
-        const ShutdownInhibitor inhibitor(u"Installing system updates"_s);
-        if (!applySystem(assumeYes, settings.offline, &updated, &error)) {
-            return fail(error);
+        const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing system updates"));
+        const ApplyResult result = applySystem(assumeYes, settings.offline);
+        if (!result.ok()) {
+            return fail(result.error());
         }
-        if (!updated) {
-            return fail(u"no supported package manager found"_s);
+        if (!result.updated) {
+            return fail(i18nc("@info:status", "No supported package manager was found."));
         }
         if (!isImageMode() && offlineUpdatePending()) {
-            print(u"System updates will be installed during the next restart.\n"_s);
+            print(i18nc("@info:status", "System updates will be installed during the next restart.") + u'\n');
         }
         return 0;
     }
@@ -190,7 +186,7 @@ namespace {
             // ULTRAMARINE_UPDATES_CONFIG points at a development file, and escalating
             // would drop it (pkexec clears the environment) and change the real settings
             if (geteuid() != 0 && qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG")) {
-                return runAsRoot(commandLine(command, parser));
+                return runAsRoot(escalatedCommandLine(command, parser));
             }
             Settings settings;
             // broken settings are replaced instead of getting stuck on them
@@ -206,16 +202,16 @@ namespace {
                 return parsed.has_value();
             };
             if (!readBool(u"automatic"_s, &settings.automatic)) {
-                return fail(u"--automatic must be true or false"_s);
+                return fail(i18nc("@info:shell", "--automatic must be true or false."));
             }
             if (!readBool(u"offline"_s, &settings.offline)) {
-                return fail(u"--offline must be true or false"_s);
+                return fail(i18nc("@info:shell", "--offline must be true or false."));
             }
             if (parser.isSet(u"inactive-minutes"_s)) {
                 bool ok = false;
                 settings.inactiveMinutes = parser.value(u"inactive-minutes"_s).toInt(&ok);
                 if (!ok) {
-                    return fail(u"--inactive-minutes must be a number"_s);
+                    return fail(i18nc("@info:shell", "--inactive-minutes must be a number."));
                 }
             }
             if (parser.isSet(u"window"_s) &&
@@ -226,7 +222,7 @@ namespace {
                 return fail(invalid);
             }
             if (!saveSettings(settings, &error)) {
-                return fail(u"failed to save settings: %1"_s.arg(error));
+                return fail(i18nc("@info:status %1 is an error message", "Failed to save the settings: %1", error));
             }
         }
 
@@ -257,13 +253,15 @@ namespace {
                 printJson(status.toJson());
             } else {
                 if (status.scheduled) {
-                    print(u"Updates are scheduled to install tonight.\n"_s);
+                    print(i18nc("@info:status", "Updates are scheduled to install tonight.") + u'\n');
                 } else if (status.partial) {
                     // usually the user's timer, which logging out stops
-                    print(u"Only some of tonight's updates are still scheduled. Schedule them again to "
-                          u"install all of them.\n"_s);
+                    print(i18nc("@info:status",
+                                "Only some of tonight's updates are still scheduled. Schedule them "
+                                "again to install all of them.") +
+                          u'\n');
                 } else {
-                    print(u"No updates are scheduled.\n"_s);
+                    print(i18nc("@info:status", "No updates are scheduled.") + u'\n');
                 }
             }
             return 0;
@@ -274,31 +272,32 @@ namespace {
         if (geteuid() != 0) {
             // the system's timer first: if authentication is canceled, nothing
             // changes. Then the user's own updates, in their user manager.
-            if (const int exitCode = runAsRoot(commandLine(command, parser)); exitCode != 0) {
+            if (const int exitCode = runAsRoot(escalatedCommandLine(command, parser)); exitCode != 0) {
                 return exitCode;
             }
             if (cancel) {
                 if (!cancelTonight(true, &error)) {
-                    return fail(u"failed to cancel your updates: %1"_s.arg(error));
+                    return fail(
+                        i18nc("@info:status %1 is an error message", "Failed to cancel your updates: %1", error));
                 }
             } else if (!scheduleTonight(true, &error)) {
                 // don't leave only the system's half scheduled
                 runAsRoot({command, u"--cancel"_s});
-                return fail(u"failed to schedule your updates: %1"_s.arg(error));
+                return fail(i18nc("@info:status %1 is an error message", "Failed to schedule your updates: %1", error));
             }
             return 0;
         }
         if (cancel) {
             if (!cancelTonight(false, &error)) {
-                return fail(u"failed to cancel updates: %1"_s.arg(error));
+                return fail(i18nc("@info:status %1 is an error message", "Failed to cancel the updates: %1", error));
             }
-            print(u"Tonight's updates were cancelled.\n"_s);
+            print(i18nc("@info:status", "Tonight's updates were canceled.") + u'\n');
             return 0;
         }
         if (!scheduleTonight(false, &error)) {
-            return fail(u"failed to schedule updates: %1"_s.arg(error));
+            return fail(i18nc("@info:status %1 is an error message", "Failed to schedule the updates: %1", error));
         }
-        print(u"Updates will be installed tonight, when the device isn't in use.\n"_s);
+        print(i18nc("@info:status", "Updates will be installed tonight, when the device isn't in use.") + u'\n');
         return 0;
     }
 
@@ -311,36 +310,10 @@ int main(int argc, char *argv[]) {
     std::signal(SIGPIPE, SIG_IGN);
     const QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(u"ultramarine-updates"_s);
-    KLocalizedString::setApplicationDomain("kcm_ultramarine_updates");
+    // i18n() uses TRANSLATION_DOMAIN (ultramarine-plasma-settings), set at build time
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(
-        u"Lists and installs RPM (or bootc image), Flatpak, Nix and Plasma widget updates.\n\n"
-        u"Commands:\n"
-        u"  list            List available updates (--json)\n"
-        u"  apply           Install available updates (--yes)\n"
-        u"  settings        Show or change automatic update settings (--json, "
-        u"--automatic, --offline, --inactive-minutes, --window)\n"
-        u"  schedule        Install updates tonight, when the device isn't in use "
-        u"(--cancel, --status, --json)\n"
-        u"  run-scheduled   Install system updates if the device isn't in use (system "
-        u"timers; --tonight)\n"
-        u"  run-user        Install your updates or notify about them (user timers; "
-        u"--tonight)"_s);
-    parser.addHelpOption();
-    parser.addPositionalArgument(u"command"_s, u"The command to run."_s);
-    parser.addOptions({
-        {u"json"_s, u"Output JSON."_s},
-        {{u"y"_s, u"yes"_s}, u"Don't ask for confirmation."_s},
-        {u"automatic"_s, u"Install updates automatically when the device isn't in use (false: only notify)."_s,
-         u"true|false"_s},
-        {u"offline"_s, u"Install system updates while restarting instead of on the running system."_s, u"true|false"_s},
-        {u"inactive-minutes"_s, u"Install once no one has used the device for this many minutes."_s, u"minutes"_s},
-        {u"window"_s, u"Only install between these times, e.g. 01:00-05:00 (empty: any time)."_s, u"HH:MM-HH:MM"_s},
-        {u"cancel"_s, u"Cancel tonight's updates."_s},
-        {u"status"_s, u"Show whether updates are scheduled."_s},
-        {u"tonight"_s, u"Run for Apply Tonight, even if automatic updates are off."_s},
-    });
+    setUpParser(parser);
     parser.process(app);
 
     const QStringList positional = parser.positionalArguments();
@@ -349,23 +322,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     const QString &command = positional.constFirst();
-
-    static const QHash<QString, QSet<QString>> allowedOptions{
-        {u"list"_s, {u"json"_s}},
-        {u"apply"_s, {u"y"_s, u"yes"_s}},
-        {u"settings"_s, {u"json"_s, u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s}},
-        {u"schedule"_s, {u"cancel"_s, u"status"_s, u"json"_s}},
-        {u"run-scheduled"_s, {u"tonight"_s}},
-        {u"run-user"_s, {u"tonight"_s}},
-    };
-    const auto allowed = allowedOptions.constFind(command);
-    if (allowed == allowedOptions.constEnd()) {
-        return fail(u"Unknown command \"%1\". See --help."_s.arg(command));
-    }
-    for (const QStringList names = parser.optionNames(); const QString &name: names) {
-        if (!allowed->contains(name)) {
-            return fail(u"--%1 can't be used with %2."_s.arg(name, command));
-        }
+    if (const QString invalid = checkOptions(command, parser); !invalid.isEmpty()) {
+        return fail(invalid);
     }
 
     if (command == "list"_L1) {

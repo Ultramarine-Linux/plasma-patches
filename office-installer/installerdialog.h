@@ -34,7 +34,10 @@ namespace OfficeInstaller {
         InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered, const QString &installedSuite,
                         QWidget *parent = nullptr);
 
-        /// cancels the install while installing
+        /**
+         * cancels the install while installing. While the documents are opening, only
+         * hides the dialog until their apps have started.
+         */
         void reject() override;
 
     public Q_SLOTS:
@@ -56,7 +59,7 @@ namespace OfficeInstaller {
          * closing, so later launches open their own dialog instead of handing
          * over documents that would never be opened
          */
-        void unregisterFromBus();
+        static void unregisterFromBus();
 
     private:
         QWidget *createChoicePage();
@@ -89,6 +92,8 @@ namespace OfficeInstaller {
         QDialogButtonBox *m_buttons;
 
         QPointer<Installer> m_installer;
+        /// waiting for the documents' apps to start
+        bool m_opening = false;
     };
 
 } // namespace OfficeInstaller

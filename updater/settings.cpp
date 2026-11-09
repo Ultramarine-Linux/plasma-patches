@@ -4,6 +4,8 @@
 
 #include "settings.h"
 
+#include <KLocalizedString>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -23,19 +25,20 @@ namespace UltramarineUpdates {
 
     QString Settings::validate() const {
         if (inactiveMinutes < 0 || inactiveMinutes > maxInactiveMinutes) {
-            return u"inactive minutes must be between 0 and %1"_s.arg(maxInactiveMinutes);
+            return i18nc("@info:status", "The inactive time must be between 0 and %1 minutes.", maxInactiveMinutes);
         }
         if (windowStart.isEmpty() != windowEnd.isEmpty()) {
-            return u"a time window needs both a start and an end"_s;
+            return i18nc("@info:status", "A time window needs both a start and an end.");
         }
         for (const QString &clock: {windowStart, windowEnd}) {
             if (!clock.isEmpty() && !parseClock(clock)) {
-                return u"invalid time \"%1\", expected HH:MM"_s.arg(clock);
+                return i18nc("@info:status %1 is what was entered. Don't translate HH:MM.",
+                             "Invalid time \"%1\", expected HH:MM.", clock);
             }
         }
         // inWindow() treats an equal start and end as an empty window, so nothing would ever install
         if (!windowStart.isEmpty() && parseClock(windowStart) == parseClock(windowEnd)) {
-            return u"a time window's start and end must differ"_s;
+            return i18nc("@info:status", "A time window's start and end must differ.");
         }
         return {};
     }
@@ -86,14 +89,16 @@ namespace UltramarineUpdates {
         }
         const qsizetype dash = trimmed.indexOf(u'-');
         if (dash < 0) {
-            *error = u"the window must be HH:MM-HH:MM, or empty for any time"_s;
+            *error = i18nc("@info:status Don't translate HH:MM-HH:MM.",
+                           "The window must be HH:MM-HH:MM, or empty for any time.");
             return false;
         }
         const QString from = trimmed.left(dash).trimmed();
         const QString to = trimmed.mid(dash + 1).trimmed();
         for (const QString &clock: {from, to}) {
             if (!parseClock(clock)) {
-                *error = u"invalid time \"%1\", expected HH:MM"_s.arg(clock);
+                *error = i18nc("@info:status %1 is what was entered. Don't translate HH:MM.",
+                               "Invalid time \"%1\", expected HH:MM.", clock);
                 return false;
             }
         }
@@ -155,7 +160,8 @@ namespace UltramarineUpdates {
             }
             // checked before the cast, which is undefined for values outside int's range
             if (value < 0 || value > maxInactiveMinutes) {
-                *error = u"inactive minutes must be between 0 and %1"_s.arg(maxInactiveMinutes);
+                *error =
+                    i18nc("@info:status", "The inactive time must be between 0 and %1 minutes.", maxInactiveMinutes);
                 return false;
             }
             parsed.inactiveMinutes = static_cast<int>(value);
@@ -181,7 +187,8 @@ namespace UltramarineUpdates {
         QString parseError;
         if (!parseSettings(file.readAll(), settings, &parseError)) {
             *settings = Settings{};
-            *error = u"invalid %1: %2"_s.arg(settingsPath(), parseError);
+            *error = i18nc("@info:status %1 is a file path, %2 an error message", "Invalid %1: %2", settingsPath(),
+                           parseError);
             return false;
         }
         return true;
@@ -192,7 +199,7 @@ namespace UltramarineUpdates {
         const QString directory = QFileInfo(path).absolutePath();
         const bool created = !QFileInfo::exists(directory);
         if (!QDir().mkpath(directory)) {
-            *error = u"could not create %1"_s.arg(directory);
+            *error = i18nc("@info:status %1 is a directory", "Could not create %1", directory);
             return false;
         }
         // mkpath uses the caller's umask, which pkexec keeps, and users must be able to read the settings

@@ -19,7 +19,7 @@ sources by type among the tracked files, so new files are picked up without edit
 | `*.cpp`, `*.h`, `*.qml` (not `tests/`) | `i18n()`, `i18nc()`, `i18np()` and `i18ncp()` calls |
 | `*.desktop.in` | `Name`, `GenericName`, `Comment` and `Keywords` |
 | `*.policy.in` | polkit `<description>` and `<message>` |
-| `kcm-*/*.json.in` | KCM `Name`, `Description` and `X-KDE-Keywords` |
+| `*.json.in` | KCM `Name`, `Description` and `X-KDE-Keywords` |
 
 References in the template name the file but not the line, and `POT-Creation-Date` only
 changes along with the strings. The template therefore only changes when the strings do.

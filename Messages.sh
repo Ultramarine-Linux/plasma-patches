@@ -9,7 +9,7 @@
 #
 # sources are the tracked files, found by type:
 # - i18n*() calls in C++ and QML (tests excluded)
-# - Name, Comment and Keywords in *.desktop.in
+# - Name, GenericName, Comment and Keywords in *.desktop.in
 # - descriptions and messages in polkit *.policy.in
 # - Name, Description and keywords in KCM *.json.in metadata
 #
@@ -48,10 +48,12 @@ keywords=(
 # file-only references, so moving code around doesn't change the template
 common=(--from-code=UTF-8 --add-comments=i18n: --add-location=file)
 
-xgettext --language=C++ "${common[@]}" "${keywords[@]}" \
+# --kde marks the i18n strings as kde-format, so msgfmt --check and Weblate catch a
+# translation that drops a %1. It only works for C++, and QML parses well enough as
+# C++ (KDE's own extraction does the same).
+xgettext --language=C++ --kde "${common[@]}" "${keywords[@]}" \
     --output="$workdir/cpp.pot" "${cpp_sources[@]}"
-# QML parses well enough as Java for xgettext
-xgettext --language=Java "${common[@]}" "${keywords[@]}" \
+xgettext --language=C++ --kde "${common[@]}" "${keywords[@]}" \
     --output="$workdir/qml.pot" "${qml_sources[@]}"
 xgettext --language=Desktop "${common[@]}" \
     --output="$workdir/desktop.pot" "${desktop_sources[@]}"
@@ -60,10 +62,12 @@ xgettext --its="$polkit_its" "${common[@]}" \
 python3 -I cmake/kcm-json-l10n.py extract "$workdir/json.pot" "${json_sources[@]}"
 
 # msgcat skips catalogs with no messages, and drops the header if it starts with one
-# of them, so put a header first
+# of them, so put a header first. xgettext dates it from its input's mtime, so use a new
+# empty file rather than /dev/null (whose mtime is the last boot)
+: >"$workdir/empty.c"
 xgettext --language=C --force-po --package-name="$domain" \
     --msgid-bugs-address=https://github.com/Ultramarine-Linux/plasma-patches/issues \
-    --output="$workdir/header.pot" /dev/null
+    --output="$workdir/header.pot" "$workdir/empty.c"
 sed -i 's/charset=CHARSET/charset=UTF-8/' "$workdir/header.pot"
 
 msgcat --use-first --sort-output --add-location=file \

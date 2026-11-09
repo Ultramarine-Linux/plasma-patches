@@ -116,6 +116,8 @@ private:
     /// the running pkexec, if any
     QPointer<QProcess> m_helper;
     QString m_errorMessage;
+    /// the error the last state read failed with, cleared from the banner once a read works
+    QString m_readError;
     bool m_loading = false;
     bool m_busy = false;
     /// load() was called while loading, read the state again once the current read finishes

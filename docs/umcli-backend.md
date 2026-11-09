@@ -41,14 +41,14 @@ when it doesn't (or when it exits with "unknown"). When the check fails, um sets
 `state_error`, and the KCM shows the state as unknown with the error and doesn't
 let the tweak be changed from there.
 
-A running change can't be cancelled from the KCM: once um runs as root, the
+A running change can't be canceled from the KCM: once um runs as root, the
 unprivileged KCM can't signal it. Closing the page or System Settings leaves it
 running rather than killing it halfway. Its output goes to a `0600` file in
 `$XDG_RUNTIME_DIR` (unlinked as soon as um starts, and polled by the KCM) instead of a
 pipe, because Go kills a program that writes to a closed pipe on stdout or stderr. um is
 also started with SIGPIPE ignored.
 
-um exits with pkexec's 126 or 127 when authentication was cancelled or failed.
+um exits with pkexec's 126 or 127 when authentication was canceled or failed.
 It maps a failed playbook's 126 and 127 to 1, so for toggles and one-time changes
 those codes mean nothing changed. `um tweaks run` execs the tweak's `script.sh`
 directly though, so a script exiting with 126 or 127 looks the same, and the KCM

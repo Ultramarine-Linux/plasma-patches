@@ -43,6 +43,9 @@ bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks);
 [[nodiscard]] QString changeErrorMessage(bool script, int exitCode, QProcess::ExitStatus exitStatus,
                                          const QString &output);
 
+/// returns the error banner text: the error from changing a tweak above the error from loading the list
+[[nodiscard]] QString composeTweaksError(const QString &changeError, const QString &listError);
+
 class TweaksModel final : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int count READ count NOTIFY countChanged)
@@ -92,6 +95,8 @@ class Tweaks : public KQuickConfigModule {
     Q_OBJECT
     Q_PROPERTY(TweaksModel *tweaks READ tweaks CONSTANT)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
+    Q_PROPERTY(bool loaded READ loaded NOTIFY listStateChanged)
+    Q_PROPERTY(bool listFailed READ listFailed NOTIFY listStateChanged)
     Q_PROPERTY(bool running READ running NOTIFY runningChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
@@ -115,6 +120,12 @@ public:
 
     /// returns whether the tweak list is being loaded
     [[nodiscard]] bool loading() const;
+
+    /// returns whether the tweak list was loaded at least once
+    [[nodiscard]] bool loaded() const;
+
+    /// returns whether the last attempt to load the tweak list failed
+    [[nodiscard]] bool listFailed() const;
 
     /// returns whether a tweak is being enabled, disabled or run
     [[nodiscard]] bool running() const;
@@ -142,6 +153,7 @@ public:
 
 Q_SIGNALS:
     void loadingChanged();
+    void listStateChanged();
     void runningChanged();
     void statusChanged();
     void errorMessageChanged();
@@ -162,7 +174,13 @@ private:
     void setLoading(bool value);
     void setRunning(bool value);
     void setStatus(const QString &value);
-    void setErrorMessage(const QString &message);
+    /// sets the error from loading the list, which the next successful load clears
+    void setListError(const QString &message);
+    /// sets the error from changing a tweak, which stays until it's dismissed or the next change
+    void setChangeError(const QString &message);
+    /// composes errorMessage() from both errors
+    void updateErrorMessage();
+    void setListState(bool loaded, bool failed);
 
     TweaksModel m_tweaks;
     QProcess m_listProcess;
@@ -183,9 +201,14 @@ private:
     /// change output after the last newline, not yet shown as the status
     QString m_partialLine;
     QString m_status;
+    /// shown in the banner, see composeTweaksError()
     QString m_errorMessage;
+    QString m_listError;
+    QString m_changeError;
     QString m_output;
     bool m_loading = false;
+    bool m_loaded = false;
+    bool m_listFailed = false;
     bool m_running = false;
     /// the running change is a script tweak
     bool m_runningScript = false;

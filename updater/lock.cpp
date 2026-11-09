@@ -4,8 +4,11 @@
 
 #include "lock.h"
 
+#include <KLocalizedString>
 #include <QFile>
+
 #include <QStandardPaths>
+#include <QThread>
 
 #include <cerrno>
 #include <cstring>
@@ -24,7 +27,7 @@ namespace UltramarineUpdates {
         }
     }
 
-    InstallLock::Result InstallLock::tryLock(QString *error) {
+    InstallLock::Result InstallLock::tryLock(QString *error, const std::chrono::milliseconds wait) {
         if (m_fd >= 0) {
             return Result::Acquired;
         }
@@ -37,7 +40,15 @@ namespace UltramarineUpdates {
             }
             return Result::Failed;
         }
-        if (flock(fd, LOCK_EX | LOCK_NB) != 0) {
+        constexpr std::chrono::milliseconds retryDelay{100};
+        std::chrono::milliseconds waited{0};
+        int locked = flock(fd, LOCK_EX | LOCK_NB);
+        while (locked != 0 && errno == EWOULDBLOCK && waited < wait) {
+            QThread::sleep(retryDelay);
+            waited += retryDelay;
+            locked = flock(fd, LOCK_EX | LOCK_NB);
+        }
+        if (locked != 0) {
             const int lockError = errno;
             close(fd);
             if (lockError == EWOULDBLOCK) {
@@ -62,8 +73,12 @@ namespace UltramarineUpdates {
         return runtimeDir + "/ultramarine-updates.lock"_L1;
     }
 
+    QString statusCacheLockPath() { return u"/run/ultramarine-updates-status.lock"_s; }
+
     QString installBusyMessage() {
-        return u"updates are already being installed (automatic updates or Apply Tonight); try again once they're done"_s;
+        return i18nc("@info:status",
+                     "Updates are already being installed (automatic updates or Apply Tonight). Try "
+                     "again once they're done.");
     }
 
 } // namespace UltramarineUpdates

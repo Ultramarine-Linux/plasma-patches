@@ -4,7 +4,9 @@
 
 // tests for the update helper's parsers and decisions (updater/)
 
+#include <QCommandLineParser>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -16,6 +18,7 @@
 
 #include "activity.h"
 #include "apps.h"
+#include "cli.h"
 #include "flatpak.h"
 #include "image.h"
 #include "inhibit.h"
@@ -77,6 +80,14 @@ namespace {
         static void parsesTimerShow();
         static void combinesTonightStatus();
         static void tonightAlreadyInstalled();
+        static void escalatedCommandLine();
+        static void checksOptions();
+        static void applyResultCountsAsInstalled();
+        static void installFromTimerRecordsInstalls();
+        static void installFromTimerRetriesAfterAnHour();
+        static void installFromTimerKeepsPartialInstalls();
+        static void installFromTimerSkipsWhileBusy();
+        static void notifiesOnlyAfterASuccessfulListing();
         static void listFailsOnlyIfEverySourceFailed();
         static void readyToInstall();
         static void sessionInUse();
@@ -88,6 +99,7 @@ namespace {
         static void idleInhibited();
         static void screenInhibitedMarker();
         static void installLock();
+        static void installLockWaits();
         static void parsesBootcStatusCache();
         static void classifiesSystemUpdateTarget();
         static void detectsPendingOfflineUpdate();
@@ -1033,6 +1045,243 @@ void UpdaterTest::installLock() {
     InstallLock missing(dir.path() + "/missing/updates.lock"_L1);
     QCOMPARE(missing.tryLock(&error), InstallLock::Result::Failed);
     QVERIFY(!error.isEmpty());
+}
+
+void UpdaterTest::installLockWaits() {
+    const QTemporaryDir dir;
+    const QString path = dir.path() + "/updates.lock"_L1;
+    InstallLock holder(path);
+    QCOMPARE(holder.tryLock(), InstallLock::Result::Acquired);
+    // a holder that doesn't let go is still busy after waiting
+    InstallLock waiting(path);
+    QElapsedTimer timer;
+    timer.start();
+    QCOMPARE(waiting.tryLock(nullptr, 300ms), InstallLock::Result::Busy);
+    QVERIFY(timer.elapsed() >= 300);
+}
+
+namespace {
+    /// parses @p arguments (without the program name) like the helper does
+    bool parseCommandLine(QCommandLineParser &parser, const QStringList &arguments) {
+        setUpParser(parser);
+        return parser.parse(QStringList{u"ultramarine-updates"_s} + arguments);
+    }
+
+    QStringList escalated(const QStringList &arguments) {
+        QCommandLineParser parser;
+        if (!parseCommandLine(parser, arguments)) {
+            return {u"parse error: "_s + parser.errorText()};
+        }
+        return escalatedCommandLine(parser.positionalArguments().value(0), parser);
+    }
+
+    QString optionError(const QStringList &arguments) {
+        QCommandLineParser parser;
+        if (!parseCommandLine(parser, arguments)) {
+            return u"parse error"_s;
+        }
+        return checkOptions(parser.positionalArguments().value(0), parser);
+    }
+} // namespace
+
+void UpdaterTest::escalatedCommandLine() {
+    // the command comes first, whatever the order given: polkit matches argv[1]
+    QCOMPARE(escalated({u"--yes"_s, u"apply"_s}), (QStringList{u"apply"_s, u"--yes"_s}));
+    QCOMPARE(escalated({u"apply"_s, u"-y"_s}), (QStringList{u"apply"_s, u"--yes"_s}));
+    QCOMPARE(escalated({u"settings"_s, u"--automatic"_s, u"false"_s, u"--window=01:00-05:00"_s}),
+             (QStringList{u"settings"_s, u"--automatic=false"_s, u"--window=01:00-05:00"_s}));
+    // an empty window (any time) survives as an empty value
+    QCOMPARE(escalated({u"settings"_s, u"--window="_s}), (QStringList{u"settings"_s, u"--window="_s}));
+    // values stay one argument, whatever they contain
+    QCOMPARE(escalated({u"settings"_s, u"--inactive-minutes"_s, u"5 --offline=true"_s}),
+             (QStringList{u"settings"_s, u"--inactive-minutes=5 --offline=true"_s}));
+    QCOMPARE(escalated({u"schedule"_s, u"--cancel"_s}), (QStringList{u"schedule"_s, u"--cancel"_s}));
+}
+
+void UpdaterTest::checksOptions() {
+    QVERIFY(optionError({u"apply"_s, u"--yes"_s}).isEmpty());
+    QVERIFY(optionError({u"apply"_s, u"-y"_s}).isEmpty());
+    QVERIFY(optionError({u"list"_s, u"--json"_s}).isEmpty());
+    QVERIFY(optionError({u"settings"_s, u"--json"_s, u"--offline=true"_s}).isEmpty());
+    QVERIFY(optionError({u"schedule"_s, u"--status"_s, u"--json"_s}).isEmpty());
+    QVERIFY(optionError({u"run-user"_s, u"--tonight"_s}).isEmpty());
+    // every escalated command only takes its own options
+    QVERIFY(!optionError({u"apply"_s, u"--window=01:00-02:00"_s}).isEmpty());
+    QVERIFY(!optionError({u"apply"_s, u"--tonight"_s}).isEmpty());
+    QVERIFY(!optionError({u"schedule"_s, u"--automatic=false"_s}).isEmpty());
+    QVERIFY(!optionError({u"settings"_s, u"--yes"_s}).isEmpty());
+    QVERIFY(!optionError({u"upgrade"_s}).isEmpty());
+    QVERIFY(!optionError({}).isEmpty());
+    QCOMPARE(optionError({u"apply"_s, u"--bogus"_s}), u"parse error"_s);
+}
+
+void UpdaterTest::applyResultCountsAsInstalled() {
+    ApplyResult nothing;
+    QVERIFY(nothing.ok());
+    QVERIFY(nothing.installed());
+
+    ApplyResult partial;
+    partial.succeed();
+    partial.fail(u"Updating system Flatpaks failed (exit code 1)."_s);
+    QVERIFY(!partial.ok());
+    QVERIFY(partial.installed());
+
+    ApplyResult primary;
+    primary.succeed();
+    primary.fail(u"Updating RPM packages failed (exit code 1)."_s, true);
+    QVERIFY(!primary.installed());
+
+    ApplyResult allFailed;
+    allFailed.fail(u"a"_s);
+    allFailed.fail(u"b"_s);
+    QVERIFY(!allFailed.installed());
+    QCOMPARE(allFailed.error(), u"a\nb"_s);
+}
+
+namespace {
+    struct TimerFixture {
+        QTemporaryDir dir;
+        QString lock = dir.path() + "/updates.lock"_L1;
+        QString installed = dir.path() + "/last-automatic-update"_L1;
+        QString failed = dir.path() + "/last-failed-update"_L1;
+        int runs = 0;
+
+        bool run(const QDateTime &now, const ApplyResult &result, bool *installedNow, QString *error) {
+            return installFromTimer(
+                lock, dir.path(), installed, now,
+                [this, &result] {
+                    ++runs;
+                    return result;
+                },
+                installedNow, error);
+        }
+    };
+
+    ApplyResult succeeded() {
+        ApplyResult result;
+        result.updated = true;
+        result.succeed();
+        return result;
+    }
+} // namespace
+
+void UpdaterTest::installFromTimerRecordsInstalls() {
+    TimerFixture fixture;
+    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    bool installedNow = false;
+    QString error;
+    QVERIFY(fixture.run(now, succeeded(), &installedNow, &error));
+    QVERIFY(installedNow);
+    QVERIFY(error.isEmpty());
+    QCOMPARE(readTimestamp(fixture.installed), now);
+    QVERIFY(!QFile::exists(fixture.failed));
+}
+
+void UpdaterTest::installFromTimerRetriesAfterAnHour() {
+    TimerFixture fixture;
+    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    ApplyResult failure;
+    failure.updated = true;
+    failure.fail(u"Updating RPM packages failed (exit code 1)."_s, true);
+    bool installedNow = true;
+    QString error;
+    QVERIFY(!fixture.run(now, failure, &installedNow, &error));
+    QVERIFY(!installedNow);
+    QCOMPARE(error, u"Updating RPM packages failed (exit code 1)."_s);
+    QVERIFY(!QFile::exists(fixture.installed));
+    QCOMPARE(readTimestamp(fixture.failed), now);
+
+    // tonight's timers poll every 5 minutes, but a failure isn't retried within the hour
+    error.clear();
+    QVERIFY(fixture.run(now.addSecs(5LL * 60), succeeded(), &installedNow, &error));
+    QVERIFY(!installedNow);
+    QCOMPARE(fixture.runs, 1);
+
+    // and is afterwards, which clears the failure
+    QVERIFY(fixture.run(now.addSecs(61LL * 60), succeeded(), &installedNow, &error));
+    QVERIFY(installedNow);
+    QCOMPARE(fixture.runs, 2);
+    QVERIFY(!QFile::exists(fixture.failed));
+}
+
+void UpdaterTest::installFromTimerKeepsPartialInstalls() {
+    TimerFixture fixture;
+    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    // the system update worked, one Flatpak remote didn't
+    ApplyResult partial = succeeded();
+    partial.fail(u"Updating system Flatpaks failed (exit code 1)."_s);
+    bool installedNow = false;
+    QString error;
+    // reported as a failure, but counts as installed, so tonight's timer stops
+    QVERIFY(!fixture.run(now, partial, &installedNow, &error));
+    QVERIFY(installedNow);
+    QCOMPARE(error, u"Updating system Flatpaks failed (exit code 1)."_s);
+    QCOMPARE(readTimestamp(fixture.installed), now);
+    // nothing is retried within the hour either: the next regular run gets it
+    QVERIFY(!QFile::exists(fixture.failed));
+    QVERIFY(within(fixture.installed, 20h, now.addSecs(2LL * 60 * 60)));
+}
+
+void UpdaterTest::installFromTimerSkipsWhileBusy() {
+    TimerFixture fixture;
+    InstallLock holder(fixture.lock);
+    QCOMPARE(holder.tryLock(), InstallLock::Result::Acquired);
+    bool installedNow = true;
+    QString error;
+    QVERIFY(fixture.run(QDateTime::fromSecsSinceEpoch(1'800'000'000), succeeded(), &installedNow, &error));
+    QVERIFY(!installedNow);
+    QVERIFY(error.isEmpty());
+    QCOMPARE(fixture.runs, 0);
+
+    // a lock that can't be opened is an error
+    QVERIFY(!installFromTimer(fixture.dir.path() + "/missing/updates.lock"_L1, fixture.dir.path(), fixture.installed,
+                              QDateTime::fromSecsSinceEpoch(1'800'000'000), succeeded, &installedNow, &error));
+    QVERIFY(!error.isEmpty());
+}
+
+void UpdaterTest::notifiesOnlyAfterASuccessfulListing() {
+    const QTemporaryDir dir;
+    const QString checked = dir.path() + "/last-update-check"_L1;
+    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    int listings = 0;
+    QList<qsizetype> notified;
+    ListResponse response;
+    const auto list = [&listings, &response] {
+        ++listings;
+        return response;
+    };
+    const auto notify = [&notified](const qsizetype count) { notified.append(count); };
+
+    // no network yet: every source failed, so the next run tries again
+    response.queriedSources = 2;
+    response.errors = {u"rpm: no network"_s, u"flatpak system: no network"_s};
+    notifyPendingUpdates(checked, now, list, notify);
+    QVERIFY(notified.isEmpty());
+    QVERIFY(!QFile::exists(checked));
+    notifyPendingUpdates(checked, now.addSecs(5LL * 60), list, notify);
+    QCOMPARE(listings, 2);
+
+    // one source is enough
+    response.errors = {u"flatpak system: no network"_s};
+    PackageUpdate update;
+    update.id = u"tree.x86_64"_s;
+    response.updates = {update};
+    notifyPendingUpdates(checked, now.addSecs(10LL * 60), list, notify);
+    QCOMPARE(notified, (QList<qsizetype>{1}));
+    QCOMPARE(readTimestamp(checked), now.addSecs(10LL * 60));
+
+    // then not again for a day
+    notifyPendingUpdates(checked, now.addSecs(60LL * 60), list, notify);
+    QCOMPARE(listings, 3);
+    notifyPendingUpdates(checked, now.addSecs(10LL * 60 + 24LL * 60 * 60), list, notify);
+    QCOMPARE(listings, 4);
+    QCOMPARE(notified.size(), 2);
+
+    // no updates: remembered, but nothing to show
+    response.updates.clear();
+    notifyPendingUpdates(checked, now.addSecs(3LL * 24 * 60 * 60), list, notify);
+    QCOMPARE(notified.size(), 2);
+    QCOMPARE(readTimestamp(checked), now.addSecs(3LL * 24 * 60 * 60));
 }
 
 void UpdaterTest::parsesBootcStatusCache() {
