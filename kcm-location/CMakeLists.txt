@@ -7,7 +7,10 @@
 kcmutils_add_qml_kcm(kcm_ultramarine_location
         SOURCES
         location.cpp
+        DISABLE_DESKTOP_FILE_GENERATION
 )
+# translated metadata, desktop file and catalog
+um_translate_kcm_metadata(kcm_ultramarine_location)
 
 # the root helper that masks or unmasks geoclue.service, run through pkexec. Its polkit
 # action matches this exact path. Like the paths in the top-level CMakeLists.txt, it
@@ -35,7 +38,7 @@ set(_data ${CMAKE_CURRENT_SOURCE_DIR}/data)
 set(_generated ${CMAKE_CURRENT_BINARY_DIR}/data)
 configure_file(${_data}/ultramarine-location-helper.in ${_generated}/ultramarine-location-helper @ONLY
     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-configure_file(${_data}/org.ultramarine.location.policy.in ${_generated}/org.ultramarine.location.policy @ONLY)
+um_translate_policy(${_data}/org.ultramarine.location.policy.in ${_generated}/org.ultramarine.location.policy)
 
 cmake_path(GET ULTRAMARINE_LOCATION_HELPER PARENT_PATH _helper_dir)
 install(PROGRAMS ${_generated}/ultramarine-location-helper DESTINATION ${_helper_dir})

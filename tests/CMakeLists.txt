@@ -18,6 +18,10 @@ function(add_kcm_test name source kcm_dir kcm_source)
             KF6::I18n
             KF6::KCMUtilsQuick
     )
+    # moc embeds the KCM's generated JSON metadata
+    string(REPLACE "kcm-" "kcm_ultramarine_" kcm_target ${kcm_dir})
+    target_include_directories(${name} PRIVATE ${CMAKE_BINARY_DIR}/${kcm_dir})
+    um_depend_on_kcm_metadata(${name} ${kcm_target})
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 

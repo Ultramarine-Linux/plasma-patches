@@ -22,8 +22,7 @@ add_library(ultramarine_updates_core STATIC
 )
 
 target_include_directories(ultramarine_updates_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-# notifications share the KCM's catalog, so there's one Weblate component for updates
-target_compile_definitions(ultramarine_updates_core PRIVATE TRANSLATION_DOMAIN="kcm_ultramarine_updates")
+target_compile_definitions(ultramarine_updates_core PRIVATE TRANSLATION_DOMAIN="${UM_TRANSLATION_DOMAIN}")
 target_link_libraries(ultramarine_updates_core
         PUBLIC
         Qt6::Core
@@ -34,7 +33,7 @@ target_link_libraries(ultramarine_updates_core
 )
 
 add_executable(ultramarine-updates main.cpp)
-target_compile_definitions(ultramarine-updates PRIVATE TRANSLATION_DOMAIN="kcm_ultramarine_updates")
+target_compile_definitions(ultramarine-updates PRIVATE TRANSLATION_DOMAIN="${UM_TRANSLATION_DOMAIN}")
 target_link_libraries(ultramarine-updates PRIVATE ultramarine_updates_core)
 
 # everything the helper needs at runtime is in this component, so a development
@@ -47,12 +46,12 @@ install(TARGETS ultramarine-updates RUNTIME DESTINATION ${_helper_dir} ${_compon
 set(_data ${CMAKE_CURRENT_SOURCE_DIR}/data)
 set(_generated ${CMAKE_CURRENT_BINARY_DIR}/data)
 foreach (_file
-        org.ultramarine.updates.policy
         ultramarine-updates-automatic.service
-        ultramarine-updates-user.service
-        ultramarine-updates-user.desktop)
+        ultramarine-updates-user.service)
     configure_file(${_data}/${_file}.in ${_generated}/${_file} @ONLY)
 endforeach ()
+um_translate_policy(${_data}/org.ultramarine.updates.policy.in ${_generated}/org.ultramarine.updates.policy)
+um_translate_desktop_file(${_data}/ultramarine-updates-user.desktop.in ${_generated}/ultramarine-updates-user.desktop)
 
 # polkit only reads actions from /usr/share/polkit-1/actions
 install(FILES ${_generated}/org.ultramarine.updates.policy

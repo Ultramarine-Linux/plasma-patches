@@ -19,11 +19,11 @@ pkg_check_modules(FLATPAK REQUIRED IMPORTED_TARGET flatpak)
 # the suite list and the PackageKit installer are shared with the tests
 add_library(ultramarine_office_suites STATIC suites.cpp packagekit.cpp installer.h)
 target_include_directories(ultramarine_office_suites PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(ultramarine_office_suites PRIVATE TRANSLATION_DOMAIN="ultramarine_office_installer")
+target_compile_definitions(ultramarine_office_suites PRIVATE TRANSLATION_DOMAIN="${UM_TRANSLATION_DOMAIN}")
 target_link_libraries(ultramarine_office_suites PUBLIC Qt6::Core Qt6::DBus KF6::I18n)
 
 add_executable(ultramarine-office-installer main.cpp installerdialog.cpp launch.cpp flatpakinstaller.cpp)
-target_compile_definitions(ultramarine-office-installer PRIVATE TRANSLATION_DOMAIN="ultramarine_office_installer")
+target_compile_definitions(ultramarine-office-installer PRIVATE TRANSLATION_DOMAIN="${UM_TRANSLATION_DOMAIN}")
 target_link_libraries(ultramarine-office-installer
         PRIVATE
         ultramarine_office_suites
@@ -42,5 +42,5 @@ cmake_path(GET OFFICE_INSTALLER_EXECUTABLE PARENT_PATH _installer_dir)
 install(TARGETS ultramarine-office-installer RUNTIME DESTINATION ${_installer_dir} ${_component})
 
 set(_desktop org.ultramarine.OfficeInstaller.desktop)
-configure_file(data/${_desktop}.in ${CMAKE_CURRENT_BINARY_DIR}/data/${_desktop} @ONLY)
+um_translate_desktop_file(data/${_desktop}.in ${CMAKE_CURRENT_BINARY_DIR}/data/${_desktop})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/data/${_desktop} DESTINATION ${KDE_INSTALL_APPDIR} ${_component})

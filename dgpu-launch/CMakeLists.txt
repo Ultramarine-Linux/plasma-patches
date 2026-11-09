@@ -33,7 +33,7 @@ target_link_libraries(ultramarine_dgpu_environment PUBLIC Qt6::Core Qt6::DBus)
 
 # runs the app with that environment, see main.cpp for why not kioclient or switcherooctl launch
 add_executable(ultramarine-dgpu-launch main.cpp)
-target_compile_definitions(ultramarine-dgpu-launch PRIVATE TRANSLATION_DOMAIN="ultramarine_dgpu_launch")
+target_compile_definitions(ultramarine-dgpu-launch PRIVATE TRANSLATION_DOMAIN="${UM_TRANSLATION_DOMAIN}")
 target_link_libraries(ultramarine-dgpu-launch
         PRIVATE
         ultramarine_dgpu_environment
@@ -53,7 +53,7 @@ configure_file(ultramarine-dgpu-detect.in ${_generated}/ultramarine-dgpu-detect 
     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 configure_file(${_data}/90-ultramarine-dgpu.rules.in ${_generated}/90-ultramarine-dgpu.rules @ONLY)
 configure_file(${_data}/ultramarine-dgpu-detect.service.in ${_generated}/ultramarine-dgpu-detect.service @ONLY)
-configure_file(${_data}/ultramarine-dgpu-launch.desktop.in ${_generated}/ultramarine-dgpu-launch.desktop @ONLY)
+um_translate_desktop_file(${_data}/ultramarine-dgpu-launch.desktop.in ${_generated}/ultramarine-dgpu-launch.desktop)
 
 cmake_path(GET DGPU_DETECT_EXECUTABLE PARENT_PATH _detect_dir)
 install(PROGRAMS ${_generated}/ultramarine-dgpu-detect DESTINATION ${_detect_dir} ${_component})

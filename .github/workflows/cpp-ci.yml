@@ -11,6 +11,7 @@ name: Plasma KCM CI
       - "dgpu-launch/**"
       - "office-installer/**"
       - "po/**"
+      - "cmake/**"
       - "Messages.sh"
       - "tests/**"
       - "CMakeLists.txt"
@@ -31,6 +32,7 @@ name: Plasma KCM CI
       - "dgpu-launch/**"
       - "office-installer/**"
       - "po/**"
+      - "cmake/**"
       - "Messages.sh"
       - "tests/**"
       - "CMakeLists.txt"
@@ -65,4 +67,34 @@ jobs:
       # build/cppcheck.sarif. --output-file puts the report there. With --quiet nothing else
       # goes to stdout, so the redirect only truncates the file first.
       cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen* --library=qt --library=cppcheck-kf6.cfg --output-file=build/cppcheck.sarif
-      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel flatpak-devel gettext lld
+      packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel flatpak-devel gettext polkit-devel python3 lld
+
+  # fails when po/ultramarine-plasma-settings.pot is missing strings, so Weblate
+  # never lags behind the source. Run `just translations` and commit the result
+  translations:
+    name: Translation template
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/fyralabs/ci:f44
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Mark workspace as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install gettext and polkit's ITS rules
+        run: dnf install --assumeyes --setopt=install_weak_deps=False gettext polkit-devel python3
+
+      - name: Regenerate the template
+        run: ./Messages.sh
+
+      - name: Check the template is up to date
+        run: |
+          if [ -n "$(git status --porcelain -- po/)" ]; then
+            git --no-pager diff -- po/
+            echo "::error file=po/ultramarine-plasma-settings.pot::the translation template is out of date. Run \`just translations\` and commit po/"
+            exit 1
+          fi

@@ -43,7 +43,7 @@ namespace {
 
 int main(int argc, char **argv) {
     const QApplication app(argc, argv);
-    KLocalizedString::setApplicationDomain("ultramarine_office_installer");
+    KLocalizedString::setApplicationDomain(TRANSLATION_DOMAIN);
     QApplication::setApplicationName(u"ultramarine-office-installer"_s);
     QApplication::setDesktopFileName(u"org.ultramarine.OfficeInstaller"_s);
     QApplication::setWindowIcon(QIcon::fromTheme(u"system-software-install"_s));

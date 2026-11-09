@@ -7,7 +7,10 @@
 kcmutils_add_qml_kcm(kcm_ultramarine_updates
         SOURCES
         updates.cpp
+        DISABLE_DESKTOP_FILE_GENERATION
 )
+# translated metadata, desktop file and catalog
+um_translate_kcm_metadata(kcm_ultramarine_updates)
 
 target_compile_definitions(kcm_ultramarine_updates PRIVATE TRANSLATION_DOMAIN="kcm_ultramarine_updates")
 

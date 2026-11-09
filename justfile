@@ -16,7 +16,7 @@ build:
     @[ -f {{ build_dir }}/CMakeCache.txt ] || just build_dir={{ build_dir }} build_type={{ build_type }} prefix={{ prefix }} configure
     cmake --build {{ build_dir }} --parallel
 
-# regenerate the gettext POT templates for Weblate (requires gettext-tools)
+# regenerate po/ultramarine-plasma-settings.pot for Weblate (needs gettext, python3 and polkit-devel)
 translations:
     ./Messages.sh
 

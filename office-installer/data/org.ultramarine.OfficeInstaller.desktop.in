@@ -8,8 +8,8 @@
 # libreoffice-*, org.libreoffice and org.onlyoffice.
 # NoDisplay hides it from the launchers, but not from file managers' "Open With"
 # menus, which list every handler. So the name has to make sense there too, even
-# with a suite installed. Name and Comment are translated in the desktop file, not
-# through the gettext catalogs (Messages.sh only extracts the C++ strings).
+# with a suite installed. Name and Comment are translated through the gettext catalog
+# and merged in at build time (see docs/translations.md).
 [Desktop Entry]
 Type=Application
 Name=Office Suite Installer

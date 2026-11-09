@@ -44,13 +44,10 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
 
 include(CTest)
 
-# compile Weblate-maintained gettext catalogs (po/<locale>/<domain>.po).
-# Don't install an empty share/locale tree before translations exist. CONFIGURE_DEPENDS
-# re-runs CMake when Weblate adds the first PO catalog.
-file(GLOB_RECURSE KCM_TRANSLATION_CATALOGS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/po/*/*.po")
-if(KCM_TRANSLATION_CATALOGS)
-    ki18n_install(po)
-endif()
+# the Weblate catalog (po/<lang>.po), see docs/translations.md. The KCMs install it as
+# their own domains, the update helper, dGPU launcher and office installer share this one.
+include(UltramarineTranslations)
+um_install_translations(${UM_TRANSLATION_DOMAIN})
 
 # absolute path of the um CLI, used by the Tweaks KCM. umcli's polkit action
 # (org.ultramarine.um.manage) matches this exact path when um escalates through pkexec.

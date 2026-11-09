@@ -3,14 +3,40 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# extract KI18n strings to one POT per KCM (and the office suite installer and dGPU launcher). Weblate writes translations to
-# po/<locale>/<domain>.po. KI18N_INSTALL(po) compiles and installs those files.
+# extract every translatable string into po/ultramarine-plasma-settings.pot, the template
+# of the one Weblate component. Weblate writes translations to po/<lang>.po and the build
+# compiles and merges them (cmake/UltramarineTranslations.cmake).
+#
+# sources are the tracked files, found by type:
+# - i18n*() calls in C++ and QML (tests excluded)
+# - Name, Comment and Keywords in *.desktop.in
+# - descriptions and messages in polkit *.policy.in
+# - Name, Description and keywords in KCM *.json.in metadata
+#
+# needs git, gettext, python3 and polkit's ITS rules (polkit-devel)
 set -euo pipefail
 
 cd "$(dirname "$0")"
-mkdir -p po
+domain=ultramarine-plasma-settings
+pot="po/${domain}.pot"
+polkit_its="${POLKIT_ITS:-/usr/share/gettext/its/polkit.its}"
+
+[ -f "$polkit_its" ] || {
+    echo "polkit ITS rules not found at $polkit_its (install polkit-devel or set POLKIT_ITS)" >&2
+    exit 1
+}
+
 workdir=$(mktemp -d)
 trap 'rm -rf "$workdir"' EXIT
+
+files() {
+    git ls-files -- "$@" ':!:tests/**' | sort
+}
+mapfile -t cpp_sources < <(files '*.cpp' '*.h')
+mapfile -t qml_sources < <(files '*.qml')
+mapfile -t desktop_sources < <(files '*.desktop.in')
+mapfile -t policy_sources < <(files '*.policy.in')
+mapfile -t json_sources < <(files '*.json.in')
 
 # shellcheck disable=SC2054
 keywords=(
@@ -19,45 +45,37 @@ keywords=(
     --keyword=i18np:1,2
     --keyword=i18ncp:1c,2,3
 )
+# file-only references, so moving code around doesn't change the template
+common=(--from-code=UTF-8 --add-comments=i18n: --add-location=file)
 
-extract_domain() {
-    local domain="$1"
-    # space-separated C++ sources
-    read -r -a cpp_sources <<<"$2"
-    shift 2
-    local cpp_pot="$workdir/${domain}-cpp.pot"
-    local qml_pot="$workdir/${domain}-qml.pot"
+xgettext --language=C++ "${common[@]}" "${keywords[@]}" \
+    --output="$workdir/cpp.pot" "${cpp_sources[@]}"
+# QML parses well enough as Java for xgettext
+xgettext --language=Java "${common[@]}" "${keywords[@]}" \
+    --output="$workdir/qml.pot" "${qml_sources[@]}"
+xgettext --language=Desktop "${common[@]}" \
+    --output="$workdir/desktop.pot" "${desktop_sources[@]}"
+xgettext --its="$polkit_its" "${common[@]}" \
+    --output="$workdir/policy.pot" "${policy_sources[@]}"
+python3 -I cmake/kcm-json-l10n.py extract "$workdir/json.pot" "${json_sources[@]}"
 
-    xgettext --language=C++ --from-code=UTF-8 --package-name="$domain" \
-        "${keywords[@]}" --output="$cpp_pot" "${cpp_sources[@]}"
-    if [ $# -eq 0 ]; then
-        msgcat --sort-output "$cpp_pot" --output="po/${domain}.pot"
-        return
-    fi
-    xgettext --language=Java --from-code=UTF-8 --package-name="$domain" \
-        "${keywords[@]}" --output="$qml_pot" "$@"
-    msgcat --use-first --sort-output "$cpp_pot" "$qml_pot" \
-        --output="po/${domain}.pot"
-}
+# msgcat skips catalogs with no messages, and drops the header if it starts with one
+# of them, so put a header first
+xgettext --language=C --force-po --package-name="$domain" \
+    --msgid-bugs-address=https://github.com/Ultramarine-Linux/plasma-patches/issues \
+    --output="$workdir/header.pot" /dev/null
+sed -i 's/charset=CHARSET/charset=UTF-8/' "$workdir/header.pot"
 
-# the update helper's notifications share the Updates KCM's catalog
-extract_domain kcm_ultramarine_updates \
-    "kcm-updates/updates.cpp updater/schedule.cpp" \
-    kcm-updates/ui/main.qml \
-    kcm-updates/ui/AdvancedSettings.qml \
-    kcm-updates/ui/TechnicalInformation.qml \
-    kcm-updates/ui/ErrorMessage.qml
+msgcat --use-first --sort-output --add-location=file \
+    "$workdir/header.pot" "$workdir"/{cpp,qml,desktop,policy,json}.pot \
+    --output="$workdir/new.pot"
 
-extract_domain kcm_ultramarine_tweaks \
-    kcm-tweaks/tweaks.cpp \
-    kcm-tweaks/ui/main.qml
-
-extract_domain kcm_ultramarine_location \
-    kcm-location/location.cpp \
-    kcm-location/ui/main.qml
-
-extract_domain ultramarine_office_installer \
-    "office-installer/main.cpp office-installer/installerdialog.cpp office-installer/suites.cpp office-installer/packagekit.cpp office-installer/flatpakinstaller.cpp"
-
-extract_domain ultramarine_dgpu_launch \
-    dgpu-launch/main.cpp
+# keep the old POT-Creation-Date when nothing else changed, so the template only
+# changes (and CI's freshness check only fails) when the strings do
+mkdir -p po
+if [ -f "$pot" ] && diff -q -I '^"POT-Creation-Date:' "$pot" "$workdir/new.pot" >/dev/null; then
+    echo "$pot is up to date"
+else
+    mv "$workdir/new.pot" "$pot"
+    echo "wrote $pot"
+fi

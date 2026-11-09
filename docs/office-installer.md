@@ -23,7 +23,7 @@ rpm-ostree) systems, where `/run/ostree-booted` exists.
   list every handler, `NoDisplay` or not, so it shows up there as **Office Suite
   Installer** even with a suite installed. Formats that are also plain text (CSV, RTF,
   flat ODF) are left out, so they still open in a text editor. The desktop file's `Name`
-  and `Comment` aren't in the gettext catalogs: `Messages.sh` only extracts C++ strings.
+  and `Comment` are translated through the gettext catalog like the rest of the strings.
 - **Once a suite is installed:** KF6 ignores `InitialPreference`. Handlers that aren't
   in a `mimeapps.list` all have the same preference, and KService sorts them by desktop
   file name, so `org.ultramarine.OfficeInstaller` comes after `com.collaboraoffice.*`,

@@ -2,11 +2,11 @@
 
 ## Dependencies
 
-On Fedora or Ultramarine, install the Qt 6 and KDE Frameworks 6 development packages, CMake, Extra CMake Modules, a C++ compiler and gettext:
+On Fedora or Ultramarine, install the Qt 6 and KDE Frameworks 6 development packages, CMake, Extra CMake Modules, a C++ compiler, gettext and Python:
 
 ```bash
 sudo dnf install \
-    cmake extra-cmake-modules gcc-c++ gettext \
+    cmake extra-cmake-modules gcc-c++ gettext python3 polkit-devel \
     qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel \
     kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel flatpak-devel \
     kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel \
@@ -18,6 +18,9 @@ The project requires Qt 6.6 and KDE Frameworks 6.0 or newer.
 - `flatpak-devel` (libflatpak) lets the office suite installer install from Flathub
   with a polkit prompt. KIO and KService start apps from the office suite installer
   and the dGPU launcher.
+- `gettext` and `python3` merge translations into the desktop files, polkit policies
+  and KCM metadata at build time. `polkit-devel` ships the gettext ITS rules that tell
+  `msgfmt` and `xgettext` which strings in a polkit policy are translatable.
 - `kf6-kirigami-addons` is only needed at runtime. KCM pages built with
   `org.kde.kirigamiaddons.formcard` (Location Services) fail to load without it.
 - `lld` is optional but recommended. CMake links with it when it finds `ld.lld`,

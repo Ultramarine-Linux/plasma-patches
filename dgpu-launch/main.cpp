@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     qunsetenv("DESKTOP_STARTUP_ID");
 
     const QApplication app(argc, argv);
-    KLocalizedString::setApplicationDomain("ultramarine_dgpu_launch");
+    KLocalizedString::setApplicationDomain(TRANSLATION_DOMAIN);
     QApplication::setApplicationName(u"ultramarine-dgpu-launch"_s);
     QApplication::setQuitOnLastWindowClosed(false);
 
