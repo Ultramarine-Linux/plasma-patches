@@ -1,7 +1,7 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# English translations for ultramarine-plasma-settings package.
+# Copyright (C) 2026 THE ultramarine-plasma-settings'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the ultramarine-plasma-settings package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Automatically generated, 2026.
 #
 msgid ""
 msgstr ""
@@ -9,103 +9,103 @@ msgstr ""
 "Report-Msgid-Bugs-To: https://github.com/Ultramarine-Linux/plasma-patches/"
 "issues\n"
 "POT-Creation-Date: 2026-11-03 13:38-0700\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: 2026-11-03 13:38-0700\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: en_US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 is a download size, %2 an installed or freed size"
 msgid "%1 - %2"
-msgstr ""
+msgstr "%1 - %2"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 source, %2 new version"
 msgid "%1 - %2"
-msgstr ""
+msgstr "%1 - %2"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 - %2 → %3"
-msgstr ""
+msgstr "%1 - %2 → %3"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 is a size like 500 MB"
 msgid "%1 Download"
-msgstr ""
+msgstr "%1 Download"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 is a size like 20 MB"
 msgid "%1 Freed"
-msgstr ""
+msgstr "%1 Freed"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 is a size like 20 MB"
 msgid "%1 Installed"
-msgstr ""
+msgstr "%1 Installed"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %1 is an office suite, %2 a file name"
 msgid "%1 can't open “%2”. Install another office suite to open it."
-msgstr ""
+msgstr "%1 can't open “%2”. Install another office suite to open it."
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %1 is an office suite"
 msgid "%1 could not be installed."
-msgstr ""
+msgstr "%1 could not be installed."
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %1 is an office suite, %2 the installer's error"
 msgid "%1 could not be installed: %2"
-msgstr ""
+msgstr "%1 could not be installed: %2"
 
 #: dgpu-launch/main.cpp
 msgid "%1 doesn't say how to start it."
-msgstr ""
+msgstr "%1 doesn't say how to start it."
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@item:valuesuffix"
 msgid "%1 minute"
 msgid_plural "%1 minutes"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%1 minute"
+msgstr[1] "%1 minutes"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "%1 update available"
 msgid_plural "%1 updates available"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%1 update available"
+msgstr[1] "%1 updates available"
 
 #: kcm-updates/updates.cpp
 msgid "%1 update available."
 msgid_plural "%1 updates available."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%1 update available."
+msgstr[1] "%1 updates available."
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %1 is an office suite"
 msgid "%1 was installed, but could not be started."
-msgstr ""
+msgstr "%1 was installed, but could not be started."
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@info %1 source, %2 version"
 msgid "%1 · %2"
-msgstr ""
+msgstr "%1 · %2"
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 · %2 → %3"
-msgstr ""
+msgstr "%1 · %2 → %3"
 
 #: office-installer/flatpakinstaller.cpp
 msgctxt "@info:progress %1 is a Flatpak app or runtime, %2 a percentage"
 msgid "%1: %2%"
-msgstr ""
+msgstr "%1: %2%"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %2 is an office suite"
@@ -113,510 +113,523 @@ msgid "%2 can't open this document. Install another office suite to open it."
 msgid_plural ""
 "%2 can't open these %1 documents. Install another office suite to open them."
 msgstr[0] ""
+"%2 can't open this document. Install another office suite to open it."
 msgstr[1] ""
+"%2 can't open these %1 documents. Install another office suite to open them."
 
 #: updater/schedule.cpp
 msgid "1 update is ready to install."
 msgid_plural "%1 updates are ready to install."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "1 update is ready to install."
+msgstr[1] "%1 updates are ready to install."
 
 #: office-installer/suites.cpp
 msgid "A simple, modern interface built on LibreOffice"
-msgstr ""
+msgstr "A simple, modern interface built on LibreOffice"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "A system update is ready. Restart to start using it."
-msgstr ""
+msgstr "A system update is ready. Restart to start using it."
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@title:group"
 msgid "Add-ons"
-msgstr ""
+msgstr "Add-ons"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@action:button"
 msgid "Advanced Settings"
-msgstr ""
+msgstr "Advanced Settings"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@title"
 msgid "Advanced Update Settings"
-msgstr ""
+msgstr "Advanced Update Settings"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@label"
 msgid "Advanced update settings"
-msgstr ""
+msgstr "Advanced update settings"
 
 #. description of the page in System Settings
 #: kcm-location/kcm_ultramarine_location.json.in
 msgid "Allow apps to request your approximate location"
-msgstr ""
+msgstr "Allow apps to request your approximate location"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Allow apps to request your approximate location"
-msgstr ""
+msgstr "Allow apps to request your approximate location"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info tweak stability"
 msgid "Alpha"
-msgstr ""
+msgstr "Alpha"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "Already applied"
-msgstr ""
+msgstr "Already applied"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@info"
 msgid "Also used for Apply Tonight."
-msgstr ""
+msgstr "Also used for Apply Tonight."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Applied"
-msgstr ""
+msgstr "Applied"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Apply"
-msgstr ""
+msgstr "Apply"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@action:button install updates now"
 msgid "Apply"
-msgstr ""
+msgstr "Apply"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@action:button install updates tonight"
 msgid "Apply Tonight"
-msgstr ""
+msgstr "Apply Tonight"
 
 #: kcm-updates/updates.cpp
 msgid "Applying updates…"
-msgstr ""
+msgstr "Applying updates…"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Applying “%1”…"
-msgstr ""
+msgstr "Applying “%1”…"
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@title:group"
 msgid "Apps"
-msgstr ""
+msgstr "Apps"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@option:radio"
 msgid "Ask me"
-msgstr ""
+msgstr "Ask me"
 
 #: updater/data/org.ultramarine.updates.policy.in
 msgid "Authentication is required to change update settings"
-msgstr ""
+msgstr "Authentication is required to change update settings"
 
 #: updater/data/org.ultramarine.updates.policy.in
 msgid "Authentication is required to install updates"
-msgstr ""
+msgstr "Authentication is required to install updates"
 
 #: updater/data/org.ultramarine.updates.policy.in
 msgid "Authentication is required to schedule updates"
-msgstr ""
+msgstr "Authentication is required to schedule updates"
 
 #: kcm-location/data/org.ultramarine.location.policy.in
 msgid "Authentication is required to turn location services on or off"
-msgstr ""
+msgstr "Authentication is required to turn location services on or off"
 
 #: kcm-tweaks/tweaks.cpp
 msgid ""
 "Authentication was cancelled or failed, or the maintenance task failed. See "
 "the output for details."
 msgstr ""
+"Authentication was cancelled or failed, or the maintenance task failed. See "
+"the output for details."
 
 #: kcm-location/location.cpp kcm-tweaks/tweaks.cpp
 msgid "Authentication was cancelled or failed. No changes were made."
-msgstr ""
+msgstr "Authentication was cancelled or failed. No changes were made."
 
 #: kcm-updates/updates.cpp
 msgid "Authentication was cancelled or failed. No updates were installed."
-msgstr ""
+msgstr "Authentication was cancelled or failed. No updates were installed."
 
 #: kcm-updates/updates.cpp
 msgid "Authentication was cancelled or failed. The settings were not saved."
-msgstr ""
+msgstr "Authentication was cancelled or failed. The settings were not saved."
 
 #: kcm-updates/updates.cpp
 msgid ""
 "Authentication was cancelled or failed. Tonight's updates are still "
 "scheduled."
 msgstr ""
+"Authentication was cancelled or failed. Tonight's updates are still "
+"scheduled."
 
 #: kcm-updates/updates.cpp
 msgid "Authentication was cancelled or failed. Updates were not scheduled."
-msgstr ""
+msgstr "Authentication was cancelled or failed. Updates were not scheduled."
 
 #: kcm-updates/ui/main.qml
 msgctxt "@label"
 msgid "Automatic Updates"
-msgstr ""
+msgstr "Automatic Updates"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info tweak stability"
 msgid "Beta"
-msgstr ""
+msgstr "Beta"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Cancel"
-msgstr ""
+msgstr "Cancel"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info:status"
 msgid "Canceling…"
-msgstr ""
+msgstr "Canceling…"
 
 #: updater/data/org.ultramarine.updates.policy.in
 msgid "Change automatic update settings"
-msgstr ""
+msgstr "Change automatic update settings"
 
 #. description of the page in System Settings
 #: kcm-updates/kcm_ultramarine_updates.json.in
 msgid "Check for and install system and app updates"
-msgstr ""
+msgstr "Check for and install system and app updates"
 
 #: kcm-updates/updates.cpp
 msgid "Checking for updates failed (exit code %1)."
-msgstr ""
+msgstr "Checking for updates failed (exit code %1)."
 
 #: kcm-updates/updates.cpp
 msgid "Checking for updates failed (exit code %1). %2"
-msgstr ""
+msgstr "Checking for updates failed (exit code %1). %2"
 
 #: kcm-updates/updates.cpp
 msgid "Checking for updates failed: the update helper stopped unexpectedly."
-msgstr ""
+msgstr "Checking for updates failed: the update helper stopped unexpectedly."
 
 #: kcm-updates/updates.cpp
 msgid ""
 "Checking for updates failed: the update helper’s output could not be read."
 msgstr ""
+"Checking for updates failed: the update helper’s output could not be read."
 
 #: kcm-updates/updates.cpp
 msgid "Checking for updates…"
-msgstr ""
+msgstr "Checking for updates…"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@info"
 msgid "Choose different start and end times."
-msgstr ""
+msgstr "Choose different start and end times."
 
 #: office-installer/suites.cpp
 msgctxt "@option:radio office suite"
 msgid "Collabora Office"
-msgstr ""
+msgstr "Collabora Office"
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@action:button"
 msgid "Copy"
-msgstr ""
+msgstr "Copy"
 
 #: kcm-location/location.cpp
 msgid ""
 "Could not change location services. The change may have been partly applied."
 msgstr ""
+"Could not change location services. The change may have been partly applied."
 
 #: kcm-location/location.cpp
 msgid ""
 "Could not change location services. The change may have been partly applied: "
 "%1"
 msgstr ""
+"Could not change location services. The change may have been partly applied: "
+"%1"
 
 #: kcm-location/location.cpp
 msgid "Could not change location services: %1 is not installed."
-msgstr ""
+msgstr "Could not change location services: %1 is not installed."
 
 #: kcm-location/location.cpp
 msgid "Could not change location services: pkexec is not installed."
-msgstr ""
+msgstr "Could not change location services: pkexec is not installed."
 
 #: kcm-updates/updates.cpp
 msgid "Could not check for updates from: %1"
-msgstr ""
+msgstr "Could not check for updates from: %1"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Could not create a file for um's output: %1"
-msgstr ""
+msgstr "Could not create a file for um's output: %1"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Could not load the list of tweaks."
-msgstr ""
+msgstr "Could not load the list of tweaks."
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Could not load the list of tweaks: %1"
-msgstr ""
+msgstr "Could not load the list of tweaks: %1"
 
 #: kcm-location/location.cpp
 msgid "Could not read the state of location services: %1"
-msgstr ""
+msgstr "Could not read the state of location services: %1"
 
 #: kcm-updates/updates.cpp
 msgid "Could not restart: %1"
-msgstr ""
+msgstr "Could not restart: %1"
 
 #: kcm-location/location.cpp
 msgid "Could not start pkexec."
-msgstr ""
+msgstr "Could not start pkexec."
 
 #: kcm-updates/updates.cpp
 msgid "Could not start the update helper."
-msgstr ""
+msgstr "Could not start the update helper."
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Could not start um."
-msgstr ""
+msgstr "Could not start um."
 
 #: kcm-location/ui/main.qml
 msgctxt "@info:placeholder"
 msgid "Couldn't check whether location services are on"
-msgstr ""
+msgstr "Couldn't check whether location services are on"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info:tooltip"
 msgid "Disable this tweak"
-msgstr ""
+msgstr "Disable this tweak"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Disabling “%1”…"
-msgstr ""
+msgstr "Disabling “%1”…"
 
 #: office-installer/main.cpp
 msgid "Documents to open once an office suite is installed."
-msgstr ""
+msgstr "Documents to open once an office suite is installed."
 
 #: kcm-updates/ui/main.qml
 msgctxt "@action:button"
 msgid "Don’t Apply Tonight"
-msgstr ""
+msgstr "Don’t Apply Tonight"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Enable"
-msgstr ""
+msgstr "Enable"
 
 #. description of the page in System Settings
 #: kcm-tweaks/kcm_ultramarine_tweaks.json.in
 msgid "Enable optional Ultramarine system tweaks"
-msgstr ""
+msgstr "Enable optional Ultramarine system tweaks"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info:tooltip"
 msgid "Enable this tweak"
-msgstr ""
+msgstr "Enable this tweak"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Enabling “%1”…"
-msgstr ""
+msgstr "Enabling “%1”…"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label:listbox"
 msgid "End time"
-msgstr ""
+msgstr "End time"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label:listbox the end of the update time range"
 msgid "Ending at:"
-msgstr ""
+msgstr "Ending at:"
 
 #: kcm-updates/updates.cpp
 msgid "Flatpak"
-msgstr ""
+msgstr "Flatpak"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@item:inlistbox install source"
 msgid "Flatpak"
-msgstr ""
+msgstr "Flatpak"
 
 #: office-installer/suites.cpp
 msgid "Focused on compatibility with Microsoft Office documents"
-msgstr ""
+msgstr "Focused on compatibility with Microsoft Office documents"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "How?"
-msgstr ""
+msgstr "How?"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info tweak stability"
 msgid "In development"
-msgstr ""
+msgstr "In development"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@action:button"
 msgid "Install"
-msgstr ""
+msgstr "Install"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@title"
 msgid "Install Another Office Suite"
-msgstr ""
+msgstr "Install Another Office Suite"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@title:window"
 msgid "Install an Office Suite"
-msgstr ""
+msgstr "Install an Office Suite"
 
 #: office-installer/data/org.ultramarine.OfficeInstaller.desktop.in
 msgid ""
 "Install an office suite to open documents, spreadsheets and presentations"
 msgstr ""
+"Install an office suite to open documents, spreadsheets and presentations"
 
 #: office-installer/installerdialog.cpp
 msgid ""
 "Install an office suite to open documents, spreadsheets and presentations."
 msgstr ""
+"Install an office suite to open documents, spreadsheets and presentations."
 
 #: office-installer/installerdialog.cpp
 msgid "Install an office suite to open this document."
 msgid_plural "Install an office suite to open these %1 documents."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Install an office suite to open this document."
+msgstr[1] "Install an office suite to open these %1 documents."
 
 #: office-installer/installerdialog.cpp
 msgid "Install an office suite to open “%1”."
-msgstr ""
+msgstr "Install an office suite to open “%1”."
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %1 is an office suite"
 msgid "Install an office suite to use alongside %1."
-msgstr ""
+msgstr "Install an office suite to use alongside %1."
 
 #: office-installer/installerdialog.cpp
 msgctxt "@label:listbox"
 msgid "Install from:"
-msgstr ""
+msgstr "Install from:"
 
 #: updater/data/org.ultramarine.updates.policy.in
 msgid "Install system updates"
-msgstr ""
+msgstr "Install system updates"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info:placeholder"
 msgid "Install the geoclue2 package to let apps request your location."
-msgstr ""
+msgstr "Install the geoclue2 package to let apps request your location."
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label:spinbox"
 msgid "Install when unused for:"
-msgstr ""
+msgstr "Install when unused for:"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@option:check"
 msgid "Install while restarting"
-msgstr ""
+msgstr "Install while restarting"
 
 #: updater/data/ultramarine-updates-user.desktop.in
 msgid ""
 "Install your updates when you're not using the device, or notify about them"
 msgstr ""
+"Install your updates when you're not using the device, or notify about them"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info %1 is an office suite"
 msgid "Installing %1 was canceled."
-msgstr ""
+msgstr "Installing %1 was canceled."
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info:status %1 is an office suite"
 msgid "Installing %1…"
-msgstr ""
+msgstr "Installing %1…"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Installing tonight when the device isn’t in use"
-msgstr ""
+msgstr "Installing tonight when the device isn’t in use"
 
 #: office-installer/main.cpp
 msgid "Installs an office suite to open office documents with."
-msgstr ""
+msgstr "Installs an office suite to open office documents with."
 
 #: dgpu-launch/data/ultramarine-dgpu-launch.desktop.in
 msgid "Launch Using Dedicated Graphics Card"
-msgstr ""
+msgstr "Launch Using Dedicated Graphics Card"
 
 #: dgpu-launch/main.cpp
 msgctxt "@title:window"
 msgid "Launch Using Dedicated Graphics Card"
-msgstr ""
+msgstr "Launch Using Dedicated Graphics Card"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Let apps know roughly where you are"
-msgstr ""
+msgstr "Let apps know roughly where you are"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@option:radio"
 msgid "Let your device decide"
-msgstr ""
+msgstr "Let your device decide"
 
 #: office-installer/suites.cpp
 msgctxt "@option:radio office suite"
 msgid "LibreOffice"
-msgstr ""
+msgstr "LibreOffice"
 
 #. name of the page in System Settings
 #: kcm-location/kcm_ultramarine_location.json.in
 msgid "Location Services"
-msgstr ""
+msgstr "Location Services"
 
 #: kcm-location/ui/main.qml
 msgctxt "@option:check"
 msgid "Location Services"
-msgstr ""
+msgstr "Location Services"
 
 #: kcm-location/ui/main.qml
 msgctxt "@title"
 msgid "Location Services"
-msgstr ""
+msgstr "Location Services"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info:placeholder"
 msgid "Location services aren't installed"
-msgstr ""
+msgstr "Location services aren't installed"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@title:group"
 msgid "Maintenance Tasks"
-msgstr ""
+msgstr "Maintenance Tasks"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Nearby Wi-Fi networks are searched on beaconDB to find your location"
-msgstr ""
+msgstr "Nearby Wi-Fi networks are searched on beaconDB to find your location"
 
 #: kcm-updates/updates.cpp
 msgid "Nix"
-msgstr ""
+msgstr "Nix"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@title"
 msgid "No Office Suite Installed"
-msgstr ""
+msgstr "No Office Suite Installed"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info:placeholder"
 msgid "No tweaks available"
-msgstr ""
+msgstr "No tweaks available"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Nothing right now"
-msgstr ""
+msgstr "Nothing right now"
 
 #: office-installer/suites.cpp
 msgctxt "@option:radio office suite"
 msgid "ONLYOFFICE"
-msgstr ""
+msgstr "ONLYOFFICE"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
@@ -624,253 +637,259 @@ msgid ""
 "Occasional updates for your system and apps to keep things running smoothly "
 "and secure."
 msgstr ""
+"Occasional updates for your system and apps to keep things running smoothly "
+"and secure."
 
 #: office-installer/data/org.ultramarine.OfficeInstaller.desktop.in
 msgid "Office Suite Installer"
-msgstr ""
+msgstr "Office Suite Installer"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@title:group"
 msgid "One-Time Changes"
-msgstr ""
+msgstr "One-Time Changes"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@option:check"
 msgid "Only during these hours"
-msgstr ""
+msgstr "Only during these hours"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Only the apps that ask for it, like a website you visit"
-msgstr ""
+msgstr "Only the apps that ask for it, like a website you visit"
 
 #: updater/schedule.cpp
 msgid "Open Updates"
-msgstr ""
+msgstr "Open Updates"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info:status %1 is an office suite"
 msgid "Opening %1…"
-msgstr ""
+msgstr "Opening %1…"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@title:group"
 msgid "Other"
-msgstr ""
+msgstr "Other"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@title:window"
 msgid "Output"
-msgstr ""
+msgstr "Output"
 
 #: office-installer/packagekit.cpp
 msgctxt "@info %1 is a version number"
 msgid "PackageKit %1 isn't supported. Only PackageKit 1 is."
-msgstr ""
+msgstr "PackageKit %1 isn't supported. Only PackageKit 1 is."
 
 #: office-installer/packagekit.cpp
 msgctxt "@info %1 is a list of package names"
 msgid "Packages not found: %1"
-msgstr ""
+msgstr "Packages not found: %1"
 
 #: kcm-updates/updates.cpp
 msgctxt "@info update source"
 msgid "Plasma Widget"
-msgstr ""
+msgstr "Plasma Widget"
 
 #: kcm-location/ui/main.qml
 msgctxt "@title:group"
 msgid "Privacy"
-msgstr ""
+msgstr "Privacy"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@item:inlistbox install source"
 msgid "RPM"
-msgstr ""
+msgstr "RPM"
 
 #: office-installer/installerdialog.cpp
 msgctxt "@info:status office suite"
 msgid "Recommended"
-msgstr ""
+msgstr "Recommended"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@title"
 msgid "Regular Updates"
-msgstr ""
+msgstr "Regular Updates"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Reload"
-msgstr ""
+msgstr "Reload"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Restart to finish updating"
-msgstr ""
+msgstr "Restart to finish updating"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Restart to install updates"
-msgstr ""
+msgstr "Restart to install updates"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@action:button"
 msgid "Restart…"
-msgstr ""
+msgstr "Restart…"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Run"
-msgstr ""
+msgstr "Run"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "Running “%1”…"
-msgstr ""
+msgstr "Running “%1”…"
 
 #: dgpu-launch/main.cpp
 msgid "Runs an app on the discrete GPU."
-msgstr ""
+msgstr "Runs an app on the discrete GPU."
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@title:group"
 msgid "Runtimes"
-msgstr ""
+msgstr "Runtimes"
 
 #: updater/data/org.ultramarine.updates.policy.in
 msgid "Schedule system updates"
-msgstr ""
+msgstr "Schedule system updates"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@action:button"
 msgid "Show Output"
-msgstr ""
+msgstr "Show Output"
 
 #: office-installer/flatpakinstaller.cpp
 msgctxt "@info:progress %1 is a Flatpak runtime or extension, %2 the error"
 msgid "Skipped %1: %2"
-msgstr ""
+msgstr "Skipped %1: %2"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@title"
 msgid "Software to Be Updated"
-msgstr ""
+msgstr "Software to Be Updated"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Some updates are still scheduled to install tonight"
-msgstr ""
+msgstr "Some updates are still scheduled to install tonight"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label:listbox"
 msgid "Start time"
-msgstr ""
+msgstr "Start time"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label:listbox the start of the update time range"
 msgid "Starting at:"
-msgstr ""
+msgstr "Starting at:"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "State unknown: %1"
-msgstr ""
+msgstr "State unknown: %1"
 
 #: kcm-updates/updates.cpp
 msgid "System"
-msgstr ""
+msgstr "System"
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@title:group"
 msgid "System Packages"
-msgstr ""
+msgstr "System Packages"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@title:group"
 msgid "System Tweaks"
-msgstr ""
+msgstr "System Tweaks"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label"
 msgid "System updates:"
-msgstr ""
+msgstr "System updates:"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@action:button opens a list of all updates"
 msgid "Technical Information"
-msgstr ""
+msgstr "Technical Information"
 
 #: kcm-updates/ui/TechnicalInformation.qml
 msgctxt "@title"
 msgid "Technical Information"
-msgstr ""
+msgstr "Technical Information"
 
 #: dgpu-launch/main.cpp
 msgid "The app's desktop file, as a path or file: URL."
-msgstr ""
+msgstr "The app's desktop file, as a path or file: URL."
 
 #: office-installer/suites.cpp
 msgid "The full-featured LibreOffice suite"
-msgstr ""
+msgstr "The full-featured LibreOffice suite"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "The maintenance task failed (exit code %1). See the output for details."
 msgstr ""
+"The maintenance task failed (exit code %1). See the output for details."
 
 #: kcm-tweaks/tweaks.cpp
 msgid "The maintenance task failed: %1"
-msgstr ""
+msgstr "The maintenance task failed: %1"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "The maintenance task stopped unexpectedly. See the output for details."
-msgstr ""
+msgstr "The maintenance task stopped unexpectedly. See the output for details."
 
 #: kcm-updates/updates.cpp
 msgid "The settings could not be saved."
-msgstr ""
+msgstr "The settings could not be saved."
 
 #: kcm-updates/updates.cpp
 msgid "The settings could not be saved: %1"
-msgstr ""
+msgstr "The settings could not be saved: %1"
 
 #: kcm-tweaks/tweaks.cpp
 msgid ""
 "The tweak could not be changed (exit code %1). See the output for details."
 msgstr ""
+"The tweak could not be changed (exit code %1). See the output for details."
 
 #: kcm-tweaks/tweaks.cpp
 msgid ""
 "The tweak could not be changed because um stopped unexpectedly. See the "
 "output for details."
 msgstr ""
+"The tweak could not be changed because um stopped unexpectedly. See the "
+"output for details."
 
 #: kcm-tweaks/tweaks.cpp
 msgid "The tweak could not be changed: %1"
-msgstr ""
+msgstr "The tweak could not be changed: %1"
 
 #: kcm-updates/updates.cpp
 msgid "The update helper (ultramarine-updates) is not installed."
-msgstr ""
+msgstr "The update helper (ultramarine-updates) is not installed."
 
 #: kcm-updates/updates.cpp
 msgid "The update settings could not be loaded. Showing the defaults."
-msgstr ""
+msgstr "The update settings could not be loaded. Showing the defaults."
 
 #: kcm-updates/updates.cpp
 msgid "The update settings could not be loaded. Showing the defaults. %1"
-msgstr ""
+msgstr "The update settings could not be loaded. Showing the defaults. %1"
 
 #: kcm-updates/updates.cpp
 msgid "The updates could not be installed while restarting: %1"
-msgstr ""
+msgstr "The updates could not be installed while restarting: %1"
 
 #: office-installer/installerdialog.cpp
 msgid "This can take a few minutes. You may be asked to authenticate."
-msgstr ""
+msgstr "This can take a few minutes. You may be asked to authenticate."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "This change cannot be undone from here."
-msgstr ""
+msgstr "This change cannot be undone from here."
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@info"
@@ -879,85 +898,88 @@ msgid ""
 "background and takes over the next time you restart. Your device is never "
 "restarted for you."
 msgstr ""
+"This system updates as a whole: the new version is prepared in the "
+"background and takes over the next time you restart. Your device is never "
+"restarted for you."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "This tweak comes with no guarantees. Use it at your own risk."
-msgstr ""
+msgstr "This tweak comes with no guarantees. Use it at your own risk."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "This tweak is marked as “%1” and may be unstable."
-msgstr ""
+msgstr "This tweak is marked as “%1” and may be unstable."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "This tweak is still in development and may be unstable."
-msgstr ""
+msgstr "This tweak is still in development and may be unstable."
 
 #: kcm-tweaks/tweaks.cpp
 msgid "This version of um is too old to manage tweaks from System Settings."
-msgstr ""
+msgstr "This version of um is too old to manage tweaks from System Settings."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "This will run a maintenance script with administrator privileges."
-msgstr ""
+msgstr "This will run a maintenance script with administrator privileges."
 
 #: kcm-updates/updates.cpp
 msgid "Tonight's updates could not be cancelled."
-msgstr ""
+msgstr "Tonight's updates could not be cancelled."
 
 #: kcm-updates/updates.cpp
 msgid "Tonight's updates could not be cancelled: %1"
-msgstr ""
+msgstr "Tonight's updates could not be cancelled: %1"
 
 #: kcm-location/ui/main.qml kcm-updates/ui/ErrorMessage.qml
 msgctxt "@action:button"
 msgid "Try Again"
-msgstr ""
+msgstr "Try Again"
 
 #: kcm-location/data/org.ultramarine.location.policy.in
 msgid "Turn location services on or off"
-msgstr ""
+msgstr "Turn location services on or off"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Turning off…"
-msgstr ""
+msgstr "Turning off…"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Turning on…"
-msgstr ""
+msgstr "Turning on…"
 
 #. name of the page in System Settings
 #: kcm-tweaks/kcm_ultramarine_tweaks.json.in
 msgid "Tweaks"
-msgstr ""
+msgstr "Tweaks"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@title"
 msgid "Tweaks"
-msgstr ""
+msgstr "Tweaks"
 
 #: updater/data/ultramarine-updates-user.desktop.in
 msgid "Ultramarine Updates"
-msgstr ""
+msgstr "Ultramarine Updates"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@label"
 msgid "Update times:"
-msgstr ""
+msgstr "Update times:"
 
 #: updater/schedule.cpp
 msgid "Updates"
-msgstr ""
+msgstr "Updates"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@title"
 msgid "Updates"
-msgstr ""
+msgstr "Updates"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@info"
@@ -965,28 +987,30 @@ msgid ""
 "Updates are downloaded ahead of time and installed the next time you "
 "restart. Your device is never restarted for you."
 msgstr ""
+"Updates are downloaded ahead of time and installed the next time you "
+"restart. Your device is never restarted for you."
 
 #: updater/schedule.cpp
 msgid "Updates are ready"
-msgstr ""
+msgstr "Updates are ready"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Updates are ready to install. Restart to install them."
-msgstr ""
+msgstr "Updates are ready to install. Restart to install them."
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Updates automatically install when you’re not active"
-msgstr ""
+msgstr "Updates automatically install when you’re not active"
 
 #: kcm-updates/updates.cpp
 msgid "Updates could not be scheduled."
-msgstr ""
+msgstr "Updates could not be scheduled."
 
 #: kcm-updates/updates.cpp
 msgid "Updates could not be scheduled: %1"
-msgstr ""
+msgstr "Updates could not be scheduled: %1"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info:tooltip"
@@ -994,6 +1018,8 @@ msgid ""
 "Updates install tonight once the device hasn’t been used for a while and is "
 "plugged in"
 msgstr ""
+"Updates install tonight once the device hasn’t been used for a while and is "
+"plugged in"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@info"
@@ -1001,32 +1027,34 @@ msgid ""
 "Updates install whenever the device isn’t in use. Apply Tonight installs "
 "between 10 PM and 6 AM."
 msgstr ""
+"Updates install whenever the device isn’t in use. Apply Tonight installs "
+"between 10 PM and 6 AM."
 
 #: kcm-updates/updates.cpp
 msgid "Updates installed."
-msgstr ""
+msgstr "Updates installed."
 
 #: kcm-updates/updates.cpp
 msgid "Updating failed (exit code %1)."
-msgstr ""
+msgstr "Updating failed (exit code %1)."
 
 #: kcm-updates/updates.cpp
 msgid "Updating failed (exit code %1). %2"
-msgstr ""
+msgstr "Updating failed (exit code %1). %2"
 
 #: kcm-updates/updates.cpp
 msgid "Updating failed: the update helper stopped unexpectedly."
-msgstr ""
+msgstr "Updating failed: the update helper stopped unexpectedly."
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info tweak stability"
 msgid "Use at your own risk"
-msgstr ""
+msgstr "Use at your own risk"
 
 #: kcm-tweaks/ui/main.qml
 msgctxt "@info"
 msgid "Use “um tweaks” in a terminal"
-msgstr ""
+msgstr "Use “um tweaks” in a terminal"
 
 #: kcm-updates/ui/AdvancedSettings.qml
 msgctxt "@info"
@@ -1034,76 +1062,78 @@ msgid ""
 "Used for automatic updates and Apply Tonight. The device counts as in use "
 "while anyone is logged in with their screen unlocked."
 msgstr ""
+"Used for automatic updates and Apply Tonight. The device counts as in use "
+"while anyone is logged in with their screen unlocked."
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 is a system version"
 msgid "Version %1 is ready. Restart to start using it."
-msgstr ""
+msgstr "Version %1 is ready. Restart to start using it."
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "What?"
-msgstr ""
+msgstr "What?"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Where?"
-msgstr ""
+msgstr "Where?"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Who?"
-msgstr ""
+msgstr "Who?"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Your approximate coordinates and how accurate they are"
-msgstr ""
+msgstr "Your approximate coordinates and how accurate they are"
 
 #: kcm-location/ui/main.qml
 msgctxt "@info"
 msgid "Your entire system"
-msgstr ""
+msgstr "Your entire system"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "Your system is up to date"
-msgstr ""
+msgstr "Your system is up to date"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info"
 msgid "You’re notified when updates are ready to go"
-msgstr ""
+msgstr "You’re notified when updates are ready to go"
 
 #: kcm-updates/ui/main.qml
 msgctxt "@info %1 is the number of updates not listed above"
 msgid "and <b>%1</b> more update"
 msgid_plural "and <b>%1</b> more updates"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "and <b>%1</b> more update"
+msgstr[1] "and <b>%1</b> more updates"
 
 #. comma-separated search keywords for the page in System Settings. Keep the English keywords and add translated ones, separated by commas
 #: kcm-location/kcm_ultramarine_location.json.in
 msgctxt "X-KDE-Keywords"
 msgid "location,geolocation,geoclue,gps,beacondb,privacy,position,where"
-msgstr ""
+msgstr "location,geolocation,geoclue,gps,beacondb,privacy,position,where"
 
 #. comma-separated search keywords for the page in System Settings. Keep the English keywords and add translated ones, separated by commas
 #: kcm-tweaks/kcm_ultramarine_tweaks.json.in
 msgctxt "X-KDE-Keywords"
 msgid "tweaks,ultramarine,um,kernel,nix,system,configuration"
-msgstr ""
+msgstr "tweaks,ultramarine,um,kernel,nix,system,configuration"
 
 #: kcm-tweaks/tweaks.cpp
 msgid "um is not installed."
-msgstr ""
+msgstr "um is not installed."
 
 #. comma-separated search keywords for the page in System Settings. Keep the English keywords and add translated ones, separated by commas
 #: kcm-updates/kcm_ultramarine_updates.json.in
 msgctxt "X-KDE-Keywords"
 msgid "update,updates,upgrade,software,dnf,flatpak,nix,bootc,packages,widgets,plasmoids,restart"
-msgstr ""
+msgstr "update,updates,upgrade,software,dnf,flatpak,nix,bootc,packages,widgets,plasmoids,restart"
 
 #: dgpu-launch/main.cpp
 msgid "“%1” isn't an app."
-msgstr ""
+msgstr "“%1” isn't an app."
