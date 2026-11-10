@@ -194,17 +194,20 @@ namespace UltramarineUpdates {
                 return;
             }
             // skipped while an install runs, which checks and rewrites the cache itself.
-            // The system lock is only taken for a moment to find out, and a manual
-            // Apply waits that long for it (see applyCommand()). The cache has a lock
-            // of its own (see updateBootcStatusCache()).
-            {
-                InstallLock probe(systemLockPath());
-                if (QString error; probe.tryLock(&error) != InstallLock::Result::Acquired) {
-                    if (!error.isEmpty()) {
-                        warn(error);
-                    }
-                    return;
+            // Both locks are held for the whole check, so a manual Apply can't run
+            // rpm-ostree alongside it. Apply waits for the check instead of giving up,
+            // see applyCommand(). The cache has a lock of its own (see updateBootcStatusCache()).
+            InstallLock systemLock(systemLockPath());
+            if (QString error; systemLock.tryLock(&error) != InstallLock::Result::Acquired) {
+                if (!error.isEmpty()) {
+                    warn(error);
                 }
+                return;
+            }
+            // only tells Apply what holds the system lock, so it's fine if it can't be taken
+            InstallLock checkLock(imageCheckLockPath());
+            if (QString error; checkLock.tryLock(&error) == InstallLock::Result::Failed) {
+                warn(error);
             }
             // cheap, and keeps what the KCM shows current after restarting or a manual upgrade
             updateBootcStatusCache();
@@ -237,6 +240,19 @@ namespace UltramarineUpdates {
         }
 
     } // namespace
+
+    QString lastInstallPath(const QString &stateDir) { return stateDir + "/last-automatic-update"_L1; }
+
+    void recordManualInstall(const bool userManager, const QDateTime &now) {
+        const QString stateDir = userManager ? userStateDir() : systemStateDir();
+        if (QString warning; !writeTimestamp(lastInstallPath(stateDir), now, &warning)) {
+            warn(warning);
+        }
+        // tonight's timer would stop by itself on its next run, but the KCM checks right away
+        if (QString warning; !cancelTonight(userManager, &warning)) {
+            warn(warning);
+        }
+    }
 
     bool installFromTimer(const QString &lockPath, const QString &stateDir, const QString &installedPath,
                           const QDateTime &now, const std::function<ApplyResult()> &install, bool *installed,
@@ -414,9 +430,11 @@ namespace UltramarineUpdates {
             *error = i18nc("@info:shell", "run-scheduled is run by the system timers as root.");
             return false;
         }
-        Settings settings;
-        if (!loadSettings(&settings, error)) {
-            return false;
+        // broken settings shouldn't stop updates, or the image check, until someone fixes them
+        QString settingsWarning;
+        const Settings settings = loadSettingsOrDefaults(&settingsWarning);
+        if (!settingsWarning.isEmpty()) {
+            warn(settingsWarning);
         }
         const QDateTime now = QDateTime::currentDateTime();
         // also with automatic updates off, so "Ask me" notifies about new images
@@ -425,7 +443,7 @@ namespace UltramarineUpdates {
             return true;
         }
         const QString stateDir = systemStateDir();
-        const QString installed = stateDir + "/last-automatic-update"_L1;
+        const QString installed = lastInstallPath(stateDir);
         if (tonight && tonightAlreadyInstalled(readTimestamp(installed), readTimestamp(tonightScheduledPath(false)))) {
             say(i18nc("@info:status", "Updates were already installed since Apply Tonight was scheduled."));
             systemctl(false, {u"stop"_s, tonightTimer + ".timer"_L1});
@@ -471,9 +489,11 @@ namespace UltramarineUpdates {
             *error = i18nc("@info:shell", "run-user is run by the user timers.");
             return false;
         }
-        Settings settings;
-        if (!loadSettings(&settings, error)) {
-            return false;
+        // broken settings shouldn't stop updates or notifications until someone fixes them
+        QString settingsWarning;
+        const Settings settings = loadSettingsOrDefaults(&settingsWarning);
+        if (!settingsWarning.isEmpty()) {
+            warn(settingsWarning);
         }
         const QDateTime now = QDateTime::currentDateTime();
         QList<LoginSession> sessions;
@@ -499,7 +519,7 @@ namespace UltramarineUpdates {
         }
 
         const QString stateDir = userStateDir();
-        const QString installed = stateDir + "/last-automatic-update"_L1;
+        const QString installed = lastInstallPath(stateDir);
         if (tonight && tonightAlreadyInstalled(readTimestamp(installed), readTimestamp(tonightScheduledPath(true)))) {
             say(i18nc("@info:status", "Your updates were already installed since Apply Tonight was scheduled."));
             systemctl(true, {u"stop"_s, tonightUserTimer + ".timer"_L1});

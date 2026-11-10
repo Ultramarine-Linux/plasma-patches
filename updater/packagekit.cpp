@@ -143,7 +143,7 @@ namespace UltramarineUpdates {
         if (!details.isEmpty()) {
             return details;
         }
-        return code.isEmpty() ? u"unknown error"_s : code;
+        return code.isEmpty() ? i18nc("@info:status", "unknown error") : code;
     }
 
     QString lastOfflineUpdateError(const PackageKitPaths &paths) {

@@ -54,14 +54,25 @@ namespace UltramarineUpdates {
     /// user's manager unless run as root
     ScheduleStatus tonightStatus();
 
-    /// whether updates were @p installed (by the automatic timer) since Apply
-    /// Tonight was @p scheduled, so tonight's timer has nothing left to do
+    /// whether updates were @p installed (by the automatic timer or by hand) since
+    /// Apply Tonight was @p scheduled, so tonight's timer has nothing left to do
     bool tonightAlreadyInstalled(const std::optional<QDateTime> &installed, const std::optional<QDateTime> &scheduled);
 
     /// decides whether a timer run should install updates now. Sets @p reason
     /// when it shouldn't. Separate from the side effects so it can be tested.
     bool readyToInstall(const Settings &settings, bool tonight, bool inUse, std::chrono::seconds inactive,
                         bool installedRecently, const QDateTime &now, QString *reason = nullptr);
+
+    /// where the timers remember their last install in @p stateDir (see installFromTimer())
+    QString lastInstallPath(const QString &stateDir);
+
+    /**
+     * after a manual install of the system's (as root) or the user's (@p userManager)
+     * updates: remembers it like the timers' installs, so tonight's timer has
+     * nothing left to do and automatic updates wait for their next regular run,
+     * and stops tonight's timer
+     */
+    void recordManualInstall(bool userManager, const QDateTime &now);
 
     /**
      * runs @p install for a timer once it's ready, unless an install is already

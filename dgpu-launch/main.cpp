@@ -10,6 +10,7 @@
 // PrefersNonDefaultGPU) starts DBusActivatable apps over D-Bus instead, which
 // drops the environment, so they'd silently run on the integrated GPU.
 
+#include <KDesktopFile>
 #include <KIO/CommandLauncherJob>
 #include <KIO/DesktopExecParser>
 #include <KLocalizedString>
@@ -58,6 +59,13 @@ int main(int argc, char **argv) {
     const auto service = KService::Ptr(new KService(url.toLocalFile()));
     if (!url.isLocalFile() || !service->isValid() || !service->isApplication()) {
         return fail(i18n("“%1” isn't an app.", url.toDisplayString(QUrl::PreferLocalFile)));
+    }
+    // running the Exec line directly skips KIO's prompt for untrusted desktop files, so only
+    // run ones it would run without asking: installed apps, or executable or root-owned files
+    if (!KDesktopFile::isAuthorizedDesktopFile(url.toLocalFile())) {
+        return fail(i18n("“%1” isn't a trusted app. Only installed apps, or desktop files marked as executable, "
+                         "can be launched on the dedicated graphics card.",
+                         url.toDisplayString(QUrl::PreferLocalFile)));
     }
 
     // handles field codes, Terminal=true and the like, the same way KIO does

@@ -4,6 +4,8 @@
 
 #include "activity.h"
 
+#include <KLocalizedString>
+
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -311,7 +313,7 @@ namespace UltramarineUpdates {
     bool writeTimestamp(const QString &path, const QDateTime &time, QString *error) {
         if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
             if (error) {
-                *error = u"could not create %1"_s.arg(QFileInfo(path).absolutePath());
+                *error = i18nc("@info:status %1 is a directory", "Could not create %1", QFileInfo(path).absolutePath());
             }
             return false;
         }

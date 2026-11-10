@@ -22,7 +22,7 @@ enum class LocationState : std::uint8_t {
     DisabledRuntime,
     /// GeoClue isn't installed
     Unavailable,
-    /// systemd couldn't be asked, so the state isn't known
+    /// systemd couldn't be asked, or the unit file is bad, so the state isn't known
     ReadFailed,
 };
 

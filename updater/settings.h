@@ -53,6 +53,12 @@ namespace UltramarineUpdates {
     /// error, @p settings holds the defaults.
     bool loadSettings(Settings *settings, QString *error);
 
+    /**
+     * like loadSettings(), but broken settings never stop anything: they give the
+     * defaults, and @p warning says what's wrong. @p warning is empty if they were fine.
+     */
+    Settings loadSettingsOrDefaults(QString *warning);
+
     /// writes the settings world-readable, so the KCM and user timers can read them
     bool saveSettings(const Settings &settings, QString *error);
 

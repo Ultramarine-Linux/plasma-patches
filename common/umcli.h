@@ -14,6 +14,13 @@
 #define UM_EXECUTABLE "/usr/bin/um"
 #endif
 
+// tests point this at a fake um. kcm_common already sets UM_EXECUTABLE for every target, so
+// a second -D for it would only clash.
+#ifdef UM_TEST_EXECUTABLE
+#undef UM_EXECUTABLE
+#define UM_EXECUTABLE UM_TEST_EXECUTABLE
+#endif
+
 /// helpers for invoking the um CLI (Tweaks KCM)
 namespace UmCli {
 

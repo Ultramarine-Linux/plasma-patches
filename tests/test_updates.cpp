@@ -7,6 +7,10 @@
 
 #include "updates.h"
 
+// the helper's (updater/), to check the KCM's arguments against
+#include "cli.h"
+#include "settings.h"
+
 namespace {
     class UpdatesTest : public QObject {
         Q_OBJECT
@@ -26,6 +30,7 @@ namespace {
         static void parsesUpgradeSettings();
         static void parsesScheduleStatus();
         static void upgradeSettingsIgnoreUnusedWindow();
+        static void helperAcceptsUpgradeSettingsArguments();
         static void installErrorMessages();
         static void previewModelLimitsRows();
         static void composesErrorMessages();
@@ -265,6 +270,45 @@ void UpdatesTest::parsesUpgradeSettings() {
     QVERIFY(parseUpgradeSettings("{}", &settings));
     QVERIFY(settings == UpgradeSettings{});
     QVERIFY(!parseUpgradeSettings("Automatic updates: true", &settings));
+}
+
+void UpdatesTest::helperAcceptsUpgradeSettingsArguments() {
+    const auto check = [](const UpgradeSettings &settings) {
+        const QStringList arguments = upgradeSettingsArguments(settings);
+        QCommandLineParser parser;
+        UltramarineUpdates::setUpParser(parser);
+        QVERIFY2(parser.parse(QStringList{QStringLiteral("ultramarine-updates")} + arguments),
+                 qPrintable(parser.errorText()));
+        QCOMPARE(parser.positionalArguments(), QStringList{arguments.constFirst()});
+        const QString invalid = UltramarineUpdates::checkOptions(arguments.constFirst(), parser);
+        QVERIFY2(invalid.isEmpty(), qPrintable(invalid));
+
+        UltramarineUpdates::Settings parsed;
+        QString error;
+        QVERIFY2(UltramarineUpdates::parseWindow(parser.value(QStringLiteral("window")), &parsed.windowStart,
+                                                 &parsed.windowEnd, &error),
+                 qPrintable(error));
+        parsed.inactiveMinutes = parser.value(QStringLiteral("inactive-minutes")).toInt();
+        const QString validation = parsed.validate();
+        QVERIFY2(validation.isEmpty(), qPrintable(validation));
+        QCOMPARE(parsed.windowStart.isEmpty(), !settings.windowEnabled);
+    };
+
+    check(UpgradeSettings{});
+    UpgradeSettings settings;
+    settings.automatic = false;
+    settings.offline = true;
+    settings.inactiveMinutes = 0;
+    check(settings);
+    settings.inactiveMinutes = 24 * 60;
+    settings.windowEnabled = true;
+    settings.windowStart = 22 * 60;
+    settings.windowEnd = 6 * 60 + 30;
+    check(settings);
+    // midnight and the last minute of the day, which need their leading zeros
+    settings.windowStart = 0;
+    settings.windowEnd = 24 * 60 - 1;
+    check(settings);
 }
 
 void UpdatesTest::parsesScheduleStatus() {

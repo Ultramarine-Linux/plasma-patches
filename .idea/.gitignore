@@ -2,4 +2,9 @@ workspace.xml
 usage.statistics.xml
 shelf/
 *.iml
-
+# per-machine settings that CLion and its plugins rewrite
+QtSettings.xml
+editor.xml
+sarifViewer.xml
+modules.xml
+misc.xml

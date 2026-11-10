@@ -10,13 +10,11 @@
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
-#include <QDBusReply>
 #include <QDBusVariant>
 #include <QLocale>
 
 #include <algorithm>
 #include <array>
-#include <optional>
 
 using namespace Qt::StringLiterals;
 
@@ -38,6 +36,8 @@ namespace OfficeInstaller {
         constexpr uint ExitKeyRequired = 4;
         constexpr uint ExitNeedUntrusted = 8;
         constexpr uint ExitCancelledPriority = 9;
+        // PkErrorEnum
+        constexpr uint ErrorTransactionCancelled = 17;
         // PkFilterEnum, as bit numbers: native arch, no source packages, newest version only
         constexpr qulonglong FilterNotSource = 1ULL << 21U;
         constexpr qulonglong FilterArch = 1ULL << 18U;
@@ -64,19 +64,6 @@ namespace OfficeInstaller {
                      onRepoSignatureRequired(QString, QString, QString, QString, QString, QString, QString, uint))},
                 {.name = "Finished", .slot = SLOT(onFinished(uint, uint))},
             }};
-        }
-
-        /// the daemon's major version, which also starts it if it isn't running
-        std::optional<uint> daemonVersionMajor(QString *error) {
-            QDBusMessage call = QDBusMessage::createMethodCall(Service, u"/org/freedesktop/PackageKit"_s,
-                                                               u"org.freedesktop.DBus.Properties"_s, u"Get"_s);
-            call << Service << u"VersionMajor"_s;
-            const QDBusReply<QDBusVariant> reply = QDBusConnection::systemBus().call(call);
-            if (!reply.isValid()) {
-                *error = reply.error().message();
-                return std::nullopt;
-            }
-            return reply.value().variant().toUInt();
         }
     } // namespace
 
@@ -116,27 +103,40 @@ namespace OfficeInstaller {
         }
     }
 
+    TransactionFailure transactionFailure(const uint exit, const uint errorCode, const QString &error,
+                                          const QString &unsignedRepository) {
+        // a higher priority transaction canceling this one isn't the user's cancel
+        if (exit != ExitCancelledPriority && (exit == ExitCancelled || errorCode == ErrorTransactionCancelled)) {
+            return {.canceled = true, .error = {}};
+        }
+        return {.canceled = false, .error = failureReason(exit, error, unsignedRepository)};
+    }
+
     PackageKitInstaller::PackageKitInstaller(const QStringList &packages, QObject *parent) :
         Installer(parent), m_packages(packages) {}
 
     void PackageKitInstaller::start() {
+        if (m_step != Step::Idle) {
+            return;
+        }
         m_resolved.clear();
-        m_error.clear();
         m_canceled = false;
         m_step = Step::Resolving;
-        QString error;
-        const std::optional<uint> version = daemonVersionMajor(&error);
-        if (!version) {
-            fail(error);
-            return;
-        }
-        if (*version != SupportedVersionMajor) {
-            fail(i18nc("@info %1 is a version number", "PackageKit %1 isn't supported. Only PackageKit 1 is.",
-                       *version));
-            return;
-        }
-        startTransaction(u"Resolve"_s,
-                         {QVariant::fromValue(FilterArch | FilterNotSource | FilterNewest), QVariant(m_packages)});
+        ++m_call;
+        // asking for the version also starts the daemon if it isn't running
+        QDBusMessage version = QDBusMessage::createMethodCall(Service, u"/org/freedesktop/PackageKit"_s,
+                                                              u"org.freedesktop.DBus.Properties"_s, u"Get"_s);
+        version << Service << u"VersionMajor"_s;
+        watch(QDBusConnection::systemBus().asyncCall(version), [this](const QDBusMessage &reply) {
+            const uint major = reply.arguments().value(0).value<QDBusVariant>().variant().toUInt();
+            if (major != SupportedVersionMajor) {
+                fail(i18nc("@info %1 is a version number", "PackageKit %1 isn't supported. Only PackageKit 1 is.",
+                           major));
+                return;
+            }
+            startTransaction(u"Resolve"_s,
+                             {QVariant::fromValue(FilterArch | FilterNotSource | FilterNewest), QVariant(m_packages)});
+        });
     }
 
     void PackageKitInstaller::cancel() {
@@ -144,56 +144,82 @@ namespace OfficeInstaller {
             return;
         }
         m_canceled = true;
-        if (m_transaction.path().isEmpty()) {
+        if (!m_methodCalled) {
+            // nothing is running in PackageKit yet, so stop here. A transaction that was already
+            // created is never started, and the daemon drops it on its own
+            finish(false, true, {});
             return;
         }
         QDBusConnection::systemBus().asyncCall(
             QDBusMessage::createMethodCall(Service, m_transaction.path(), TransactionInterface, u"Cancel"_s));
     }
 
-    bool PackageKitInstaller::startTransaction(const QString &method, const QVariantList &arguments) {
-        QDBusConnection bus = QDBusConnection::systemBus();
+    void PackageKitInstaller::watch(const QDBusPendingCall &call,
+                                    const std::function<void(const QDBusMessage &reply)> &handle) {
+        // parented to the installer, so a reply that comes after it's gone is never handled
+        auto *watcher = new QDBusPendingCallWatcher(call, this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this,
+                [this, handle, generation = m_call](QDBusPendingCallWatcher *watcher) {
+                    watcher->deleteLater();
+                    if (generation != m_call || m_step == Step::Idle) {
+                        return;
+                    }
+                    if (const QDBusMessage reply = watcher->reply(); reply.type() == QDBusMessage::ErrorMessage) {
+                        fail(reply.errorMessage());
+                    } else {
+                        handle(reply);
+                    }
+                });
+    }
+
+    void PackageKitInstaller::disconnectTransaction() {
         if (!m_transaction.path().isEmpty()) {
+            QDBusConnection bus = QDBusConnection::systemBus();
             for (const auto &[name, slot]: transactionSignals()) {
                 bus.disconnect(Service, m_transaction.path(), TransactionInterface, QString::fromLatin1(name), this,
                                slot);
             }
-            m_transaction = {};
         }
+        m_transaction = {};
+        m_methodCalled = false;
+    }
+
+    void PackageKitInstaller::startTransaction(const QString &method, const QVariantList &arguments) {
+        disconnectTransaction();
+        // the last transaction's replies don't matter anymore
+        ++m_call;
         // what went wrong is told per transaction, so don't carry it over from the last one
+        m_errorCode = 0;
         m_error.clear();
         m_unsignedRepository.clear();
 
-        const QDBusReply<QDBusObjectPath> transaction = bus.call(
-            QDBusMessage::createMethodCall(Service, u"/org/freedesktop/PackageKit"_s, Service, u"CreateTransaction"_s));
-        if (!transaction.isValid()) {
-            fail(transaction.error().message());
-            return false;
-        }
-        m_transaction = transaction.value();
-        const QString path = m_transaction.path();
-        for (const auto &[name, slot]: transactionSignals()) {
-            bus.connect(Service, path, TransactionInterface, QString::fromLatin1(name), this, slot);
-        }
+        QDBusConnection bus = QDBusConnection::systemBus();
+        watch(bus.asyncCall(QDBusMessage::createMethodCall(Service, u"/org/freedesktop/PackageKit"_s, Service,
+                                                           u"CreateTransaction"_s)),
+              [this, method, arguments](const QDBusMessage &reply) {
+                  QDBusConnection bus = QDBusConnection::systemBus();
+                  m_transaction = reply.arguments().value(0).value<QDBusObjectPath>();
+                  const QString path = m_transaction.path();
+                  if (path.isEmpty()) {
+                      fail({});
+                      return;
+                  }
+                  for (const auto &[name, slot]: transactionSignals()) {
+                      bus.connect(Service, path, TransactionInterface, QString::fromLatin1(name), this, slot);
+                  }
 
-        // interactive lets polkit ask for a password instead of refusing
-        QDBusMessage hints = QDBusMessage::createMethodCall(Service, path, TransactionInterface, u"SetHints"_s);
-        hints << QStringList{u"interactive=true"_s, u"locale=%1"_s.arg(QLocale().name())};
-        if (const QDBusMessage reply = bus.call(hints); reply.type() == QDBusMessage::ErrorMessage) {
-            fail(reply.errorMessage());
-            return false;
-        }
-
-        QDBusMessage call = QDBusMessage::createMethodCall(Service, path, TransactionInterface, method);
-        call.setArguments(arguments);
-        const auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(call, CallTimeout), this);
-        connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *watcher) {
-            watcher->deleteLater();
-            if (const QDBusPendingReply<> reply = *watcher; reply.isError()) {
-                fail(reply.error().message());
-            }
-        });
-        return true;
+                  // interactive lets polkit ask for a password instead of refusing
+                  QDBusMessage hints =
+                      QDBusMessage::createMethodCall(Service, path, TransactionInterface, u"SetHints"_s);
+                  hints << QStringList{u"interactive=true"_s, u"locale=%1"_s.arg(QLocale().name())};
+                  watch(bus.asyncCall(hints), [this, path, method, arguments](const QDBusMessage &) {
+                      QDBusMessage call = QDBusMessage::createMethodCall(Service, path, TransactionInterface, method);
+                      call.setArguments(arguments);
+                      m_methodCalled = true;
+                      // only an error is handled here. The result comes through the transaction's signals
+                      watch(QDBusConnection::systemBus().asyncCall(call, CallTimeout), [](const QDBusMessage &) {});
+                  });
+              });
     }
 
     void PackageKitInstaller::onPackage(const uint info, const QString &packageId, const QString &summary) {
@@ -206,7 +232,7 @@ namespace OfficeInstaller {
     }
 
     void PackageKitInstaller::onErrorCode(const uint code, const QString &details) {
-        Q_UNUSED(code)
+        m_errorCode = code;
         m_error = details;
     }
 
@@ -231,20 +257,19 @@ namespace OfficeInstaller {
             return;
         }
         if (exit != ExitSuccess) {
-            if (exit == ExitCancelled) {
-                m_canceled = true;
-            }
-            fail(failureReason(exit, m_error, m_unsignedRepository));
+            // a cancel that PackageKit refused doesn't hide why the transaction failed
+            const auto [canceled, error] = transactionFailure(exit, m_errorCode, m_error, m_unsignedRepository);
+            finish(false, canceled, error);
             return;
         }
         if (m_step == Step::Installing) {
-            m_step = Step::Idle;
-            Q_EMIT finished(true, false, {});
+            finish(true, false, {});
             return;
         }
 
+        // canceled while resolving, which finished anyway: don't start installing
         if (m_canceled) {
-            fail({});
+            finish(false, true, {});
             return;
         }
         QStringList missing;
@@ -255,20 +280,21 @@ namespace OfficeInstaller {
             return;
         }
         if (ids.isEmpty()) {
-            m_step = Step::Idle;
-            Q_EMIT finished(true, false, {});
+            finish(true, false, {});
             return;
         }
         m_step = Step::Installing;
         startTransaction(u"InstallPackages"_s, {QVariant::fromValue(FlagOnlyTrusted), QVariant(ids)});
     }
 
-    void PackageKitInstaller::fail(const QString &error) {
+    void PackageKitInstaller::finish(const bool success, const bool canceled, const QString &error) {
         if (m_step == Step::Idle) {
             return;
         }
         m_step = Step::Idle;
-        Q_EMIT finished(false, m_canceled, error);
+        ++m_call;
+        disconnectTransaction();
+        Q_EMIT finished(success, canceled, error);
     }
 
 } // namespace OfficeInstaller

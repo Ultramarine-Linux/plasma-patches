@@ -13,9 +13,14 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <climits>
+#include <cmath>
 #include <ranges>
 #include <utility>
 
+#include <signal.h>
+
+#include "detachedprocess.h"
 #include "tweaks.h"
 #include "umcli.h"
 
@@ -40,21 +45,6 @@ namespace {
     // how often the output of a running change is read
     constexpr int OutputPollMs = 200;
 
-    /**
-     * starts children without stdin and, where Qt can, in a new session without a controlling
-     * terminal. um picks sudo when it has a terminal, which would prompt where nobody sees it
-     * if System Settings was started from one. SIGPIPE is ignored too, which QProcess would
-     * otherwise reset to the default (exit) in the child.
-     */
-    void detachFromTerminal(QProcess *process) {
-        process->setStandardInputFile(QProcess::nullDevice());
-        QProcess::UnixProcessFlags flags = QProcess::UnixProcessFlag::IgnoreSigPipe;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-        flags |= QProcess::UnixProcessFlag::CreateNewSession;
-#endif
-        process->setUnixProcessParameters(flags);
-    }
-
     /// returns the last line of @p output that um logged an error on, without the timestamp
     QString lastUmError(const QString &output) {
         for (const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
@@ -73,8 +63,20 @@ int tweaksOutputVersion(const QString &output) {
     if (error.error != QJsonParseError::NoError || !document.isObject()) {
         return 0;
     }
+    const QJsonValue version = document.object().value(QStringLiteral("version"));
     // um builds from before the version field was added print the same format as version 1
-    return document.object().value(QStringLiteral("version")).toInt(1);
+    if (version.isUndefined()) {
+        return 1;
+    }
+    // a string, a fraction or null isn't a version this KCM can compare, so it isn't read as 1
+    if (!version.isDouble()) {
+        return UnrecognizedTweaksOutputVersion;
+    }
+    const double number = version.toDouble();
+    if (number < 1 || number > INT_MAX || std::floor(number) != number) {
+        return UnrecognizedTweaksOutputVersion;
+    }
+    return static_cast<int>(number);
 }
 
 bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
@@ -245,8 +247,8 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
     // tweaks are applied immediately through um, not through the Apply button
     setButtons(NoAdditionalButton);
 
-    detachFromTerminal(&m_listProcess);
-    detachFromTerminal(m_changeProcess);
+    DetachedProcess::detachFromTerminal(&m_listProcess);
+    DetachedProcess::detachFromTerminal(m_changeProcess);
 
     connect(&m_listProcess, &QProcess::finished, this, &Tweaks::listFinished);
     connect(&m_listProcess, &QProcess::errorOccurred, this, [this](const QProcess::ProcessError error) {
@@ -284,6 +286,12 @@ Tweaks::~Tweaks() {
     // half-destroyed module. Listing is read-only, so stop it here instead.
     m_listProcess.disconnect(this);
     if (m_listProcess.state() != QProcess::NotRunning) {
+        // um leads its own process group (see detachFromTerminal()), so this also stops the
+        // check.sh scripts it runs, which would otherwise be left behind
+        if (const qint64 pid = m_listProcess.processId(); pid > 0) {
+            ::kill(static_cast<pid_t>(-pid), SIGKILL);
+        }
+        // in case um hasn't called setsid() yet, so the group doesn't exist
         m_listProcess.kill();
         m_listProcess.waitForFinished();
     }
@@ -421,9 +429,14 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
         // older um releases have no --json flag, so point that out rather than showing a parse error
         if (stdErr.contains(QLatin1String("flag provided but not defined"))) {
             setListError(i18n("This version of um is too old to manage tweaks from System Settings."));
-        } else if (exitCode == 0 && tweaksOutputVersion(stdOut) > SupportedTweaksOutputVersion) {
+        } else if (const int version =
+                       exitStatus == QProcess::NormalExit && exitCode == 0 ? tweaksOutputVersion(stdOut) : 0;
+                   version > SupportedTweaksOutputVersion) {
             setListError(i18n("This version of um is too new for this version of System Settings. Update "
                               "System Settings to manage tweaks."));
+        } else if (version == UnrecognizedTweaksOutputVersion) {
+            setListError(i18n("um listed the tweaks with a format version System Settings doesn't recognize. "
+                              "Check that um and System Settings are up to date."));
         } else {
             // um's errors go through Go's log package, which puts a timestamp in front
             QStringList errorLines;

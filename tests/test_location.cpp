@@ -25,7 +25,8 @@ void LocationTest::parsesUnitFileStates() {
     QCOMPARE(parseUnitFileState(QStringLiteral("masked")), LocationState::Disabled);
     QCOMPARE(parseUnitFileState(QStringLiteral("masked-runtime")), LocationState::DisabledRuntime);
     QCOMPARE(parseUnitFileState(QStringLiteral("not-found")), LocationState::Unavailable);
-    QCOMPARE(parseUnitFileState(QStringLiteral("bad")), LocationState::Unavailable);
+    // a unit file systemd can't parse means GeoClue is installed, so it isn't "not installed"
+    QCOMPARE(parseUnitFileState(QStringLiteral("bad")), LocationState::ReadFailed);
     QCOMPARE(parseUnitFileState(QString()), LocationState::Unavailable);
 }
 

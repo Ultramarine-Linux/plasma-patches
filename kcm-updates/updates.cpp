@@ -173,6 +173,9 @@ Updates::~Updates() {
 QProcess *Updates::createProcess(const bool changesSystem) {
     auto *process = new QProcess(this);
     process->setProperty(changesSystemProperty, changesSystem);
+    // nothing is ever written to it, so a helper (or a tool it runs) asking for input gets
+    // EOF instead of waiting forever
+    process->setStandardInputFile(QProcess::nullDevice());
     return process;
 }
 
@@ -661,6 +664,8 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
         // even if one part fails. Nothing changed if authentication was refused.
         if (!normalExit || !Pkexec::isAuthenticationFailure(exitCode)) {
             refresh();
+            // an install makes tonight's run a no-op, so Apply Tonight may be offered again
+            refreshSchedule();
         }
         break;
     }

@@ -42,6 +42,12 @@ um_translate_policy(${_data}/org.ultramarine.location.policy.in ${_generated}/or
 
 cmake_path(GET ULTRAMARINE_LOCATION_HELPER PARENT_PATH _helper_dir)
 install(PROGRAMS ${_generated}/ultramarine-location-helper DESTINATION ${_helper_dir})
-# polkit only reads actions from /usr/share/polkit-1/actions
+# installed under the prefix like everything else, but polkit only reads actions from
+# /usr/share/polkit-1/actions, so with another prefix the action has to be copied or linked
+# there by hand (see docs/location.md)
+if (NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr")
+    message(WARNING "polkit only reads actions from /usr/share/polkit-1/actions, so the location "
+            "helper's action installed under ${CMAKE_INSTALL_PREFIX} won't be used until it's copied there")
+endif ()
 install(FILES ${_generated}/org.ultramarine.location.policy
         DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/actions)

@@ -29,7 +29,13 @@ struct TweakItem {
 /// the `version` of `um tweaks list --json` output this KCM understands
 constexpr int SupportedTweaksOutputVersion = 1;
 
-/// returns the `version` of `um tweaks list --json` output, or 0 if it isn't valid JSON
+/// returned by tweaksOutputVersion() when `version` isn't a positive whole number
+constexpr int UnrecognizedTweaksOutputVersion = -1;
+
+/**
+ * returns the `version` of `um tweaks list --json` output: 1 when it has none, 0 if it isn't a
+ * JSON object, or UnrecognizedTweaksOutputVersion if `version` isn't a positive whole number
+ */
 [[nodiscard]] int tweaksOutputVersion(const QString &output);
 
 /**

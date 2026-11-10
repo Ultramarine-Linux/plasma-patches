@@ -12,6 +12,7 @@
 
 #include <utility>
 
+#include "detachedprocess.h"
 #include "location.h"
 #include "pkexec.h"
 
@@ -37,8 +38,12 @@ LocationState parseUnitFileState(const QString &state) {
     if (state == QLatin1String("masked-runtime")) {
         return LocationState::DisabledRuntime;
     }
-    if (state.isEmpty() || state == QLatin1String("not-found") || state == QLatin1String("bad")) {
+    if (state.isEmpty() || state == QLatin1String("not-found")) {
         return LocationState::Unavailable;
+    }
+    // the unit file exists but systemd couldn't parse it, so GeoClue is installed but broken
+    if (state == QLatin1String("bad")) {
+        return LocationState::ReadFailed;
     }
     // static (the usual, as GeoClue is D-Bus activated), enabled, disabled, …
     return LocationState::Enabled;
@@ -126,7 +131,10 @@ void Location::load() {
         const LocationState state =
             reply.isError() ? parseUnitFileStateError(reply.error().name()) : parseUnitFileState(reply.value());
         if (state == LocationState::ReadFailed) {
-            m_readError = i18n("Could not read the state of location services: %1", reply.error().message());
+            m_readError = reply.isError()
+                ? i18n("Could not read the state of location services: %1", reply.error().message())
+                : i18n("Could not read the state of location services: systemd reports geoclue.service as “%1”.",
+                       reply.value());
             setErrorMessage(m_readError);
         } else if (const QString readError = std::exchange(m_readError, {});
                    !readError.isEmpty() && m_errorMessage == readError) {
@@ -159,16 +167,10 @@ void Location::setLocationEnabled(const bool enabled) {
     m_helper = process;
     process->setProcessChannelMode(QProcess::MergedChannels);
     // keep pkexec off System Settings' terminal, if it has one, so it asks through the
-    // polkit agent instead of falling back to a text prompt
-    process->setStandardInputFile(QProcess::nullDevice());
-    // QProcess resets SIGPIPE to the default (exit) in the child. Ignore it, so if System
-    // Settings quits mid-change, systemctl printing "Created symlink" to the closed pipe
-    // can't kill it before it stops GeoClue.
-    QProcess::UnixProcessFlags flags = QProcess::UnixProcessFlag::IgnoreSigPipe;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    flags |= QProcess::UnixProcessFlag::CreateNewSession;
-#endif
-    process->setUnixProcessParameters(flags);
+    // polkit agent instead of falling back to a text prompt. SIGPIPE is ignored too, so if
+    // System Settings quits mid-change, systemctl printing "Created symlink" to the closed
+    // pipe can't kill it before it stops GeoClue.
+    DetachedProcess::detachFromTerminal(process);
     connect(process, &QProcess::finished, this, &Location::helperFinished);
     connect(process, &QProcess::errorOccurred, this, [this, process](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {

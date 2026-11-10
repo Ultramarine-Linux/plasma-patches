@@ -20,10 +20,11 @@ namespace OfficeInstaller {
      * itself, not through a parent type: a .docx is a zip, but Ark isn't an
      * office suite. Returns false without opening anything if there are no
      * URLs or any URL has no such app. Otherwise calls @p done in @p context once
-     * every app has started or failed to, with the errors (empty if there were none).
+     * every app has started or failed to, with the errors (empty if there were none)
+     * and the URLs whose app failed to start.
      */
     bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context,
-                               const std::function<void(const QString &error)> &done);
+                               const std::function<void(const QString &error, const QList<QUrl> &failed)> &done);
 
     /**
      * an installed office suite, found by what opens the common document,

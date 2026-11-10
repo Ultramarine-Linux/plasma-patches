@@ -6,7 +6,6 @@ AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignOperands: DontAlign
 AlignTrailingComments: false
-AlwaysBreakTemplateDeclarations: Yes
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
@@ -26,9 +25,8 @@ BraceWrapping:
   SplitEmptyNamespace: true
 BreakBeforeBraces: Custom
 BreakConstructorInitializers: AfterColon
-BreakConstructorInitializersBeforeComma: false
+BreakTemplateDeclarations: Yes
 ColumnLimit: 120
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
 IncludeCategories:
   - Regex: "^<.*"
     Priority: 1
@@ -43,6 +41,7 @@ MacroBlockBegin: ""
 MacroBlockEnd: ""
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
+PackConstructorInitializers: BinPack
 SpaceAfterCStyleCast: true
 SpaceAfterTemplateKeyword: false
 SpaceBeforeRangeBasedForLoopColon: false

@@ -242,7 +242,8 @@ namespace UltramarineUpdates {
         }
         const CommandResult result = capture(rpmOstree, {u"status"_s, u"--json"_s});
         if (!result.succeeded()) {
-            *error = u"rpm-ostree status failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
+            *error = i18nc("@info:status %1 is an error message", "rpm-ostree status failed: %1",
+                           QString::fromUtf8(result.err).trimmed());
             return {};
         }
         const QString backend = QStandardPaths::findExecutable(u"bootc"_s).isEmpty() ? u"rpm-ostree"_s : u"bootc"_s;

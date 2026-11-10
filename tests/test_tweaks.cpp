@@ -6,7 +6,11 @@
 
 #include <KPluginMetaData>
 
+#include <QDir>
+#include <QElapsedTimer>
+#include <QFile>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QTest>
 
 #include "tweaks.h"
@@ -17,6 +21,18 @@ namespace {
         TweakItem item;
         item.id = id;
         return item;
+    }
+
+    /// returns whether process @p pid is gone, counting a zombie as gone
+    bool processGone(const qint64 pid) {
+        QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+        if (!stat.open(QIODevice::ReadOnly)) {
+            return true;
+        }
+        // the state comes after the command name, which is in parentheses
+        const QByteArray line = stat.readAll();
+        const qsizetype end = line.lastIndexOf(')');
+        return end < 0 || line.mid(end + 2, 1) == "Z";
     }
 } // namespace
 
@@ -35,7 +51,23 @@ namespace {
         static void stripsGoLogTimestamps();
         static void reportsChangeErrors();
         static void composesErrors();
-        static void destroyingWhileListingIsSafe();
+        static void rejectsUnrecognizedVersions();
+        void init();
+        void cleanup();
+        void listsTweaks();
+        void listFailures_data();
+        void listFailures();
+        void changeSucceeds();
+        void changeFails();
+        void showsChangeProgress();
+        void destroyingWhileListingIsSafe();
+        void destroyingWhileChangingLetsItFinish();
+
+    private:
+        /// creates the module and waits for its first list
+        std::unique_ptr<Tweaks> loadedTweaks();
+
+        std::unique_ptr<QTemporaryDir> m_dir;
     };
 } // namespace
 
@@ -83,6 +115,20 @@ void TweaksTest::checksOutputVersion() {
     QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
     QVERIFY(!parseTweaksOutput(QStringLiteral(R"({"version":2,"tweaks":[{"id":"new","type":"toggle"}]})"), &tweaks));
     QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
+}
+
+void TweaksTest::rejectsUnrecognizedVersions() {
+    // anything but a positive whole number isn't read as version 1
+    for (const char *version: {R"("2")", "2.5", "null", "0", "-1", "true", "{}"}) {
+        const QString output = QStringLiteral(R"({"version":%1,"tweaks":[]})").arg(QLatin1String(version));
+        QCOMPARE(tweaksOutputVersion(output), UnrecognizedTweaksOutputVersion);
+        QVERIFY(!parseTweaksOutput(output, nullptr));
+    }
+    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"version":2.0,"tweaks":[]})")), 2);
+    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"version":1e20,"tweaks":[]})")), UnrecognizedTweaksOutputVersion);
+    // a missing version is version 1
+    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"tweaks":[]})")), 1);
+    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[]})"), nullptr));
 }
 
 void TweaksTest::modelExposesRoles() {
@@ -190,19 +236,156 @@ void TweaksTest::composesErrors() {
     QCOMPARE(composeTweaksError(QStringLiteral("change"), QStringLiteral("list")), QStringLiteral("change\nlist"));
 }
 
+void TweaksTest::init() {
+    m_dir = std::make_unique<QTemporaryDir>();
+    QVERIFY(m_dir->isValid());
+    qputenv("FAKE_UM_DIR", QFile::encodeName(m_dir->path()));
+    qputenv("FAKE_UM_LIST", "ok");
+    qputenv("FAKE_UM_CHANGE", "ok");
+    QCOMPARE(UmCli::executable(), QStringLiteral(UM_TEST_EXECUTABLE));
+}
+
+void TweaksTest::cleanup() { m_dir.reset(); }
+
+std::unique_ptr<Tweaks> TweaksTest::loadedTweaks() {
+    auto tweaks = std::make_unique<Tweaks>(nullptr, KPluginMetaData());
+    tweaks->load();
+    if (!QTest::qWaitFor([&tweaks] { return !tweaks->loading(); })) {
+        return nullptr;
+    }
+    return tweaks;
+}
+
+void TweaksTest::listsTweaks() {
+    const auto tweaks = loadedTweaks();
+    QVERIFY(tweaks);
+    QVERIFY(tweaks->loaded());
+    QVERIFY(!tweaks->listFailed());
+    QVERIFY(tweaks->errorMessage().isEmpty());
+    QCOMPARE(tweaks->tweaks()->count(), 2);
+    QVERIFY(tweaks->tweaks()->find(QStringLiteral("nix")));
+}
+
+void TweaksTest::listFailures_data() {
+    QTest::addColumn<QByteArray>("mode");
+    QTest::addColumn<QString>("error");
+    QTest::newRow("too old") << QByteArray("too-old")
+                             << QStringLiteral("This version of um is too old to manage tweaks from System Settings.");
+    QTest::newRow("too new") << QByteArray("too-new")
+                             << QStringLiteral("This version of um is too new for this version of System Settings. "
+                                               "Update System Settings to manage tweaks.");
+    QTest::newRow("unrecognized version")
+        << QByteArray("unrecognized")
+        << QStringLiteral("um listed the tweaks with a format version System Settings doesn't recognize. Check that "
+                          "um and System Settings are up to date.");
+    // without the timestamp Go's log package adds
+    QTest::newRow("um error") << QByteArray("error")
+                              << QStringLiteral("Could not load the list of tweaks: open /usr/share/um/tweaks: no "
+                                                "such file or directory");
+}
+
+void TweaksTest::listFailures() {
+    QFETCH(QByteArray, mode);
+    QFETCH(QString, error);
+    qputenv("FAKE_UM_LIST", mode);
+    const auto tweaks = loadedTweaks();
+    QVERIFY(tweaks);
+    QVERIFY(tweaks->listFailed());
+    QVERIFY(!tweaks->loaded());
+    QCOMPARE(tweaks->errorMessage(), error);
+    QCOMPARE(tweaks->tweaks()->count(), 0);
+}
+
+void TweaksTest::changeSucceeds() {
+    const auto tweaks = loadedTweaks();
+    QVERIFY(tweaks);
+    QSignalSpy running(tweaks.get(), &Tweaks::runningChanged);
+    tweaks->setTweakEnabled(QStringLiteral("nix"), true);
+    QVERIFY(tweaks->running());
+    QVERIFY(tweaks->tweaks()->data(tweaks->tweaks()->index(0, 0), TweaksModel::BusyRole).toBool());
+    QTRY_VERIFY(!tweaks->running());
+    // the list is loaded again afterwards
+    QTRY_VERIFY(!tweaks->loading());
+
+    QCOMPARE(running.count(), 2);
+    QVERIFY(tweaks->errorMessage().isEmpty());
+    QCOMPARE(tweaks->output(), QStringLiteral("TASK [Install Nix] *****\nok: [localhost]\n"));
+    QFile args(QDir(m_dir->path()).filePath(QStringLiteral("change.args")));
+    QVERIFY(args.open(QIODevice::ReadOnly));
+    QCOMPARE(args.readAll().trimmed(), QByteArray("tweaks enable --yes nix"));
+    // the output file is unlinked once um has started
+    QVERIFY(QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation))
+                .entryList({QStringLiteral("kcm_ultramarine_tweaks-*.log")}, QDir::Files)
+                .isEmpty());
+}
+
+void TweaksTest::changeFails() {
+    qputenv("FAKE_UM_CHANGE", "fail");
+    const auto tweaks = loadedTweaks();
+    QVERIFY(tweaks);
+    tweaks->runTweak(QStringLiteral("cleanup"));
+    QVERIFY(tweaks->running());
+    QTRY_VERIFY(!tweaks->running());
+    QTRY_VERIFY(!tweaks->loading());
+    // stderr goes to the same file, and um's error is shown without its timestamp
+    QVERIFY(tweaks->output().contains(QLatin1String("2026/11/02 13:04:05 tweak is locked")));
+    QCOMPARE(tweaks->errorMessage(), QStringLiteral("The maintenance task failed: tweak is locked"));
+    // a change's error stays after the list loads again
+    QVERIFY(tweaks->loaded());
+    QVERIFY(!tweaks->listFailed());
+}
+
+void TweaksTest::showsChangeProgress() {
+    qputenv("FAKE_UM_CHANGE", "slow");
+    const auto tweaks = loadedTweaks();
+    QVERIFY(tweaks);
+    tweaks->setTweakEnabled(QStringLiteral("nix"), true);
+    // read from the output file while um runs, without the asterisks
+    QTRY_COMPARE(tweaks->status(), QStringLiteral("TASK [first step]"));
+    QVERIFY(tweaks->running());
+    QTRY_VERIFY_WITH_TIMEOUT(!tweaks->running(), 10000);
+    QVERIFY(tweaks->status().isEmpty());
+    QVERIFY(tweaks->output().endsWith(QLatin1String("TASK [second step] *****\n")));
+}
+
 void TweaksTest::destroyingWhileListingIsSafe() {
     // ~QProcess used to emit finished() for the running list into the half-destroyed module,
     // which then wrote to its already destroyed members
+    qputenv("FAKE_UM_LIST", "hang");
     auto tweaks = std::make_unique<Tweaks>(nullptr, KPluginMetaData());
     tweaks->load();
-    if (!tweaks->loading()) {
-        QSKIP("um isn't installed, so there's no list to interrupt");
-    }
+    QVERIFY(tweaks->loading());
+    QFile pidFile(QDir(m_dir->path()).filePath(QStringLiteral("check.pid")));
+    QTRY_VERIFY(pidFile.exists() && pidFile.size() > 0);
+    QVERIFY(pidFile.open(QIODevice::ReadOnly));
+    const qint64 checkPid = pidFile.readAll().trimmed().toLongLong();
+    QVERIFY(checkPid > 0);
+    QVERIFY(!processGone(checkPid));
+
     const QSignalSpy loadingChanged(tweaks.get(), &Tweaks::loadingChanged);
     const QSignalSpy errorMessageChanged(tweaks.get(), &Tweaks::errorMessageChanged);
     tweaks.reset();
     QCOMPARE(loadingChanged.count(), 0);
     QCOMPARE(errorMessageChanged.count(), 0);
+    // um's children (its check.sh scripts) are stopped with it, not left behind
+    QTRY_VERIFY(processGone(checkPid));
+}
+
+void TweaksTest::destroyingWhileChangingLetsItFinish() {
+    qputenv("FAKE_UM_CHANGE", "slow");
+    auto tweaks = loadedTweaks();
+    QVERIFY(tweaks);
+    tweaks->setTweakEnabled(QStringLiteral("nix"), true);
+    QTRY_VERIFY(!tweaks->status().isEmpty() && tweaks->status() != QStringLiteral("Enabling “Install Nix”…"));
+
+    // ~Tweaks neither kills um nor waits for it
+    QElapsedTimer timer;
+    timer.start();
+    tweaks.reset();
+    QVERIFY(timer.elapsed() < 500);
+    const QString done = QDir(m_dir->path()).filePath(QStringLiteral("change.done"));
+    QVERIFY(!QFile::exists(done));
+    QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(done), 10000);
 }
 
 QTEST_GUILESS_MAIN(TweaksTest)

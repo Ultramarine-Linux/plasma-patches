@@ -5,9 +5,11 @@
 #pragma once
 
 #include <QDBusObjectPath>
+#include <QDBusPendingCall>
 #include <QStringList>
 
 #include <cstdint>
+#include <functional>
 
 #include "installer.h"
 
@@ -37,6 +39,25 @@ namespace OfficeInstaller {
      */
     QString failureReason(uint exit, const QString &error, const QString &unsignedRepository);
 
+    /// how a transaction that didn't succeed is reported
+    struct TransactionFailure {
+        /// set only when PackageKit says the transaction was canceled
+        bool canceled = false;
+        /// why it failed, empty when canceled. May be empty otherwise too
+        QString error;
+    };
+
+    /**
+     * how to report a transaction that finished with PkExitEnum @p exit, other than
+     * success. @p errorCode and @p error are the PkErrorEnum and details of its last
+     * ErrorCode (0 and empty if there was none), @p unsignedRepository as for
+     * failureReason(). Asking to cancel doesn't count: PackageKit can refuse, and a
+     * transaction that then fails for another reason reports that reason. Neither does
+     * being canceled for a higher priority transaction.
+     */
+    TransactionFailure transactionFailure(uint exit, uint errorCode, const QString &error,
+                                          const QString &unsignedRepository);
+
     /// installs packages through PackageKit's D-Bus API, with the interactive hint set
     class PackageKitInstaller : public Installer {
         Q_OBJECT
@@ -59,14 +80,30 @@ namespace OfficeInstaller {
     private:
         enum class Step : std::uint8_t { Idle, Resolving, Installing };
 
-        bool startTransaction(const QString &method, const QVariantList &arguments);
-        void fail(const QString &error);
+        /// creates a transaction, sets its hints and calls @p method on it, all without blocking
+        void startTransaction(const QString &method, const QVariantList &arguments);
+        /**
+         * calls @p handle with the reply to @p call, unless the install has stopped or started
+         * another transaction since
+         */
+        void watch(const QDBusPendingCall &call, const std::function<void(const QDBusMessage &reply)> &handle);
+        void disconnectTransaction();
+        void finish(bool success, bool canceled, const QString &error);
+        void fail(const QString &error) { finish(false, false, error); }
 
         Step m_step = Step::Idle;
+        /**
+         * bumped by each step and when the install stops, so replies to calls that were
+         * pending then are dropped instead of acting on a stopped or newer install
+         */
+        quint64 m_call = 0;
         QDBusObjectPath m_transaction;
+        /// the method was called on m_transaction, so its Finished signal will follow
+        bool m_methodCalled = false;
         QStringList m_packages;
         QList<ResolvedPackage> m_resolved;
         /// the current transaction's last ErrorCode
+        uint m_errorCode = 0;
         QString m_error;
         /// the repository whose signing key the current transaction is missing
         QString m_unsignedRepository;

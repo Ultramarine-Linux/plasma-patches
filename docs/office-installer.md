@@ -49,13 +49,18 @@ rpm-ostree) systems, where `/run/ostree-booted` exists.
   install Flatpaks without a prompt (Fedora's `org.freedesktop.Flatpak.rules`).
 - **Canceling:** **Cancel** stays available while installing. It cancels the libflatpak
   transaction or the PackageKit transaction (PackageKit's `Cancel`), and the dialog goes
-  back to the suite list. Flatpak deploys an app only once it's fully downloaded, so a
+  back to the suite list. Before PackageKit's transaction has started (while the installer
+  checks the daemon's version, creates the transaction and sets its hints, all without
+  blocking the dialog), it stops right away. The dialog only says the install was canceled
+  when it was: if PackageKit or libflatpak refuses and then fails for another reason, that
+  reason is shown. Flatpak deploys an app only once it's fully downloaded, so a
   canceled install leaves at most downloaded data behind. PackageKit refuses to cancel
   once it's installing the RPMs, so then the install finishes and the documents open.
 - **Afterwards:** the installer refreshes KSycoca and opens the documents with the new
   suite. If KSycoca doesn't know about the suite yet, it runs the suite directly
   (`flatpak run --file-forwarding`, `coda-qt` or `libreoffice`). If an app fails to
-  start, the error is shown instead of quitting silently. The installer only quits once
+  start, the error is shown instead of quitting silently, and trying again only opens the
+  documents that didn't open. The installer only quits once
   the apps have started: closing the dialog while it says "Opening…" hides it until then
   (and shows it again if an app failed), and closing KIO's prompt for an untrusted desktop
   file doesn't stop the launch either.

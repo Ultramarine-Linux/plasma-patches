@@ -36,11 +36,12 @@ namespace OfficeInstaller {
         struct PendingLaunches {
             qsizetype remaining = 0;
             QStringList errors;
+            QList<QUrl> failed;
         };
     } // namespace
 
     bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context,
-                               const std::function<void(const QString &error)> &done) {
+                               const std::function<void(const QString &error, const QList<QUrl> &failed)> &done) {
         if (urls.isEmpty()) {
             return false;
         }
@@ -61,17 +62,19 @@ namespace OfficeInstaller {
         auto pending = std::make_shared<PendingLaunches>();
         pending->remaining = services.size();
         for (auto it = services.cbegin(); it != services.cend(); ++it) {
+            const QList<QUrl> serviceUrls = urlsByService.value(it.key());
             auto *job = new KIO::ApplicationLauncherJob(it.value());
-            job->setUrls(urlsByService.value(it.key()));
+            job->setUrls(serviceUrls);
             // asks before running untrusted desktop files. Errors are reported through done(), not
             // by the delegate: its message box would be queued after the installer has quit
             job->setUiDelegate(KIO::createDefaultJobUiDelegate(KJobUiDelegate::AutoHandlingDisabled, nullptr));
-            QObject::connect(job, &KJob::result, context, [pending, done](KJob *job) {
+            QObject::connect(job, &KJob::result, context, [pending, done, serviceUrls](KJob *job) {
                 if (job->error() != 0 && job->error() != KJob::KilledJobError) {
                     pending->errors.append(job->errorString());
+                    pending->failed.append(serviceUrls);
                 }
                 if (--pending->remaining == 0) {
-                    done(pending->errors.join(u'\n'));
+                    done(pending->errors.join(u'\n'), pending->failed);
                 }
             });
             job->start();

@@ -20,8 +20,8 @@ proposes Plasma check to grey out Night Light's and the time zone's automatic lo
   which needs no authentication. `masked` and `masked-runtime` are off, anything else
   (normally `static`) is on. A missing unit means GeoClue isn't installed: systemd 259
   answers `org.freedesktop.DBus.Error.FileNotFound` for that, and `org.freedesktop.systemd1.NoSuchUnit`
-  is accepted too. Any other error shows an error with a Try Again button rather than
-  claiming GeoClue isn't installed.
+  is accepted too. A `bad` unit file (one systemd can't parse) and any other error show an
+  error with a Try Again button rather than claiming GeoClue isn't installed.
 - **Changes:** `pkexec /usr/libexec/ultramarine-location-helper enable|disable`. The helper
   (`kcm-location/data/ultramarine-location-helper.in`) is a small root shell script that
   only accepts those two words:
@@ -50,4 +50,9 @@ It's system-wide, for every user. GNOME has its own per-user switch
 - `kirigami-addons` (the page uses `org.kde.kirigamiaddons.formcard`), which packaging has
   to `Require`.
 - The helper and its polkit action, installed with the KCM to `libexec` and
-  `share/polkit-1/actions`. polkit only reads actions from `/usr/share/polkit-1/actions`.
+  `share/polkit-1/actions` under the install prefix. polkit only reads actions from
+  `/usr/share/polkit-1/actions`, so with any other prefix (for example `/usr/local` or a
+  development prefix) the action isn't found and pkexec falls back to its generic
+  `org.freedesktop.policykit.exec` prompt (no remembered authorization). Copy or link
+  `org.ultramarine.location.policy` into `/usr/share/polkit-1/actions` in that case. CMake
+  warns about this when the prefix isn't `/usr`.

@@ -7,7 +7,7 @@ Discover's own Updates page and directs users to
 ## Patch versions
 
 - [`../discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch`](../discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch): Discover 6.8.x, made against 6.8.2 (on top of Fedora's
-  patches); it also applies to 6.8.1 and the `Plasma/6.8` and `master` branches. Intended for UM45.
+  patches); it also applies to 6.8.1, 6.8.3 and the `Plasma/6.8` and `master` branches. Intended for UM45.
 - [`../discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch`](../discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch): Discover 6.7.x (6.7.0 through 6.7.6),
   kept for testing against the installed UM44-era build. 6.7.6 changed the sidebar's
   Updates entry, so instead of deleting its update count and fetching icon like the 6.8
@@ -51,6 +51,19 @@ Ultramarine's `.umNN` dist tag sorts above Fedora's `.fcNN`, so ties go our way.
 So a patch change reaches the package once it's on `main` here. A new Plasma minor
 version that the current patch doesn't apply to needs a `discover/<major.minor>/`
 directory (or a rebase of `discover/`).
+
+Neither patch touches Discover's QML autotests. `discover/autotests/toplevels.qml`
+(`test_navigateThenUpdate`) and `updateandinstall.qml` still expect the Updates page,
+so they'd fail with the patch applied. They're only built with `-DBUILD_DummyBackend=ON`
+(off by default), and neither Fedora's `plasma-discover` spec nor
+`ultramarine-plasma-discover` sets it or runs `ctest` in `%check` (only
+`appstream-util` and `desktop-file-validate`), so the package build isn't affected.
+Adjust those tests in the patches if the package ever starts running them.
+
+CI (`.github/workflows/cpp-ci.yml`) checks weekly, and on changes here, that
+`discover/` applies with `--fuzz=0` to upstream's `Plasma/6.8` and `master`, and
+`discover/6.7/` to `Plasma/6.7`. Fedora's own patches aren't applied there, so it
+doesn't replace `update.rhai`'s check.
 
 The patch was also runtime-tested in a Fedora container: Discover's `--listmodes`
 no longer includes Update, and `--headless-update` exits with an error. Clicking

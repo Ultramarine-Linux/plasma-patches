@@ -4,6 +4,8 @@
 
 #include "nix.h"
 
+#include <KLocalizedString>
+
 #include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -43,10 +45,18 @@ let
       flake = builtins.tryEval (builtins.getFlake e.flake);
       pkg = if flake.success then getPath flake.value e.attrPath else null;
       outputs = if e.outputs != null then e.outputs else (pkg.meta.outputsToInstall or [ "out" ]);
-      outPaths = builtins.tryEval (map (o: pkg.${o}.outPath) outputs);
+      result = {
+        error = false;
+        name = pkg.name or "";
+        version = pkg.version or "";
+        # outputs the package doesn't have (anymore) are skipped
+        outPaths = map (o: pkg.${o}.outPath) (builtins.filter (o: pkg ? ${o}) outputs);
+      };
+      # tryEval only evaluates as far as it has to, so the result is forced inside it.
+      # An unfree or insecure package throws there, and only its own entry fails.
+      forced = builtins.tryEval (builtins.deepSeq result result);
     in
-    if pkg == null || !outPaths.success then { error = true; }
-    else { error = false; name = pkg.name or ""; version = pkg.version or ""; outPaths = outPaths.value; };
+    if pkg == null || !forced.success then { error = true; } else forced.value;
 in
 map resolve elements
 )nix"_s;
@@ -84,7 +94,8 @@ map resolve elements
         const QJsonDocument document = QJsonDocument::fromJson(output, &parseError);
         if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
             if (error) {
-                *error = u"unexpected nix profile output: %1"_s.arg(parseError.errorString());
+                *error = i18nc("@info:status %1 is an error message", "Unexpected nix profile output: %1",
+                               parseError.errorString());
             }
             return std::nullopt;
         }
@@ -106,7 +117,7 @@ map resolve elements
             }
         } else if (!value.isNull() && !value.isUndefined()) {
             if (error) {
-                *error = u"unexpected nix profile elements"_s;
+                *error = i18nc("@info:status", "Unexpected nix profile output: unknown elements.");
             }
             return std::nullopt;
         }
@@ -209,20 +220,9 @@ map resolve elements
 
     bool canManageNixProfile() { return !nixBinary().isEmpty() && geteuid() != 0; }
 
-    QList<PackageUpdate> nixPackageUpdates(QString *error) {
-        const QString nix = nixBinary();
-        const CommandResult list = capture(nix, {u"profile"_s, u"list"_s, u"--json"_s});
-        if (!list.succeeded()) {
-            *error = u"nix profile list failed: %1"_s.arg(QString::fromUtf8(list.err).trimmed());
-            return {};
-        }
-        const std::optional<QList<NixProfileElement>> elements = parseNixProfileList(list.out, error);
-        if (!elements || elements->isEmpty()) {
-            return {};
-        }
-
+    std::optional<QList<NixEvalResult>> evaluateNixUpgrades(const QList<NixProfileElement> &elements, QString *error) {
         QJsonArray inputs;
-        for (const NixProfileElement &element: *elements) {
+        for (const NixProfileElement &element: elements) {
             inputs.append(QJsonObject{
                 {u"flake"_s, element.originalUrl},
                 {u"attrPath"_s, QJsonArray::fromStringList(element.attrPath.split(u'.'))},
@@ -237,29 +237,51 @@ map resolve elements
         environment.insert(u"ULTRAMARINE_UPDATES_NIX_ELEMENTS"_s,
                            QString::fromUtf8(QJsonDocument(inputs).toJson(QJsonDocument::Compact)));
         const CommandResult eval =
-            capture(nix, {u"eval"_s, u"--json"_s, u"--impure"_s, u"--expr"_s, nixUpdatesExpr}, environment);
+            capture(nixBinary(), {u"eval"_s, u"--json"_s, u"--impure"_s, u"--expr"_s, nixUpdatesExpr}, environment);
         if (!eval.succeeded()) {
-            *error = u"evaluating nix profile upgrades failed: %1"_s.arg(lastLine(QString::fromUtf8(eval.err)));
-            return {};
+            *error = i18nc("@info:status %1 is an error message", "Evaluating Nix profile upgrades failed: %1",
+                           lastLine(QString::fromUtf8(eval.err)));
+            return std::nullopt;
         }
-        const QJsonDocument results = QJsonDocument::fromJson(eval.out);
-        if (!results.isArray() || results.array().size() != elements->size()) {
-            *error = u"unexpected nix eval output"_s;
-            return {};
+        const QJsonDocument document = QJsonDocument::fromJson(eval.out);
+        if (!document.isArray() || document.array().size() != elements.size()) {
+            *error = i18nc("@info:status", "Nix printed something unexpected while evaluating upgrades.");
+            return std::nullopt;
         }
 
-        QList<PackageUpdate> updates;
-        const QJsonArray resultArray = results.array();
-        for (qsizetype i = 0; i < elements->size(); ++i) {
-            const NixProfileElement &element = elements->at(i);
-            const QJsonObject object = resultArray.at(i).toObject();
-            const NixEvalResult result{
+        QList<NixEvalResult> results;
+        for (const QJsonArray array = document.array(); const auto &item: array) {
+            const QJsonObject object = item.toObject();
+            results.append({
                 .error = object.value("error"_L1).toBool(),
                 .name = object.value("name"_L1).toString(),
                 .version = object.value("version"_L1).toString(),
                 .outPaths = toStringList(object.value("outPaths"_L1)),
-            };
-            std::optional<PackageUpdate> update = nixUpdateFor(element, result);
+            });
+        }
+        return results;
+    }
+
+    QList<PackageUpdate> nixPackageUpdates(QString *error) {
+        const CommandResult list = capture(nixBinary(), {u"profile"_s, u"list"_s, u"--json"_s});
+        if (!list.succeeded()) {
+            *error = i18nc("@info:status %1 is an error message", "Listing your Nix profile failed: %1",
+                           QString::fromUtf8(list.err).trimmed());
+            return {};
+        }
+        const std::optional<QList<NixProfileElement>> elements = parseNixProfileList(list.out, error);
+        if (!elements || elements->isEmpty()) {
+            return {};
+        }
+        const std::optional<QList<NixEvalResult>> results = evaluateNixUpgrades(*elements, error);
+        if (!results) {
+            return {};
+        }
+
+        QList<PackageUpdate> updates;
+        for (qsizetype i = 0; i < elements->size(); ++i) {
+            const NixProfileElement &element = elements->at(i);
+            std::optional<PackageUpdate> update = nixUpdateFor(element, results->at(i));
             if (!update) {
                 continue;
             }
@@ -279,7 +301,8 @@ map resolve elements
         }
         const CommandResult result = capture(nixd, {u"version"_s});
         if (!result.succeeded()) {
-            *error = u"determinate-nixd version failed: %1"_s.arg(QString::fromUtf8(result.err).trimmed());
+            *error = i18nc("@info:status %1 is an error message", "Checking the Determinate Nix version failed: %1",
+                           QString::fromUtf8(result.err).trimmed());
             return {};
         }
         const auto [installed, latest] = determinateNixVersions(QString::fromUtf8(result.out));

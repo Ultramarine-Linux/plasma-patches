@@ -68,6 +68,7 @@ namespace {
         static void parsesNixProfileListV2();
         static void parsesDrvVersions();
         static void nixUpdateFor();
+        static void evaluatesNixUpgradesPerElement();
         static void resolvesNixApps();
         static void parsesDeterminateNixVersions();
         static void parsesImageStatus();
@@ -75,6 +76,7 @@ namespace {
         static void parsesPlasmoidRegistry();
         static void plasmoidUpdate();
         static void settingsRoundTrip();
+        static void brokenSettingsFallBackToDefaults();
         static void inWindow();
         static void validatesSettings();
         static void parsesTimerShow();
@@ -456,6 +458,58 @@ void UpdaterTest::nixUpdateFor() {
     QVERIFY(!UltramarineUpdates::nixUpdateFor(element, {.error = true, .name = {}, .version = {}, .outPaths = {}}));
 }
 
+void UpdaterTest::evaluatesNixUpgradesPerElement() {
+    if (nixBinary().isEmpty()) {
+        QSKIP("nix isn't installed");
+    }
+    // a flake without inputs, so nothing is fetched. Nothing is built either.
+    const QTemporaryDir dir;
+    QFile flake(dir.path() + "/flake.nix"_L1);
+    QVERIFY(flake.open(QIODevice::WriteOnly));
+    flake.write(R"nix({
+  outputs = { self }: {
+    good = derivation { name = "good-1.0"; system = "x86_64-linux"; builder = "/bin/sh"; outputs = [ "out" "dev" ]; };
+    # like nixpkgs' unfree or insecure check, which throws once the output is used
+    unfree = { type = "derivation"; name = "unfree-1.0"; out = throw "unfree"; };
+  };
+})nix");
+    flake.close();
+    const auto element = [&dir](const QString &attrPath, const std::optional<QStringList> &outputs = std::nullopt) {
+        NixProfileElement e;
+        e.name = attrPath;
+        e.attrPath = attrPath;
+        e.originalUrl = "path:"_L1 + dir.path();
+        e.outputs = outputs;
+        return e;
+    };
+
+    QString error;
+    // without flakes (or a store to evaluate in), this can't work at all
+    const std::optional<QList<NixEvalResult>> probe = evaluateNixUpgrades({element(u"good"_s)}, &error);
+    if (!probe) {
+        QSKIP(qPrintable(u"nix can't evaluate flakes here: "_s + error));
+    }
+    QCOMPARE(probe->size(), 1);
+    QVERIFY(!probe->at(0).error);
+    QCOMPARE(probe->at(0).name, u"good-1.0"_s);
+    QCOMPARE(probe->at(0).outPaths.size(), 1);
+
+    // the unfree and the missing package only fail their own entries, and an output
+    // the package doesn't have (anymore) is skipped
+    const std::optional<QList<NixEvalResult>> results =
+        evaluateNixUpgrades({element(u"good"_s, QStringList{u"out"_s, u"man"_s}), element(u"unfree"_s),
+                             element(u"missing"_s), element(u"good"_s, QStringList{u"out"_s, u"dev"_s})},
+                            &error);
+    QVERIFY2(results, qPrintable(error));
+    QCOMPARE(results->size(), 4);
+    QVERIFY(!results->at(0).error);
+    QCOMPARE(results->at(0).outPaths, probe->at(0).outPaths);
+    QVERIFY(results->at(1).error);
+    QVERIFY(results->at(2).error);
+    QVERIFY(!results->at(3).error);
+    QCOMPARE(results->at(3).outPaths.size(), 2);
+}
+
 void UpdaterTest::resolvesNixApps() {
     const QString store = u"/nix/store/h-warp-7.2"_s;
     const FileReader read = fakeFiles({
@@ -683,6 +737,33 @@ void UpdaterTest::settingsRoundTrip() {
     QVERIFY(!parseSettings(R"({"inactive_minutes":1.5})", &got, &error));
     QVERIFY(!parseSettings(R"({"inactive_minutes":1e300})", &got, &error));
     QVERIFY(!parseSettings(R"({"inactive_minutes":-1})", &got, &error));
+    qunsetenv("ULTRAMARINE_UPDATES_CONFIG");
+}
+
+void UpdaterTest::brokenSettingsFallBackToDefaults() {
+    const QTemporaryDir dir;
+    const QString path = dir.path() + "/settings.json"_L1;
+    qputenv("ULTRAMARINE_UPDATES_CONFIG", path.toLocal8Bit());
+
+    QString warning = u"stale"_s;
+    QCOMPARE(loadSettingsOrDefaults(&warning), Settings{});
+    QVERIFY(warning.isEmpty());
+
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    file.write(R"({"automatic": false, "inactive_minutes": 30})");
+    file.close();
+    QCOMPARE(loadSettingsOrDefaults(&warning).inactiveMinutes, 30);
+    QVERIFY(warning.isEmpty());
+
+    // the timers keep going with the defaults (automatic updates on), and say what's wrong
+    for (const QByteArray &broken: {QByteArray("{\"automatic\": tru"), QByteArray(R"({"automatic": "no"})")}) {
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        file.write(broken);
+        file.close();
+        QCOMPARE(loadSettingsOrDefaults(&warning), Settings{});
+        QVERIFY(!warning.isEmpty());
+    }
     qunsetenv("ULTRAMARINE_UPDATES_CONFIG");
 }
 
@@ -1111,6 +1192,13 @@ void UpdaterTest::checksOptions() {
     QVERIFY(!optionError({u"schedule"_s, u"--automatic=false"_s}).isEmpty());
     QVERIFY(!optionError({u"settings"_s, u"--yes"_s}).isEmpty());
     QVERIFY(!optionError({u"upgrade"_s}).isEmpty());
+    // --status only reports, and --json only changes how it reports
+    QVERIFY(optionError({u"schedule"_s}).isEmpty());
+    QVERIFY(optionError({u"schedule"_s, u"--cancel"_s}).isEmpty());
+    QVERIFY(optionError({u"schedule"_s, u"--status"_s}).isEmpty());
+    QCOMPARE(optionError({u"schedule"_s, u"--cancel"_s, u"--status"_s}), u"--cancel can't be used with --status."_s);
+    QCOMPARE(optionError({u"schedule"_s, u"--json"_s}), u"--json can't be used with schedule."_s);
+    QCOMPARE(optionError({u"schedule"_s, u"--cancel"_s, u"--json"_s}), u"--json can't be used with --cancel."_s);
     QVERIFY(!optionError({}).isEmpty());
     QCOMPARE(optionError({u"apply"_s, u"--bogus"_s}), u"parse error"_s);
 }

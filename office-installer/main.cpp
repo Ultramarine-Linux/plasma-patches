@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
         urls.append(QUrl::fromUserInput(argument, QDir::currentPath(), QUrl::AssumeLocalFile));
     }
 
-    if (openWithInstalledApps(urls, &app, [](const QString &error) {
+    if (openWithInstalledApps(urls, &app, [](const QString &error, const QList<QUrl> & /*failed*/) {
             if (!error.isEmpty()) {
                 KMessageBox::error(nullptr, error);
             }

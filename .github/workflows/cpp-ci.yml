@@ -19,6 +19,8 @@ name: Plasma KCM CI
       - ".clang-format"
       - ".clang-tidy"
       - "cppcheck-kf6.cfg"
+      - "discover/**"
+      - "powerdevil/**"
       - ".github/workflows/cpp-ci.yml"
     branches:
       - main
@@ -40,7 +42,12 @@ name: Plasma KCM CI
       - ".clang-format"
       - ".clang-tidy"
       - "cppcheck-kf6.cfg"
+      - "discover/**"
+      - "powerdevil/**"
       - ".github/workflows/cpp-ci.yml"
+  # weekly, so the patch check notices upstream branches moving under the patches
+  schedule:
+    - cron: "17 4 * * 1"
 
 permissions:
   contents: read
@@ -49,6 +56,8 @@ permissions:
 
 jobs:
   ci:
+    # the weekly schedule only exists for the patches job
+    if: github.event_name != 'schedule'
     permissions:
       contents: read
       security-events: write
@@ -73,6 +82,7 @@ jobs:
   # never lags behind the source. Run `just translations` and commit the result
   translations:
     name: Translation template
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-26.04
     container:
       image: ghcr.io/fyralabs/ci:f44
@@ -98,3 +108,38 @@ jobs:
             echo "::error file=po/ultramarine-plasma-settings.pot::the translation template is out of date. Run \`just translations\` and commit po/"
             exit 1
           fi
+
+  # the Discover and PowerDevil patches still apply to the upstream branches they target
+  # (see docs/discover.md and docs/powerdevil.md). Fedora's own patches aren't applied
+  # first, so this doesn't replace the check in the packages' update.rhai
+  patches:
+    name: Patch ${{ matrix.patch }} on ${{ matrix.repo }} ${{ matrix.ref }}
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: discover
+            ref: Plasma/6.8
+            patch: discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch
+          - repo: discover
+            ref: master
+            patch: discover/0001-Remove-Discover-updates-UI-in-favor-of-um.patch
+          - repo: discover
+            ref: Plasma/6.7
+            patch: discover/6.7/0001-Remove-Discover-updates-UI-in-favor-of-um.patch
+          - repo: powerdevil
+            ref: Plasma/6.8
+            patch: powerdevil/0001-Report-the-idle-state-of-the-session-with-SetIdleHint.patch
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Clone upstream
+        run: git clone --depth 1 --branch "${{ matrix.ref }}" "https://invent.kde.org/plasma/${{ matrix.repo }}.git" upstream
+
+      - name: Check the patch applies
+        working-directory: upstream
+        run: patch -p1 --dry-run --fuzz=0 --batch < "$GITHUB_WORKSPACE/${{ matrix.patch }}"

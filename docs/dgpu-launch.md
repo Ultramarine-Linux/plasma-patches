@@ -19,7 +19,10 @@ menu. That includes laptops with an eGPU plugged in.
   KIO does for `PrefersNonDefaultGPU`. If switcheroo-control isn't running, it does what
   switcheroo-control would: when `/sys/module/nvidia` exists, the NVIDIA PRIME offload
   variables (`__NV_PRIME_RENDER_OFFLOAD`, `__GLX_VENDOR_LIBRARY_NAME`, `__VK_LAYER_NV_optimus`),
-  since the proprietary driver ignores `DRI_PRIME`. Otherwise `DRI_PRIME=1`. Then it expands the app's `Exec` line with `KIO::DesktopExecParser`
+  since the proprietary driver ignores `DRI_PRIME`. Otherwise `DRI_PRIME=1`. It refuses desktop
+  files that KIO would ask about before running (`KDesktopFile::isAuthorizedDesktopFile()`: not in
+  an `applications` or `autostart` directory, and neither executable nor owned by root), since
+  it skips KIO's prompt. Then it expands the app's `Exec` line with `KIO::DesktopExecParser`
   and runs it with `KIO::CommandLauncherJob`, which starts it in its own `app-*.service`
   unit with the launcher's activation token, like Plasma does.
 - **Why not `kioclient exec` or `switcherooctl launch`:** KIO starts apps with
@@ -79,7 +82,7 @@ Runtime dependencies:
   GPUs' environment over D-Bus (Fedora's presets enable it), and the
   `switcheroo-discrete-gpu` udev tag (detection). `switcherooctl` isn't used.
 
-Build dependencies are the KF6 KIO, KService, I18n and WidgetsAddons development
+Build dependencies are the KF6 KIO, KService, Config, I18n and WidgetsAddons development
 packages the rest of the tree already needs.
 
 ## Limits

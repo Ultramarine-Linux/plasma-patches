@@ -51,6 +51,17 @@ card two-dgpus card1 0 1
 card noisy card0 1 0
 card noisy card1 0 1
 for i in $(seq 200000); do echo "PADDING_$i=x"; done >>"$tmp/noisy/card1/fake-udev"
+# simpledrm (or another platform device) has no boot_vga and isn't discrete, and is
+# often card0 while the real drivers load
+card simpledrm-laptop card0 - 0
+card simpledrm-laptop card1 1 0
+card simpledrm-laptop card2 0 1
+card simpledrm-desktop card0 - 0
+card simpledrm-desktop card1 1 1
+card simpledrm-only card0 - 0
+# without any boot_vga there's no default GPU to compare against
+card no-boot-vga card0 - 0
+card no-boot-vga card1 - 1
 mkdir -p "$tmp/empty"
 
 failed=0
@@ -84,5 +95,9 @@ expect desktop-igpu hidden
 expect igpu-only hidden
 expect two-dgpus hidden
 expect noisy shown
+expect simpledrm-laptop shown
+expect simpledrm-desktop hidden
+expect simpledrm-only hidden
+expect no-boot-vga hidden
 expect empty hidden
 exit $failed

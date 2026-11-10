@@ -75,6 +75,8 @@ namespace UltramarineUpdates {
 
     QString statusCacheLockPath() { return u"/run/ultramarine-updates-status.lock"_s; }
 
+    QString imageCheckLockPath() { return u"/run/ultramarine-updates-image-check.lock"_s; }
+
     QString installBusyMessage() {
         return i18nc("@info:status",
                      "Updates are already being installed (automatic updates or Apply Tonight). Try "

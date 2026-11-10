@@ -567,12 +567,15 @@ namespace OfficeInstaller {
         // pick up the new suite's desktop files, so it opens like any other app
         KSycoca::self()->ensureCacheValid();
         m_opening = true;
-        if (openWithInstalledApps(m_urls, this, [this](const QString &error) {
+        if (openWithInstalledApps(m_urls, this, [this](const QString &error, const QList<QUrl> &failed) {
                 m_opening = false;
                 if (error.isEmpty()) {
                     accept();
                     return;
                 }
+                // the rest are open, so trying again only opens these
+                m_urls = failed;
+                m_subtitle->setText(subtitle(m_urls, m_installedSuite));
                 // closed while the documents were opening: show why they didn't
                 show();
                 setBusy(false);

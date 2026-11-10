@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: ultramarine-plasma-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/Ultramarine-Linux/plasma-patches/"
 "issues\n"
-"POT-Creation-Date: 2026-11-08 22:04-0700\n"
+"POT-Creation-Date: 2026-11-10 15:27-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -97,6 +97,18 @@ msgid_plural "%1 minutes"
 msgstr[0] ""
 msgstr[1] ""
 
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status %1 is a settings key, don't translate it"
+msgid "%1 must be a string"
+msgstr ""
+
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status %1 is a settings key, don't translate it"
+msgid "%1 must be true or false"
+msgstr ""
+
 #: kcm-updates/ui/main.qml
 #, kde-format
 msgctxt "@info"
@@ -130,6 +142,12 @@ msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 · %2 → %3"
 msgstr ""
 
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@info:status %1 is an update source, %2 its error message"
+msgid "%1: %2"
+msgstr ""
+
 #: office-installer/flatpakinstaller.cpp
 #, kde-format
 msgctxt "@info:progress %1 is a Flatpak app or runtime, %2 a percentage"
@@ -144,6 +162,12 @@ msgid_plural ""
 "%2 can't open these %1 documents. Install another office suite to open them."
 msgstr[0] ""
 msgstr[1] ""
+
+#: updater/cli.cpp
+#, kde-format
+msgctxt "@info:shell %1 is an option, %2 a command"
+msgid "--%1 can't be used with %2."
+msgstr ""
 
 #: updater/main.cpp
 #, kde-format
@@ -335,13 +359,6 @@ msgstr ""
 msgid "Authentication is required to turn location services on or off"
 msgstr ""
 
-#: kcm-tweaks/tweaks.cpp
-#, kde-format
-msgid ""
-"Authentication was canceled or failed, or the maintenance task failed. See "
-"the output for details."
-msgstr ""
-
 #: kcm-location/location.cpp kcm-tweaks/tweaks.cpp
 #, kde-format
 msgid "Authentication was canceled or failed. No changes were made."
@@ -350,6 +367,12 @@ msgstr ""
 #: kcm-updates/updates.cpp
 #, kde-format
 msgid "Authentication was canceled or failed. No updates were installed."
+msgstr ""
+
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Authentication was canceled or failed. Nothing was installed."
 msgstr ""
 
 #: kcm-updates/updates.cpp
@@ -433,6 +456,12 @@ msgstr ""
 msgid "Checking for updates…"
 msgstr ""
 
+#: updater/nix.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Checking the Determinate Nix version failed: %1"
+msgstr ""
+
 #: kcm-updates/ui/AdvancedSettings.qml
 #, kde-format
 msgctxt "@info"
@@ -479,7 +508,7 @@ msgstr ""
 msgid "Could not check for updates from: %1"
 msgstr ""
 
-#: updater/settings.cpp
+#: updater/activity.cpp updater/settings.cpp
 #, kde-format
 msgctxt "@info:status %1 is a directory"
 msgid "Could not create %1"
@@ -509,6 +538,13 @@ msgstr ""
 #: kcm-location/location.cpp
 #, kde-format
 msgid "Could not read the state of location services: %1"
+msgstr ""
+
+#: kcm-location/location.cpp
+#, kde-format
+msgid ""
+"Could not read the state of location services: systemd reports "
+"geoclue.service as “%1”."
 msgstr ""
 
 #: kcm-updates/updates.cpp
@@ -547,6 +583,12 @@ msgstr ""
 #, kde-format
 msgctxt "@info:placeholder"
 msgid "Couldn't check whether location services are on"
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@item an update source"
+msgid "Determinate Nix"
 msgstr ""
 
 #: kcm-tweaks/ui/main.qml
@@ -605,6 +647,12 @@ msgctxt "@label:listbox the end of the update time range"
 msgid "Ending at:"
 msgstr ""
 
+#: updater/nix.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Evaluating Nix profile upgrades failed: %1"
+msgstr ""
+
 #: updater/main.cpp
 #, kde-format
 msgctxt "@info:status %1 is an error message"
@@ -639,6 +687,13 @@ msgstr ""
 #, kde-format
 msgctxt "@item:inlistbox install source"
 msgid "Flatpak"
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt ""
+"@item an update source, %1 is a Flatpak installation like user or system"
+msgid "Flatpak (%1)"
 msgstr ""
 
 #: office-installer/suites.cpp
@@ -820,6 +875,12 @@ msgctxt "@option:radio office suite"
 msgid "LibreOffice"
 msgstr ""
 
+#: updater/nix.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Listing your Nix profile failed: %1"
+msgstr ""
+
 #. name of the page in System Settings
 #: kcm-location/kcm_ultramarine_location.json.in
 msgid "Location Services"
@@ -859,6 +920,12 @@ msgstr ""
 #, kde-format
 msgctxt "@info:status"
 msgid "Neither bootc nor rpm-ostree is installed."
+msgstr ""
+
+#: updater/nix.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Nix printed something unexpected while evaluating upgrades."
 msgstr ""
 
 #: office-installer/installerdialog.cpp
@@ -989,6 +1056,12 @@ msgctxt "@info update source"
 msgid "Plasma Widget"
 msgstr ""
 
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@item an update source"
+msgid "Plasma widgets"
+msgstr ""
+
 #: updater/packagekit.cpp
 #, kde-format
 msgctxt "@info:progress"
@@ -1005,6 +1078,12 @@ msgstr ""
 #, kde-format
 msgctxt "@item:inlistbox install source"
 msgid "RPM"
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@item an update source"
+msgid "RPM packages"
 msgstr ""
 
 #: office-installer/installerdialog.cpp
@@ -1320,6 +1399,13 @@ msgstr ""
 
 #: kcm-tweaks/tweaks.cpp
 #, kde-format
+msgid ""
+"This version of um is too new for this version of System Settings. Update "
+"System Settings to manage tweaks."
+msgstr ""
+
+#: kcm-tweaks/tweaks.cpp
+#, kde-format
 msgid "This version of um is too old to manage tweaks from System Settings."
 msgstr ""
 
@@ -1398,6 +1484,24 @@ msgstr ""
 
 #: updater/data/ultramarine-updates-user.desktop.in
 msgid "Ultramarine Updates"
+msgstr ""
+
+#: updater/nix.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "Unexpected nix profile output: %1"
+msgstr ""
+
+#: updater/nix.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "Unexpected nix profile output: unknown elements."
+msgstr ""
+
+#: updater/cli.cpp
+#, kde-format
+msgctxt "@info:shell %1 is a command"
+msgid "Unknown command \"%1\". See --help."
 msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
@@ -1483,10 +1587,10 @@ msgstr ""
 
 #: kcm-updates/ui/AdvancedSettings.qml
 #, kde-format
-msgctxt "@info"
+msgctxt "@info %1 and %2 are times of day"
 msgid ""
 "Updates install whenever the device isn’t in use. Apply Tonight installs "
-"between 10 PM and 6 AM."
+"between %1 and %2."
 msgstr ""
 
 #: kcm-updates/updates.cpp
@@ -1601,6 +1705,12 @@ msgctxt "@info %1 is a system version"
 msgid "Version %1 is ready. Restart to start using it."
 msgstr ""
 
+#: updater/main.cpp
+#, kde-format
+msgctxt "@info:progress"
+msgid "Waiting for the check for a new system image to finish…"
+msgstr ""
+
 #: updater/main.cpp updater/schedule.cpp
 #, kde-format
 msgctxt "@info:status %1 is a warning message"
@@ -1699,6 +1809,18 @@ msgid_plural "and <b>%1</b> more updates"
 msgstr[0] ""
 msgstr[1] ""
 
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "expected a JSON object"
+msgstr ""
+
+#: updater/settings.cpp
+#, kde-format
+msgctxt "@info:status don't translate inactive_minutes"
+msgid "inactive_minutes must be a whole number"
+msgstr ""
+
 #. comma-separated search keywords for the page in System Settings. Keep the English keywords and add translated ones, separated by commas
 #: kcm-location/kcm_ultramarine_location.json.in
 msgctxt "X-KDE-Keywords"
@@ -1717,6 +1839,12 @@ msgctxt "@info:status"
 msgid "pkgcli failed (exit code %1)"
 msgstr ""
 
+#: updater/image.cpp
+#, kde-format
+msgctxt "@info:status %1 is an error message"
+msgid "rpm-ostree status failed: %1"
+msgstr ""
+
 #: updater/schedule.cpp
 #, kde-format
 msgctxt "@info:shell"
@@ -1727,6 +1855,12 @@ msgstr ""
 #, kde-format
 msgctxt "@info:shell"
 msgid "run-user is run by the user timers."
+msgstr ""
+
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@item an update source"
+msgid "system image"
 msgstr ""
 
 #: updater/schedule.cpp
@@ -1758,16 +1892,42 @@ msgstr ""
 msgid "um is not installed."
 msgstr ""
 
+#: kcm-tweaks/tweaks.cpp
+#, kde-format
+msgid ""
+"um listed the tweaks with a format version System Settings doesn't "
+"recognize. Check that um and System Settings are up to date."
+msgstr ""
+
+#: updater/packagekit.cpp
+#, kde-format
+msgctxt "@info:status"
+msgid "unknown error"
+msgstr ""
+
 #. comma-separated search keywords for the page in System Settings. Keep the English keywords and add translated ones, separated by commas
 #: kcm-updates/kcm_ultramarine_updates.json.in
 msgctxt "X-KDE-Keywords"
 msgid "update,updates,upgrade,software,dnf,flatpak,nix,bootc,packages,widgets,plasmoids,restart"
 msgstr ""
 
+#: updater/updates.cpp
+#, kde-format
+msgctxt "@item an update source"
+msgid "your Nix profile"
+msgstr ""
+
 #: kcm-tweaks/ui/main.qml
 #, kde-format
 msgctxt "@action:button accessible name, %1 is a tweak"
 msgid "“%1” applied"
+msgstr ""
+
+#: dgpu-launch/main.cpp
+#, kde-format
+msgid ""
+"“%1” isn't a trusted app. Only installed apps, or desktop files marked as "
+"executable, can be launched on the dedicated graphics card."
 msgstr ""
 
 #: dgpu-launch/main.cpp

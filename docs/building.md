@@ -41,21 +41,38 @@ just cppcheck
 
 The install paths of the update helper, its systemd units, the dGPU launcher,
 the location helper and the office suite installer follow `CMAKE_INSTALL_PREFIX`.
-Build directories configured before they did still have the old paths cached,
+The systemd unit and udev rules directories come from `systemd.pc` and `udev.pc`
+with `/usr` swapped for the prefix (falling back to `lib/systemd/{system,user}` and
+`lib/udev/rules.d` under it), and can be set with `-DSYSTEMD_SYSTEM_UNIT_DIR=`,
+`-DSYSTEMD_USER_UNIT_DIR=` and `-DUDEV_RULES_DIR=`. Build directories configured before they did still have the old paths cached,
 so reconfigure those with `cmake --fresh` (or `just clean`) before changing the
 prefix.
 
 The `justfile` also provides `just build`, `just test`, `just install`, and
 `just install-user`. `just configure` generates `compile_commands.json` for
-clangd.
+clangd, and passes any extra arguments to CMake
+(`just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror`).
 
-`just install-user` installs under `~/.local`, which only works for the Updates and
-Tweaks KCMs. The update helper, the location helper, their polkit actions, the
-systemd units, the udev rule and the autostart entry are only read from system
-locations, and the KCMs would run a user-writable helper through pkexec. Use
-`just dev-updates-install` for the update helper. The Location Services switch
-needs `/usr/libexec/ultramarine-location-helper` and its polkit policy installed
-system-wide (`just install`).
+`just install-user` builds the Updates and Tweaks KCMs in `build-user` and installs
+only them under `~/.local`. The update helper, the location helper, their polkit
+actions, the systemd units, the udev rule and the autostart entry are only read from
+system locations, and polkit only matches the helpers' system paths, so it builds the
+Updates KCM to run `/usr/libexec/ultramarine-updates`. Install that with
+`just dev-updates-install` (or the RPM). The Location Services KCM isn't installed:
+its switch needs `/usr/libexec/ultramarine-location-helper` and its polkit policy
+installed system-wide, so use `just install` for it.
+
+Qt doesn't look for plugins under `~/.local`, so System Settings only finds the
+KCMs with `QT_PLUGIN_PATH` set (the desktop files and translations in
+`~/.local/share` are found without it):
+
+```bash
+QT_PLUGIN_PATH="$HOME/.local/lib64/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" \
+    systemsettings kcm_ultramarine_updates
+```
+
+To have the whole Plasma session pick them up, export it from a script in
+`~/.config/plasma-workspace/env/` and log in again.
 
 To open the modules from the build without installing them:
 

@@ -78,6 +78,13 @@ namespace UltramarineUpdates {
     /// user (profiles are per user)
     bool canManageNixProfile();
 
+    /**
+     * evaluates what `nix profile upgrade` would install for @p elements, one
+     * result per element, without building anything. An element that fails to
+     * evaluate (e.g. unfree, or gone from its flake) only fails its own result.
+     */
+    std::optional<QList<NixEvalResult>> evaluateNixUpgrades(const QList<NixProfileElement> &elements, QString *error);
+
     /// lists pending upgrades of the user's Nix profile
     QList<PackageUpdate> nixPackageUpdates(QString *error);
 

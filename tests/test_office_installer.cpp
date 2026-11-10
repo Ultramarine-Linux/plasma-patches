@@ -32,6 +32,7 @@ namespace {
         static void recognizesInstalledSuites();
         static void picksPackagesToInstall();
         static void explainsFailures();
+        static void reportsCancelOnlyWhenCanceled();
     };
 } // namespace
 
@@ -119,6 +120,35 @@ void OfficeInstallerTest::explainsFailures() {
     QVERIFY(!failureReason(4, {}, {}).isEmpty());
     QVERIFY(!failureReason(8, {}, {}).isEmpty());
     QVERIFY(!failureReason(9, {}, {}).isEmpty());
+}
+
+void OfficeInstallerTest::reportsCancelOnlyWhenCanceled() {
+    // PkExitEnum: 2 failed, 3 cancelled, 9 cancelled priority. PkErrorEnum: 17 transaction cancelled, 30 cannot cancel
+    TransactionFailure failure = transactionFailure(3, 0, {}, {});
+    QVERIFY(failure.canceled);
+    QVERIFY(failure.error.isEmpty());
+
+    failure = transactionFailure(2, 17, u"Cancelled"_s, {});
+    QVERIFY(failure.canceled);
+    QVERIFY(failure.error.isEmpty());
+
+    // the cancel was refused and the transaction failed for another reason
+    failure = transactionFailure(2, 13, u"Nothing provides libfoo"_s, {});
+    QVERIFY(!failure.canceled);
+    QCOMPARE(failure.error, u"Nothing provides libfoo"_s);
+
+    failure = transactionFailure(2, 30, u"Cannot cancel"_s, {});
+    QVERIFY(!failure.canceled);
+    QCOMPARE(failure.error, u"Cannot cancel"_s);
+
+    failure = transactionFailure(4, 0, {}, u"terra"_s);
+    QVERIFY(!failure.canceled);
+    QVERIFY(failure.error.contains(u"terra"_s));
+
+    // another transaction took priority, which isn't the user canceling
+    failure = transactionFailure(9, 17, {}, {});
+    QVERIFY(!failure.canceled);
+    QCOMPARE(failure.error, failureReason(9, {}, {}));
 }
 
 QTEST_GUILESS_MAIN(OfficeInstallerTest)

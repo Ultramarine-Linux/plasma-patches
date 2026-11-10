@@ -55,6 +55,13 @@ namespace UltramarineUpdates {
      */
     QString statusCacheLockPath();
 
+    /**
+     * /run/ultramarine-updates-image-check.lock: held (as root) while the system timer
+     * checks for a new image, together with the system lock. A manual install that
+     * finds the system lock taken checks this to know it only has to wait for the check.
+     */
+    QString imageCheckLockPath();
+
     /// what to tell someone installing by hand while another install runs
     QString installBusyMessage();
 

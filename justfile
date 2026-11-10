@@ -4,11 +4,12 @@ prefix := "/usr"
 
 default: build
 
-# configure the cmake build directory
-configure type=build_type pfx=prefix:
+# configure the cmake build directory. Extra arguments go to cmake, e.g.
+# just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror
+configure type=build_type pfx=prefix *args:
     cmake -S . -B {{ build_dir }} \
         -DCMAKE_BUILD_TYPE={{ type }} \
-        -DCMAKE_INSTALL_PREFIX={{ pfx }}
+        -DCMAKE_INSTALL_PREFIX={{ pfx }} {{ args }}
     ln -sf {{ build_dir }}/compile_commands.json compile_commands.json
 
 # build everything (configures first if needed)
@@ -50,11 +51,18 @@ test: build
 install:
     cmake --install {{ build_dir }}
 
-# configure, build and install into ~/.local
+# configure, build and install the Updates and Tweaks KCMs into ~/.local. They run the
+# system-wide helpers (polkit only matches those paths), so nothing else is installed.
+# Qt only finds the plugins with QT_PLUGIN_PATH, see docs/building.md
 install-user:
-    just build_dir={{ build_dir }}-user configure {{ build_type }} "$HOME/.local"
-    just build_dir={{ build_dir }}-user build
-    cmake --install {{ build_dir }}-user
+    cmake -S . -B {{ build_dir }}-user \
+        -DCMAKE_BUILD_TYPE={{ build_type }} \
+        -DCMAKE_INSTALL_PREFIX="$HOME/.local" \
+        -DULTRAMARINE_UPDATES_EXECUTABLE=/usr/libexec/ultramarine-updates \
+        -DULTRAMARINE_LOCATION_HELPER=/usr/libexec/ultramarine-location-helper
+    cmake --build {{ build_dir }}-user --parallel --target kcm_ultramarine_updates kcm_ultramarine_tweaks
+    cmake --install {{ build_dir }}-user/kcm-updates
+    cmake --install {{ build_dir }}-user/kcm-tweaks
 
 # remove build directories
 clean:
@@ -96,13 +104,17 @@ umcli_dir := "../umcli"
 
 # build umcli and install it system-wide like the umcli RPM (run as your user, uses sudo)
 dev-um-install:
-    cd {{ umcli_dir }} && go build -o /tmp/um-dev-build .
-    sudo install -Dm0755 /tmp/um-dev-build /usr/bin/um
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT
+    (cd {{ umcli_dir }} && go build -o "$tmp/um" .)
+    sudo install -Dm0755 "$tmp/um" /usr/bin/um
     sudo rm -rf /usr/share/um
     sudo mkdir -p /usr/share/um
     sudo cp -a {{ umcli_dir }}/data/. /usr/share/um/
     sudo install -Dm0644 {{ umcli_dir }}/polkit/org.ultramarine.um.policy /usr/share/polkit-1/actions/org.ultramarine.um.policy
-    @echo "installed $(/usr/bin/um --help >/dev/null && echo /usr/bin/um), /usr/share/um and the polkit action"
+    echo "installed $(/usr/bin/um --help >/dev/null && echo /usr/bin/um), /usr/share/um and the polkit action"
 
 # remove what dev-um-install installed (keeps tweak state in /var/lib/um)
 dev-um-uninstall:

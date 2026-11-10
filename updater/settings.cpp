@@ -118,8 +118,8 @@ namespace UltramarineUpdates {
         QJsonParseError parseError{};
         const QJsonDocument document = QJsonDocument::fromJson(json, &parseError);
         if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-            *error =
-                parseError.error != QJsonParseError::NoError ? parseError.errorString() : u"expected a JSON object"_s;
+            *error = parseError.error != QJsonParseError::NoError ? parseError.errorString()
+                                                                  : i18nc("@info:status", "expected a JSON object");
             return false;
         }
         const QJsonObject object = document.object();
@@ -130,7 +130,8 @@ namespace UltramarineUpdates {
                 return true;
             }
             if (!json_value.isBool()) {
-                *error = u"%1 must be true or false"_s.arg(key);
+                *error =
+                    i18nc("@info:status %1 is a settings key, don't translate it", "%1 must be true or false", key);
                 return false;
             }
             *value = json_value.toBool();
@@ -142,7 +143,7 @@ namespace UltramarineUpdates {
                 return true;
             }
             if (!json_value.isString()) {
-                *error = u"%1 must be a string"_s.arg(key);
+                *error = i18nc("@info:status %1 is a settings key, don't translate it", "%1 must be a string", key);
                 return false;
             }
             *value = json_value.toString();
@@ -155,7 +156,8 @@ namespace UltramarineUpdates {
         if (const QJsonValue minutes = object.value("inactive_minutes"_L1); !minutes.isUndefined()) {
             const double value = minutes.toDouble(-1);
             if (!minutes.isDouble() || std::trunc(value) != value) {
-                *error = u"inactive_minutes must be a whole number"_s;
+                *error =
+                    i18nc("@info:status don't translate inactive_minutes", "inactive_minutes must be a whole number");
                 return false;
             }
             // checked before the cast, which is undefined for values outside int's range
@@ -192,6 +194,14 @@ namespace UltramarineUpdates {
             return false;
         }
         return true;
+    }
+
+    Settings loadSettingsOrDefaults(QString *warning) {
+        warning->clear();
+        Settings settings;
+        // loadSettings() leaves the defaults on error
+        loadSettings(&settings, warning);
+        return settings;
     }
 
     bool saveSettings(const Settings &settings, QString *error) {

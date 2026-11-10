@@ -70,7 +70,8 @@ namespace UltramarineUpdates {
                                          const QString &error) {
             ++response.queriedSources;
             if (!error.isEmpty()) {
-                response.errors.append(u"%1: %2"_s.arg(source, error));
+                response.errors.append(
+                    i18nc("@info:status %1 is an update source, %2 its error message", "%1: %2", source, error));
                 return;
             }
             response.updates.append(updates);
@@ -80,12 +81,13 @@ namespace UltramarineUpdates {
         if (isImageMode()) {
             // dnf exists in bootc images, but can't update the image
             const ImageState image = imageState(&error);
-            collect(u"image"_s, image.update ? QList<PackageUpdate>{*image.update} : QList<PackageUpdate>{}, error);
+            collect(i18nc("@item an update source", "system image"),
+                    image.update ? QList<PackageUpdate>{*image.update} : QList<PackageUpdate>{}, error);
             response.restartRequired = image.staged;
             response.stagedVersion = image.stagedVersion;
         } else if (hasExecutable(u"dnf"_s)) {
             const QList<PackageUpdate> updates = rpmPackageUpdates(&error);
-            collect(u"rpm"_s, updates, error);
+            collect(i18nc("@item an update source", "RPM packages"), updates, error);
             response.offlinePending = offlineUpdatePending();
             response.restartRequired = response.offlinePending;
             response.offlineError = lastOfflineUpdateError();
@@ -93,24 +95,26 @@ namespace UltramarineUpdates {
         if (!determinateNixdBinary().isEmpty()) {
             error.clear();
             const QList<PackageUpdate> updates = determinateNixUpdate(&error);
-            collect(u"determinate nix"_s, updates, error);
+            collect(i18nc("@item an update source", "Determinate Nix"), updates, error);
         }
         if (canManageNixProfile()) {
             error.clear();
             const QList<PackageUpdate> updates = nixPackageUpdates(&error);
-            collect(u"nix profile"_s, updates, error);
+            collect(i18nc("@item an update source", "your Nix profile"), updates, error);
         }
         if (hasExecutable(u"flatpak"_s)) {
             for (const QString &installation: flatpakInstallations()) {
                 error.clear();
                 const QList<PackageUpdate> updates = flatpakPackageUpdates(installation, &error);
-                collect(u"flatpak "_s + installation, updates, error);
+                collect(i18nc("@item an update source, %1 is a Flatpak installation like user or system",
+                              "Flatpak (%1)", installation),
+                        updates, error);
             }
         }
         if (canManagePlasmoids()) {
             error.clear();
             const QList<PackageUpdate> updates = plasmoidUpdates(&error);
-            collect(u"plasma widgets"_s, updates, error);
+            collect(i18nc("@item an update source", "Plasma widgets"), updates, error);
         }
         return response;
     }

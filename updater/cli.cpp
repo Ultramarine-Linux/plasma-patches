@@ -70,6 +70,16 @@ namespace UltramarineUpdates {
                 return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", name, command);
             }
         }
+        // --json only changes how --status prints, and scheduling or canceling print nothing to parse
+        if (command == "schedule"_L1 && parser.isSet(u"status"_s)) {
+            if (parser.isSet(u"cancel"_s)) {
+                return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", u"cancel"_s,
+                             u"--status"_s);
+            }
+        } else if (command == "schedule"_L1 && parser.isSet(u"json"_s)) {
+            return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", u"json"_s,
+                         parser.isSet(u"cancel"_s) ? u"--cancel"_s : command);
+        }
         return {};
     }
 

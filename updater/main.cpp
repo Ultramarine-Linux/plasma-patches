@@ -38,6 +38,13 @@ namespace {
     /// pkexec's exit codes when the prompt is dismissed and when authorization fails
     constexpr int pkexecDismissed = 126;
     constexpr int pkexecNotAuthorized = 127;
+    /**
+     * what the root part of `apply` exits with when it fails. sudo exits with 1
+     * when authentication fails, so 1 can't also mean that the helper failed.
+     */
+    constexpr int systemApplyFailed = 2;
+    /// how long a manual install waits for the system timer's check for a new image
+    constexpr std::chrono::minutes imageCheckWait{15};
 
     /// environment forwarded through sudo (pkexec always clears it)
     const QStringList forwardedEnvironment{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
@@ -51,9 +58,9 @@ namespace {
         print(QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact)) + u'\n');
     }
 
-    int fail(const QString &message) {
+    int fail(const QString &message, const int exitCode = 1) {
         std::fprintf(stderr, "%s\n", qPrintable(message));
-        return 1;
+        return exitCode;
     }
 
     /**
@@ -62,9 +69,9 @@ namespace {
      * which the KCM checks for. The polkit actions match our exact path and the
      * command (argv[1]), so @p arguments must start with the command. pkexec runs
      * it with a clean environment, so wrapping the helper in `env` would stop the
-     * actions from applying.
+     * actions from applying. Sets @p sudo if it ran through sudo instead.
      */
-    int runAsRoot(const QStringList &arguments) {
+    int runAsRoot(const QStringList &arguments, bool *sudo = nullptr) {
         const QString self = QCoreApplication::applicationFilePath();
         QString program;
         QStringList argv;
@@ -78,6 +85,9 @@ namespace {
                     argv << name + u'=' + qEnvironmentVariable(name.toLatin1().constData());
                 }
             }
+        }
+        if (sudo) {
+            *sudo = !program.endsWith("/pkexec"_L1);
         }
         argv << self << arguments;
         std::fflush(stdout);
@@ -136,41 +146,62 @@ namespace {
             }
             // system updates first: if authentication is canceled, nothing is
             // installed, and pkexec's exit codes are passed on
-            const int systemExitCode = runAsRoot(escalatedCommandLine(command, parser));
+            bool sudo = false;
+            int systemExitCode = runAsRoot(escalatedCommandLine(command, parser), &sudo);
+            // sudo exits with 1 if authentication failed (or it couldn't run us at
+            // all), while our root part exits with systemApplyFailed
+            if (sudo && systemExitCode == 1) {
+                systemExitCode = pkexecNotAuthorized;
+            }
             if (systemExitCode == pkexecDismissed || systemExitCode == pkexecNotAuthorized) {
-                return systemExitCode;
+                return fail(i18nc("@info:status", "Authentication was canceled or failed. Nothing was installed."),
+                            systemExitCode);
             }
             // user-level updates must run as the invoking user. They're installed
             // even if some system updates failed, which the root part already reported.
             const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing your updates"));
-            if (const ApplyResult result = applyUser(assumeYes); !result.ok()) {
+            const ApplyResult result = applyUser(assumeYes);
+            if (result.updated && result.installed()) {
+                recordManualInstall(true, QDateTime::currentDateTime());
+            }
+            if (!result.ok()) {
                 fail(result.error());
                 return systemExitCode != 0 ? systemExitCode : 1;
             }
             return systemExitCode;
         }
 
-        // the system timer holds this lock for a moment to see whether an install
-        // runs before checking for a new image, so wait that long for it
+        const auto failSystem = [](const QString &message) { return fail(message, systemApplyFailed); };
+        // the system timer holds the lock for a moment before it checks for a new image,
+        // so wait that long. If it's checking, wait for the check, which can take a while.
         constexpr std::chrono::seconds probeWait{2};
         InstallLock systemLock(systemLockPath());
-        if (const InstallLock::Result locked = systemLock.tryLock(&error, probeWait);
-            locked != InstallLock::Result::Acquired) {
-            return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
+        InstallLock::Result locked = systemLock.tryLock(&error, probeWait);
+        if (locked == InstallLock::Result::Busy &&
+            InstallLock(imageCheckLockPath()).tryLock() == InstallLock::Result::Busy) {
+            print(i18nc("@info:progress", "Waiting for the check for a new system image to finish…") + u'\n');
+            locked = systemLock.tryLock(&error, imageCheckWait);
+        }
+        if (locked != InstallLock::Result::Acquired) {
+            return failSystem(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
         }
         // read as root: pkexec cleared any development override, sudo forwards it
-        Settings settings;
-        if (!loadSettings(&settings, &error)) {
+        QString settingsWarning;
+        const Settings settings = loadSettingsOrDefaults(&settingsWarning);
+        if (!settingsWarning.isEmpty()) {
             std::fprintf(stderr, "%s\n",
-                         qPrintable(i18nc("@info:status %1 is a warning message", "Warning: %1", error)));
+                         qPrintable(i18nc("@info:status %1 is a warning message", "Warning: %1", settingsWarning)));
         }
         const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing system updates"));
         const ApplyResult result = applySystem(assumeYes, settings.offline);
+        if (result.updated && result.installed()) {
+            recordManualInstall(false, QDateTime::currentDateTime());
+        }
         if (!result.ok()) {
-            return fail(result.error());
+            return failSystem(result.error());
         }
         if (!result.updated) {
-            return fail(i18nc("@info:status", "No supported package manager was found."));
+            return failSystem(i18nc("@info:status", "No supported package manager was found."));
         }
         if (!isImageMode() && offlineUpdatePending()) {
             print(i18nc("@info:status", "System updates will be installed during the next restart.") + u'\n');

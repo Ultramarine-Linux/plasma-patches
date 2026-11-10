@@ -53,19 +53,30 @@ namespace OfficeInstaller {
             progressChanged(progress, context);
         }
 
+        /// what operationError() needs: where to report and the error that stopped the transaction
+        struct RunContext {
+            FlatpakInstaller *installer;
+            QString fatalError;
+        };
+
         /**
          * keeps going after errors in related refs (translations, GL extensions),
          * which libflatpak marks non-fatal. Anything else stops the transaction
          */
         gboolean operationError(FlatpakTransaction * /*transaction*/, FlatpakTransactionOperation *operation,
-                                const GError *error, const FlatpakTransactionErrorDetails details, gpointer installer) {
+                                const GError *error, const FlatpakTransactionErrorDetails details, gpointer data) {
+            auto *context = static_cast<RunContext *>(data);
             if ((details & FLATPAK_TRANSACTION_ERROR_DETAILS_NON_FATAL) == 0) {
+                // libflatpak reports any failure as canceled once the cancellable is set, so keep the real one
+                if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+                    context->fatalError = QString::fromUtf8(error->message);
+                }
                 return FALSE;
             }
             const QString ref = QString::fromUtf8(flatpak_transaction_operation_get_ref(operation));
             const QString message = QString::fromUtf8(error->message);
             qWarning("skipping %s: %s", qPrintable(ref), qPrintable(message));
-            Q_EMIT static_cast<FlatpakInstaller *>(installer)->progress(
+            Q_EMIT context->installer->progress(
                 i18nc("@info:progress %1 is a Flatpak runtime or extension, %2 the error", "Skipped %1: %2",
                       ref.section(u'/', 1, 1), message));
             return TRUE;
@@ -87,6 +98,7 @@ namespace OfficeInstaller {
                 g_main_context_unref(c);
             });
 
+            RunContext context{.installer = installer, .fatalError = {}};
             g_autoptr(GError) error = nullptr;
             g_autoptr(FlatpakInstallation) installation = flatpak_installation_new_system(cancellable, &error);
             g_autoptr(FlatpakTransaction) transaction = nullptr;
@@ -97,7 +109,7 @@ namespace OfficeInstaller {
                 flatpak_transaction_add_default_dependency_sources(transaction);
                 g_signal_connect(transaction, "new-operation", G_CALLBACK(newOperation), installer);
                 g_signal_connect(transaction, "choose-remote-for-ref", G_CALLBACK(chooseRemote), nullptr);
-                g_signal_connect(transaction, "operation-error", G_CALLBACK(operationError), installer);
+                g_signal_connect(transaction, "operation-error", G_CALLBACK(operationError), &context);
                 if (flatpak_transaction_add_install(transaction, remote.toUtf8().constData(), ref.toUtf8().constData(),
                                                     nullptr, &error)) {
                     flatpak_transaction_run(transaction, cancellable, &error);
@@ -107,8 +119,13 @@ namespace OfficeInstaller {
             if (!error || g_error_matches(error, FLATPAK_ERROR, FLATPAK_ERROR_ALREADY_INSTALLED)) {
                 return {.success = true, .canceled = false, .error = {}};
             }
-            if (g_cancellable_is_cancelled(cancellable) || g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+            // only a cancel that actually stopped it. An operation that failed for another reason while
+            // canceling is still shown, even though libflatpak then reports the transaction as canceled
+            if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED) && context.fatalError.isEmpty()) {
                 return {.success = false, .canceled = true, .error = {}};
+            }
+            if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+                return {.success = false, .canceled = false, .error = context.fatalError};
             }
             return {.success = false, .canceled = false, .error = QString::fromUtf8(error->message)};
         }

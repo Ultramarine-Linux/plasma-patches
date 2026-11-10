@@ -36,8 +36,9 @@ an unsupported control.
 Enabling, disabling or running a tweak invokes `um tweaks` through umcli's
 polkit-aware privilege escalation. Warnings are shown before risky or
 non-reversible operations. um is started without stdin and in a new session, so it
-never sees a terminal and escalates through pkexec. The exception is a `wheel` member
-for whom sudo needs no password (a `NOPASSWD` rule or cached credentials): um then uses
+never sees a terminal and escalates through pkexec (with Qt 6.6, which has no
+`CreateNewSession`, the KCM calls `setsid()` in the child itself). The exception is a
+`wheel` member for whom sudo needs no password (a `NOPASSWD` rule or cached credentials): um then uses
 `sudo -n`, which forwards the `UM_*` overrides and exits 1 rather than 126 or 127 if it
 fails.
 
@@ -47,7 +48,9 @@ when it doesn't (or when it exits with "unknown"). When the check fails, um sets
 `state_error`, and the KCM shows the state as unknown with the error and doesn't
 let the tweak be changed from there.
 
-A running change can't be canceled from the KCM: once um runs as root, the
+Since um leads its own session and process group, closing the page while the list is
+loading kills the whole group, so the `check.sh` scripts um runs to read the state don't
+outlive it. A running change can't be canceled from the KCM: once um runs as root, the
 unprivileged KCM can't signal it. Closing the page or System Settings leaves it
 running rather than killing it halfway. Its output goes to a `0600` file in
 `$XDG_RUNTIME_DIR` (unlinked as soon as um starts, and polled by the KCM) instead of a
@@ -60,6 +63,8 @@ changed.
 
 `um tweaks list --json` output has a `version`. The KCM only accepts version 1 (or no
 version, from um builds before it was added) and asks for a newer System Settings
-otherwise, since a new version may change what the fields mean.
+otherwise, since a new version may change what the fields mean. A `version` that isn't a
+positive whole number (a string, a fraction, `null`, 0 or less) isn't read as 1 either, and
+gets its own error.
 
 For the command behavior, see the [umcli README](https://github.com/Ultramarine-Linux/um/blob/main/README.md).

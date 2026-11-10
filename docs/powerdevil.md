@@ -105,6 +105,9 @@ So a patch change reaches the package once it's on `main` here. A new Plasma min
 version that the current patch doesn't apply to needs a `powerdevil/<major.minor>/`
 directory (or a rebase of `powerdevil/`).
 
+CI (`.github/workflows/cpp-ci.yml`) checks weekly, and on changes here, that
+`powerdevil/` applies with `--fuzz=0` to upstream's `Plasma/6.8` branch.
+
 ## Dropping the patch
 
 Drop the patch, and the package, once the MR lands in a Plasma release that

@@ -117,7 +117,9 @@ KCMUtils.SimpleKCM {
             Layout.maximumWidth: Kirigami.Units.gridUnit * 20
             text: kcm.windowEnabled
                 ? i18nc("@info", "Also used for Apply Tonight.")
-                : i18nc("@info", "Updates install whenever the device isn’t in use. Apply Tonight installs between 10 PM and 6 AM.")
+                // the helper's default for Apply Tonight, 22:00-06:00 (see schedule.cpp)
+                : i18nc("@info %1 and %2 are times of day", "Updates install whenever the device isn’t in use. Apply Tonight installs between %1 and %2.",
+                        page.timeChoice(22 * 60).text, page.timeChoice(6 * 60).text)
             font: Kirigami.Theme.smallFont
             wrapMode: Text.Wrap
         }

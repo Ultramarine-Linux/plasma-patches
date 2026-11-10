@@ -13,7 +13,7 @@ the `um upgrade` command proposed for umcli; umcli still backs the Tweaks KCM
 | RPM packages | `dnf check-update`, sizes from `dnf repoquery` and `rpm` | `dnf upgrade --refresh` as root, or downloaded with dnf and installed while restarting by PackageKit (see [Offline updates](#offline-updates)) |
 | Image mode (bootc/rpm-ostree) | the update bootc/rpm-ostree already found (`bootc status`, `rpm-ostree status`) | `bootc upgrade`, `um env update` on `um env` systems, or `rpm-ostree upgrade`, as root |
 | Flatpak | `flatpak remote-ls --updates`, per installation | `flatpak update --user` as the user, `--system` as root |
-| Nix profile | `nix profile list` and a pure evaluation of what `nix profile upgrade` would install | `nix profile upgrade --all --impure`, as the user |
+| Nix profile | `nix profile list` and an evaluation (`nix eval --impure`, nothing is built) of what `nix profile upgrade` would install | `nix profile upgrade --all --impure`, as the user |
 | Determinate Nix | `determinate-nixd version` | `determinate-nixd upgrade`, as root |
 | Plasma widgets | KNewStuff (`plasmoids.knsrc`) compares the user's registry with the KDE Store | KNewStuff installs the new version, as the user |
 
@@ -53,6 +53,13 @@ contacted at all. A widget update takes effect once Plasma reloads it, e.g. afte
 logging in again. If a widget takes longer than 10 minutes to install, the rest are
 skipped until the next run, since KNewStuff can't cancel the one still going.
 
+The Nix listing evaluates with `--impure`, like `nix profile upgrade --impure`,
+so unlocked flake references resolve the same way, and Nix's `tarball-ttl`
+decides when they're fetched again. Each profile element is evaluated on its
+own: one that fails (unfree or insecure without being allowed, or gone from
+its flake) is left out instead of failing the whole listing, and outputs the
+package doesn't have anymore are skipped.
+
 RPM and Nix updates are shown as apps when the package ships an AppStream
 desktop-application component (or, without any metainfo, a visible launcher).
 
@@ -63,7 +70,7 @@ ultramarine-updates list [--json]
 ultramarine-updates apply [--yes]
 ultramarine-updates settings [--json] [--automatic=BOOL] [--offline=BOOL]
                              [--inactive-minutes=N] [--window=HH:MM-HH:MM]
-ultramarine-updates schedule [--cancel | --status [--json]]
+ultramarine-updates schedule [--cancel | --status [--json]]   # --json only with --status
 ultramarine-updates run-scheduled [--tonight]   # system timers, as root
 ultramarine-updates run-user [--tonight]        # user timers
 ```
@@ -96,7 +103,15 @@ partial failure). The only ordering is within RPM offline
 updates: PackageKit prepares the update only if dnf's download worked. Run as
 the user, `apply` installs the user's updates even if the system part failed
 (but not if authentication was dismissed or refused), and exits with the system
-part's exit code if that failed.
+part's exit code if that failed. The root part exits with 2 when it fails, so
+`sudo`'s own 1 (a wrong password, or not allowed to use sudo) can be told apart
+and is treated like pkexec's 127.
+
+A successful `apply` is recorded like an automatic install
+(`last-automatic-update` in the state directories, for the system's and the
+user's part separately) and stops that part's Apply Tonight timer, since
+tonight would have nothing left to install. The automatic timer then also waits
+its 20 hours. The KCM checks the schedule again after installing.
 
 ## Offline updates
 
@@ -154,10 +169,12 @@ profile and Plasma widgets are updated as that user. Commands that need root
 (`apply`, changing `settings`, `schedule`) run their
 system part first, as a child through `pkexec` (no terminal: a polkit prompt)
 or `sudo` (in a terminal), and then the user's part. If authentication is
-dismissed or refused, the user's part is skipped, so nothing changes. `apply`
+dismissed or refused (with sudo: it exits with 1), the user's part is skipped, so nothing changes. `apply`
 still installs the user's updates if some system updates failed. `schedule`
 skips the user's part if the system part failed for any reason. pkexec's exit codes 126
-(dismissed) and 127 (not authorized) are passed back to the KCM.
+(dismissed) and 127 (not authorized) are passed back to the KCM. The KCM starts
+the helper with stdin on `/dev/null`, and the helper does the same for the
+tools it only reads from, so nothing can wait forever for an answer.
 
 The polkit actions in `/usr/share/polkit-1/actions/org.ultramarine.updates.policy`
 match the helper's exact install path, so the helper must be installed where
@@ -197,7 +214,9 @@ session) for "Install Updates and Restart" and canceling.
 
 Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
 `ULTRAMARINE_UPDATES_CONFIG` overrides the path for development, and stops
-`settings` from escalating). The defaults:
+`settings` from escalating). If the file is broken, the timers and `apply`
+warn and use the defaults until it's fixed (or replaced by saving settings),
+so automatic updates and the image check keep going. The defaults:
 
 ```json
 { "automatic": true, "offline": false, "inactive_minutes": 5, "window_start": "", "window_end": "" }
@@ -235,7 +254,7 @@ Settings live in `/etc/ultramarine-updates/settings.json` (world-readable;
   (22:00–06:00, or the configured window) while the device is unused, even with
   automatic updates off, then stop. A failed attempt is retried at most once an
   hour. A partial failure (see above) still counts as installed, so the timer
-  stops instead of retrying every night. If the automatic timer already installed updates after Apply Tonight was
+  stops instead of retrying every night. If the automatic timer (or a manual `apply`) already installed updates after Apply Tonight was
   scheduled (recorded in `tonight-scheduled` in the state directories), the
   tonight timer stops without installing again. The system's tonight service
   waits for `network-online.target`, like the automatic one. Scheduling again
@@ -325,10 +344,12 @@ separate, so the system's and a user's updates can install at the same time
 the KCM's `dnf check-update` can run during an install. A timer that finds the
 lock held skips that run; `apply` fails with a message. The bootc status cache
 has a lock of its own, `/run/ultramarine-updates-status.lock`, so refreshing it
-never turns away an install. Before checking for a new image, the system timer
-takes the system lock for a moment to see whether an install is running, and
-skips the check if one is. `apply` waits up to 2 seconds for the system lock,
-so that moment can't turn it away either.
+never turns away an install. The system timer's check for a new image holds the
+system lock for the whole check (and skips it while an install runs), so
+`rpm-ostree upgrade --check` never runs alongside an install. While checking, it
+also holds `/run/ultramarine-updates-image-check.lock`: `apply` waits up to 2
+seconds for the system lock, and if the check lock is held too, it says so and
+waits up to 15 minutes for the check to finish instead of giving up.
 
 ## Translations
 
