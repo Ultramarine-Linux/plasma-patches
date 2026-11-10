@@ -561,11 +561,11 @@ void Tweaks::updateErrorMessage() {
     Q_EMIT errorMessageChanged();
 }
 
-void Tweaks::setListState(const bool loaded, const bool failed) {
-    if (m_loaded == loaded && m_listFailed == failed) {
+void Tweaks::setListState(const bool wasLoaded, const bool failed) {
+    if (m_loaded == wasLoaded && m_listFailed == failed) {
         return;
     }
-    m_loaded = loaded;
+    m_loaded = wasLoaded;
     m_listFailed = failed;
     Q_EMIT listStateChanged();
 }

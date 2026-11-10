@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
+#include <memory>
+
 #include <KPluginMetaData>
 
 #include <QSignalSpy>
@@ -191,15 +193,14 @@ void TweaksTest::composesErrors() {
 void TweaksTest::destroyingWhileListingIsSafe() {
     // ~QProcess used to emit finished() for the running list into the half-destroyed module,
     // which then wrote to its already destroyed members
-    auto *tweaks = new Tweaks(nullptr, KPluginMetaData());
+    auto tweaks = std::make_unique<Tweaks>(nullptr, KPluginMetaData());
     tweaks->load();
     if (!tweaks->loading()) {
-        delete tweaks;
         QSKIP("um isn't installed, so there's no list to interrupt");
     }
-    const QSignalSpy loadingChanged(tweaks, &Tweaks::loadingChanged);
-    const QSignalSpy errorMessageChanged(tweaks, &Tweaks::errorMessageChanged);
-    delete tweaks;
+    const QSignalSpy loadingChanged(tweaks.get(), &Tweaks::loadingChanged);
+    const QSignalSpy errorMessageChanged(tweaks.get(), &Tweaks::errorMessageChanged);
+    tweaks.reset();
     QCOMPARE(loadingChanged.count(), 0);
     QCOMPARE(errorMessageChanged.count(), 0);
 }

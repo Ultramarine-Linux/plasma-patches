@@ -187,7 +187,7 @@ private:
     void setChangeError(const QString &message);
     /// composes errorMessage() from both errors
     void updateErrorMessage();
-    void setListState(bool loaded, bool failed);
+    void setListState(bool wasLoaded, bool failed);
 
     TweaksModel m_tweaks;
     QProcess m_listProcess;
