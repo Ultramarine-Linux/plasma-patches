@@ -88,15 +88,35 @@ namespace OfficeInstaller {
             return 0;
         }
 
-        Result install(FlatpakInstaller *installer, const QString &remote, const QString &ref,
-                       GCancellable *cancellable) {
-            // the transaction runs its callbacks on the thread's default context
+        /// a main context for the worker thread, which libflatpak runs its callbacks and D-Bus calls on
+        auto threadContext() {
             GMainContext *mainContext = g_main_context_new();
             g_main_context_push_thread_default(mainContext);
-            const std::unique_ptr<GMainContext, void (*)(GMainContext *)> popContext(mainContext, [](GMainContext *c) {
+            return std::unique_ptr<GMainContext, void (*)(GMainContext *)>(mainContext, [](GMainContext *c) {
                 g_main_context_pop_thread_default(c);
                 g_main_context_unref(c);
             });
+        }
+
+        bool updateAppstream(const QString &remote, GCancellable *cancellable) {
+            const auto context = threadContext();
+            g_autoptr(GError) error = nullptr;
+            g_autoptr(FlatpakInstallation) installation = flatpak_installation_new_system(cancellable, &error);
+            if (installation &&
+                flatpak_installation_update_appstream_full_sync(installation, remote.toUtf8().constData(), nullptr,
+                                                                nullptr, nullptr, nullptr, cancellable, &error)) {
+                return true;
+            }
+            if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+                qWarning("couldn't update the %s AppStream data: %s", qPrintable(remote), error->message);
+            }
+            return false;
+        }
+
+        Result install(FlatpakInstaller *installer, const QString &remote, const QString &ref,
+                       GCancellable *cancellable) {
+            // the transaction runs its callbacks on the thread's default context
+            const auto mainContext = threadContext();
 
             RunContext context{.installer = installer, .fatalError = {}};
             g_autoptr(GError) error = nullptr;
@@ -165,6 +185,35 @@ namespace OfficeInstaller {
         if (m_thread) {
             g_cancellable_cancel(m_cancellable);
         }
+    }
+
+    AppstreamUpdater::AppstreamUpdater(const QString &remote, QObject *parent) : QObject(parent), m_remote(remote) {}
+
+    AppstreamUpdater::~AppstreamUpdater() {
+        if (m_thread) {
+            g_cancellable_cancel(m_cancellable);
+            m_thread->wait();
+            delete m_thread;
+        }
+        g_clear_object(&m_cancellable);
+    }
+
+    void AppstreamUpdater::start() {
+        if (m_thread) {
+            return;
+        }
+        g_clear_object(&m_cancellable);
+        m_cancellable = g_cancellable_new();
+        auto success = std::make_shared<bool>(false);
+        m_thread = QThread::create([success, remote = m_remote, cancellable = m_cancellable] {
+            *success = updateAppstream(remote, cancellable);
+        });
+        connect(m_thread, &QThread::finished, this, [this, success] {
+            m_thread->deleteLater();
+            m_thread = nullptr;
+            Q_EMIT finished(*success);
+        });
+        m_thread->start();
     }
 
     QString FlatpakInstaller::defaultArch() { return QString::fromUtf8(flatpak_get_default_arch()); }

@@ -64,6 +64,8 @@ namespace OfficeInstaller {
     private:
         QWidget *createChoicePage();
         QWidget *createProgressPage();
+        /// downloads Flathub's AppStream data and swaps in the suites' icons once it's there
+        void fetchIcons();
 
         void updateSources() const;
         void install();

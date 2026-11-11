@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <QObject>
 #include <QString>
 
 #include "installer.h"
@@ -42,6 +43,36 @@ namespace OfficeInstaller {
     private:
         QString m_remote;
         QString m_ref;
+        QThread *m_thread = nullptr;
+        GCancellable *m_cancellable = nullptr;
+    };
+
+    /**
+     * downloads a remote's AppStream data on a worker thread, which also brings
+     * its app icons. Flatpak only fetches it when something refreshes it, like
+     * Discover, so a fresh system has none. Flatpak's polkit policy lets anyone
+     * do this without a password, since the data is signed.
+     */
+    class AppstreamUpdater : public QObject {
+        Q_OBJECT
+
+    public:
+        explicit AppstreamUpdater(const QString &remote, QObject *parent = nullptr);
+        /// cancels a running download and waits for it to stop
+        ~AppstreamUpdater() override;
+
+        AppstreamUpdater(const AppstreamUpdater &) = delete;
+        AppstreamUpdater &operator=(const AppstreamUpdater &) = delete;
+        AppstreamUpdater(AppstreamUpdater &&) = delete;
+        AppstreamUpdater &operator=(AppstreamUpdater &&) = delete;
+
+        void start();
+
+    Q_SIGNALS:
+        void finished(bool success);
+
+    private:
+        QString m_remote;
         QThread *m_thread = nullptr;
         GCancellable *m_cancellable = nullptr;
     };

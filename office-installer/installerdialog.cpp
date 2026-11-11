@@ -100,11 +100,11 @@ namespace OfficeInstaller {
         }
 
         /**
-         * the suite's icon. Flatpak keeps Flathub's app icons with its AppStream
-         * data, so the icons are there before anything is installed. Falls back
-         * to a generic document icon if the AppStream data hasn't been fetched.
+         * the suite's own icon, or a null icon if there's none yet. Flatpak keeps
+         * Flathub's app icons with its AppStream data, so the icons are there
+         * before anything is installed, once that data has been fetched.
          */
-        QIcon suiteIcon(const Suite &suite) {
+        QIcon appIcon(const Suite &suite) {
             if (QIcon::hasThemeIcon(suite.flatpakId)) {
                 return QIcon::fromTheme(suite.flatpakId);
             }
@@ -128,7 +128,13 @@ namespace OfficeInstaller {
                     return icon;
                 }
             }
-            return QIcon::fromTheme(u"x-office-document"_s);
+            return {};
+        }
+
+        /// the suite's own icon, or a generic document icon until Flathub's AppStream data is fetched
+        QIcon suiteIcon(const Suite &suite) {
+            const QIcon icon = appIcon(suite);
+            return icon.isNull() ? QIcon::fromTheme(u"x-office-document"_s) : icon;
         }
 
         /// a suite in the list: its icon, name and a "Recommended" badge, with the description under them
@@ -385,10 +391,15 @@ namespace OfficeInstaller {
         m_error->hide();
         layout->addWidget(m_error);
 
+        bool missingIcons = false;
         for (const Suite &suite: std::as_const(m_suites)) {
+            missingIcons = missingIcons || appIcon(suite).isNull();
             auto *item = new QListWidgetItem(suiteIcon(suite), suite.name, m_suiteList);
             item->setData(DescriptionRole, suite.description);
             item->setData(RecommendedRole, suite.recommended);
+        }
+        if (missingIcons) {
+            fetchIcons();
         }
         m_suiteList->setItemDelegate(new SuiteDelegate(m_suiteList));
         m_suiteList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -414,6 +425,24 @@ namespace OfficeInstaller {
         layout->addStretch();
         m_suiteList->setFocus();
         return page;
+    }
+
+    void InstallerDialog::fetchIcons() {
+        // a fresh system hasn't fetched Flathub's AppStream data yet, and the app icons come with it
+        auto *updater = new AppstreamUpdater(u"flathub"_s, this);
+        connect(updater, &AppstreamUpdater::finished, this, [this, updater](const bool success) {
+            updater->deleteLater();
+            if (!success) {
+                return;
+            }
+            for (int row = 0; row < m_suiteList->count(); ++row) {
+                m_suiteList->item(row)->setIcon(suiteIcon(m_suites.at(row)));
+            }
+            if (m_installer) {
+                m_progressIcon->setPixmap(suiteIcon(selectedSuite()).pixmap(64, 64));
+            }
+        });
+        updater->start();
     }
 
     QWidget *InstallerDialog::createProgressPage() {
