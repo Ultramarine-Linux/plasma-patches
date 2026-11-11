@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: ultramarine-plasma-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/Ultramarine-Linux/plasma-patches/"
 "issues\n"
-"POT-Creation-Date: 2026-11-10 15:27-0700\n"
+"POT-Creation-Date: 2026-11-10 20:17-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1480,6 +1480,10 @@ msgstr ""
 #, kde-format
 msgctxt "@title"
 msgid "Tweaks"
+msgstr ""
+
+#: systemsettings/settings-ultramarine.desktop.in
+msgid "Ultramarine"
 msgstr ""
 
 #: updater/data/ultramarine-updates-user.desktop.in
