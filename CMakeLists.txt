@@ -106,6 +106,7 @@ target_compile_definitions(kcm_common INTERFACE
     ULTRAMARINE_UPDATES_EXECUTABLE="${ULTRAMARINE_UPDATES_EXECUTABLE}")
 
 
+add_subdirectory(systemsettings)
 add_subdirectory(updater)
 add_subdirectory(kcm-tweaks)
 add_subdirectory(kcm-updates)

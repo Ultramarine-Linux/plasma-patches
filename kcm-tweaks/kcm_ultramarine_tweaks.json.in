@@ -10,5 +10,6 @@
     "Name": "Tweaks"
   },
   "X-KDE-Keywords": "tweaks,ultramarine,um,kernel,nix,system,configuration",
-  "X-KDE-System-Settings-Parent-Category": "system-administration"
+  "X-KDE-System-Settings-Parent-Category": "ultramarine",
+  "X-KDE-Weight": 20
 }

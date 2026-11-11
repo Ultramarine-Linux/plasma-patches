@@ -6,5 +6,6 @@
     "Name": "Updates"
   },
   "X-KDE-Keywords": "update,updates,upgrade,software,dnf,flatpak,nix,bootc,packages,widgets,plasmoids,restart",
-  "X-KDE-System-Settings-Parent-Category": "system-administration"
+  "X-KDE-System-Settings-Parent-Category": "ultramarine",
+  "X-KDE-Weight": 10
 }
