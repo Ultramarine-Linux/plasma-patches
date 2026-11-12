@@ -139,69 +139,62 @@ namespace OfficeInstaller {
         }
     } // namespace
 
+    CancellableThread::~CancellableThread() {
+        if (m_thread) {
+            g_cancellable_cancel(m_cancellable);
+            m_thread->wait();
+            delete m_thread;
+        }
+        g_clear_object(&m_cancellable);
+    }
+
+    void CancellableThread::start(QObject *context, const std::function<void(GCancellable *)> &work,
+                                  const std::function<void()> &finished) {
+        if (m_thread) {
+            return;
+        }
+        g_clear_object(&m_cancellable);
+        m_cancellable = g_cancellable_new();
+        m_thread = QThread::create([work, cancellable = m_cancellable] { work(cancellable); });
+        QObject::connect(m_thread, &QThread::finished, context, [this, finished] {
+            m_thread->deleteLater();
+            m_thread = nullptr;
+            finished();
+        });
+        m_thread->start();
+    }
+
+    void CancellableThread::cancel() const {
+        if (m_thread) {
+            g_cancellable_cancel(m_cancellable);
+        }
+    }
+
     FlatpakInstaller::FlatpakInstaller(const QString &remote, const QString &fullRef, QObject *parent) :
         Installer(parent), m_remote(remote), m_ref(fullRef) {}
 
-    FlatpakInstaller::~FlatpakInstaller() {
-        if (m_thread) {
-            g_cancellable_cancel(m_cancellable);
-            m_thread->wait();
-            delete m_thread;
-        }
-        g_clear_object(&m_cancellable);
-    }
-
     void FlatpakInstaller::start() {
-        if (m_thread) {
-            return;
-        }
-        g_clear_object(&m_cancellable);
-        m_cancellable = g_cancellable_new();
         auto result = std::make_shared<Result>();
-        m_thread = QThread::create([this, result, remote = m_remote, ref = m_ref, cancellable = m_cancellable] {
-            *result = install(this, remote, ref, cancellable);
-        });
-        connect(m_thread, &QThread::finished, this, [this, result] {
-            m_thread->deleteLater();
-            m_thread = nullptr;
-            Q_EMIT finished(result->success, result->canceled, result->error);
-        });
-        m_thread->start();
+        m_thread.start(
+            this,
+            [this, result, remote = m_remote, ref = m_ref](GCancellable *cancellable) {
+                *result = install(this, remote, ref, cancellable);
+            },
+            [this, result] { Q_EMIT finished(result->success, result->canceled, result->error); });
     }
 
-    void FlatpakInstaller::cancel() {
-        if (m_thread) {
-            g_cancellable_cancel(m_cancellable);
-        }
-    }
+    void FlatpakInstaller::cancel() { m_thread.cancel(); }
 
     AppstreamUpdater::AppstreamUpdater(const QString &remote, QObject *parent) : QObject(parent), m_remote(remote) {}
 
-    AppstreamUpdater::~AppstreamUpdater() {
-        if (m_thread) {
-            g_cancellable_cancel(m_cancellable);
-            m_thread->wait();
-            delete m_thread;
-        }
-        g_clear_object(&m_cancellable);
-    }
-
     void AppstreamUpdater::start() {
-        if (m_thread) {
-            return;
-        }
-        g_clear_object(&m_cancellable);
-        m_cancellable = g_cancellable_new();
         auto success = std::make_shared<bool>(false);
-        m_thread = QThread::create([success, remote = m_remote, cancellable = m_cancellable] {
-            *success = updateAppstream(remote, cancellable);
-        });
-        connect(m_thread, &QThread::finished, this, [this, success] {
-            m_thread->deleteLater();
-            m_thread = nullptr;
-            Q_EMIT finished(*success);
-        });
-        m_thread->start();
+        m_thread.start(
+            this,
+            [success, remote = m_remote](GCancellable *cancellable) {
+                *success = updateAppstream(remote, cancellable);
+            },
+            [this, success] { Q_EMIT finished(*success); });
     }
 
     QString FlatpakInstaller::defaultArch() { return QString::fromUtf8(flatpak_get_default_arch()); }

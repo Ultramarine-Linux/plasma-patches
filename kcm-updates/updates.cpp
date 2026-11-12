@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-
 #include <KLocalizedString>
 #include <algorithm>
 #include <numeric>
@@ -19,12 +18,40 @@
 #include <QStringList>
 #include <QTime>
 
+#include "detachedprocess.h"
 #include "updates.h"
 #include "updateshelper.h"
 
 K_PLUGIN_CLASS_WITH_JSON(Updates, "kcm_ultramarine_updates.json")
 
 #include "updates.moc"
+
+namespace {
+    constexpr int previewCount = 5;
+    constexpr int minutesPerDay = 24 * 60;
+    constexpr auto changesSystemProperty = "ultramarineChangesSystem";
+
+    template<typename T>
+    bool assign(T &member, const T &value) {
+        if (member == value) {
+            return false;
+        }
+        member = value;
+        return true;
+    }
+
+    qint64 sum(const QList<UpdateItem> &updates, qint64 UpdateItem::*field) {
+        return std::accumulate(updates.cbegin(), updates.cend(), qint64{0},
+                               [field](const qint64 total, const UpdateItem &item) { return total + item.*field; });
+    }
+
+    QString helperNotInstalledMessage() { return i18n("The update helper (ultramarine-updates) is not installed."); }
+
+    QUrl releaseBackground(const QString &name) {
+        const QString path = QStringLiteral("/usr/share/backgrounds/") + name;
+        return QFileInfo::exists(path) ? QUrl::fromLocalFile(path) : QUrl();
+    }
+} // namespace
 
 UpdatesModel::UpdatesModel(QObject *parent) : QAbstractListModel(parent) {}
 
@@ -89,15 +116,9 @@ int UpdatesModel::countExcluding(const QString &backend) const {
         std::ranges::count_if(m_updates, [&backend](const UpdateItem &item) { return item.backend != backend; }));
 }
 
-qint64 UpdatesModel::totalDownloadSize() const {
-    return std::accumulate(m_updates.cbegin(), m_updates.cend(), qint64{0},
-                           [](const qint64 total, const UpdateItem &item) { return total + item.downloadSize; });
-}
+qint64 UpdatesModel::totalDownloadSize() const { return sum(m_updates, &UpdateItem::downloadSize); }
 
-qint64 UpdatesModel::totalInstalledSizeChange() const {
-    return std::accumulate(m_updates.cbegin(), m_updates.cend(), qint64{0},
-                           [](const qint64 total, const UpdateItem &item) { return total + item.installedSizeChange; });
-}
+qint64 UpdatesModel::totalInstalledSizeChange() const { return sum(m_updates, &UpdateItem::installedSizeChange); }
 
 void UpdatesModel::clear() {
     if (m_updates.isEmpty()) {
@@ -128,21 +149,6 @@ bool UpdatesPreviewModel::filterAcceptsRow(const int sourceRow, const QModelInde
     return !sourceParent.isValid() && sourceRow < m_limit;
 }
 
-namespace {
-    constexpr int previewCount = 5;
-    constexpr auto changesSystemProperty = "ultramarineChangesSystem";
-
-    void letFinishAfterModuleCloses(QProcess *process) {
-        process->setParent(nullptr);
-        QObject::connect(process, &QProcess::finished, process, &QObject::deleteLater);
-        QObject::connect(process, &QProcess::errorOccurred, process, [process](const QProcess::ProcessError error) {
-            if (error == QProcess::FailedToStart) {
-                process->deleteLater();
-            }
-        });
-    }
-} // namespace
-
 Updates::Updates(QObject *parent, const KPluginMetaData &metaData) :
     KQuickManagedConfigModule(parent, metaData), m_updates(this), m_previewUpdates(&m_updates, previewCount, this) {
     setButtons(Apply);
@@ -153,14 +159,13 @@ Updates::Updates(QObject *parent, const KPluginMetaData &metaData) :
 Updates::~Updates() {
     // killing a process that changes the system would strand the root part pkexec started
     for (QProcess *process: findChildren<QProcess *>(Qt::FindDirectChildrenOnly)) {
-        process->disconnect(this);
         if (process->property(changesSystemProperty).toBool() && process->state() != QProcess::NotRunning) {
-            letFinishAfterModuleCloses(process);
+            DetachedProcess::letFinishAfterModuleCloses(process, this);
         } else {
+            process->disconnect(this);
             delete process;
         }
     }
-    m_process = nullptr;
 }
 
 QProcess *Updates::createProcess(const bool changesSystem) {
@@ -187,21 +192,15 @@ QString Updates::distributionVersion() {
     if (!osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};
     }
+    const QLatin1String versionIdKey("VERSION_ID=");
     for (const QStringList entries = QString::fromUtf8(osRelease.readAll()).split(QLatin1Char('\n'));
          const QString &entry: entries) {
-        if (entry.startsWith(QLatin1String("VERSION_ID="))) {
-            return entry.sliced(11).remove(QLatin1Char('"'));
+        if (entry.startsWith(versionIdKey)) {
+            return entry.sliced(versionIdKey.size()).remove(QLatin1Char('"'));
         }
     }
     return {};
 }
-
-namespace {
-    QUrl releaseBackground(const QString &name) {
-        const QString path = QStringLiteral("/usr/share/backgrounds/") + name;
-        return QFileInfo::exists(path) ? QUrl::fromLocalFile(path) : QUrl();
-    }
-} // namespace
 
 QUrl Updates::wallpaper() { return releaseBackground(QStringLiteral("default.png")); }
 
@@ -227,70 +226,49 @@ const QString &Updates::technicalInformation() const { return m_technicalInforma
 bool Updates::automaticUpdates() const { return m_upgradeSettings.automatic; }
 
 void Updates::setAutomaticUpdates(const bool automatic) {
-    if (m_upgradeSettings.automatic == automatic) {
-        return;
+    if (assign(m_upgradeSettings.automatic, automatic)) {
+        notifySettingsEdited();
     }
-    m_upgradeSettings.automatic = automatic;
-    Q_EMIT settingsValuesChanged();
-    settingsChanged();
 }
 
 bool Updates::offlineUpdates() const { return m_upgradeSettings.offline; }
 
 void Updates::setOfflineUpdates(const bool offline) {
-    if (m_upgradeSettings.offline == offline) {
-        return;
+    if (assign(m_upgradeSettings.offline, offline)) {
+        notifySettingsEdited();
     }
-    m_upgradeSettings.offline = offline;
-    Q_EMIT settingsValuesChanged();
-    settingsChanged();
 }
 
 int Updates::inactiveMinutes() const { return m_upgradeSettings.inactiveMinutes; }
 
-void Updates::setInactiveMinutes(int minutes) {
-    minutes = std::clamp(minutes, 0, 24 * 60);
-    if (m_upgradeSettings.inactiveMinutes == minutes) {
-        return;
+void Updates::setInactiveMinutes(const int minutes) {
+    if (assign(m_upgradeSettings.inactiveMinutes, std::clamp(minutes, 0, minutesPerDay))) {
+        notifySettingsEdited();
     }
-    m_upgradeSettings.inactiveMinutes = minutes;
-    Q_EMIT settingsValuesChanged();
-    settingsChanged();
 }
 
 bool Updates::windowEnabled() const { return m_upgradeSettings.windowEnabled; }
 
 void Updates::setWindowEnabled(const bool enabled) {
-    if (m_upgradeSettings.windowEnabled == enabled) {
-        return;
+    if (assign(m_upgradeSettings.windowEnabled, enabled)) {
+        notifySettingsEdited();
     }
-    m_upgradeSettings.windowEnabled = enabled;
-    Q_EMIT settingsValuesChanged();
-    settingsChanged();
 }
 
 int Updates::windowStart() const { return m_upgradeSettings.windowStart; }
 
-void Updates::setWindowStart(int minutes) {
-    minutes = std::clamp(minutes, 0, 24 * 60 - 1);
-    if (m_upgradeSettings.windowStart == minutes) {
-        return;
+void Updates::setWindowStart(const int minutes) {
+    if (assign(m_upgradeSettings.windowStart, std::clamp(minutes, 0, minutesPerDay - 1))) {
+        notifySettingsEdited();
     }
-    m_upgradeSettings.windowStart = minutes;
-    Q_EMIT settingsValuesChanged();
-    settingsChanged();
 }
 
 int Updates::windowEnd() const { return m_upgradeSettings.windowEnd; }
 
-void Updates::setWindowEnd(int minutes) {
-    minutes = std::clamp(minutes, 0, 24 * 60 - 1);
-    if (m_upgradeSettings.windowEnd == minutes) {
-        return;
+void Updates::setWindowEnd(const int minutes) {
+    if (assign(m_upgradeSettings.windowEnd, std::clamp(minutes, 0, minutesPerDay - 1))) {
+        notifySettingsEdited();
     }
-    m_upgradeSettings.windowEnd = minutes;
-    Q_EMIT settingsValuesChanged();
-    settingsChanged();
 }
 
 bool Updates::windowValid() const { return m_upgradeSettings.isValid(); }
@@ -368,8 +346,7 @@ void Updates::save() {
         return;
     }
     m_saving = true;
-    const bool inFlightReadPredatesSave = std::exchange(m_settingsReadInFlight, false);
-    if (inFlightReadPredatesSave) {
+    if (std::exchange(m_settingsReadInFlight, false)) {
         ++m_latestSettingsRequest;
         m_reloadSavedAfterSave = true;
     }
@@ -433,15 +410,17 @@ void Updates::showPendingSuccess() {
 }
 
 void Updates::setSuccessMessage(const QString &message) {
-    if (m_successMessage == message) {
-        return;
+    if (assign(m_successMessage, message)) {
+        Q_EMIT successMessageChanged();
     }
-    m_successMessage = message;
-    Q_EMIT successMessageChanged();
 }
 
 void Updates::defaults() {
     m_upgradeSettings = UpgradeSettings{};
+    notifySettingsEdited();
+}
+
+void Updates::notifySettingsEdited() {
     Q_EMIT settingsValuesChanged();
     settingsChanged();
 }
@@ -470,49 +449,44 @@ void Updates::refreshSchedule() {
 }
 
 void Updates::setScheduling(const bool value) {
-    if (m_scheduling == value) {
-        return;
+    if (assign(m_scheduling, value)) {
+        Q_EMIT schedulingChanged();
     }
-    m_scheduling = value;
-    Q_EMIT schedulingChanged();
 }
 
 void Updates::applyTonight() {
-    if (m_running || m_scheduling) {
-        return;
-    }
-    m_scheduleChangeInFlight = true;
-    setScheduling(true);
-    runHelper({QStringLiteral("schedule")}, true,
-              [this](const int exitCode, const QByteArray &, const QByteArray &err) {
-                  m_scheduleChangeInFlight = false;
-                  if (Pkexec::isAuthenticationFailure(exitCode)) {
-                      setActionError(i18n("Authentication was canceled or failed. Updates were not scheduled."));
-                  } else if (exitCode != 0) {
-                      const QString detail = helperText(err);
-                      setActionError(detail.isEmpty() ? i18n("Updates could not be scheduled.")
-                                                      : i18n("Updates could not be scheduled: %1", detail));
-                  }
-                  refreshSchedule();
-              });
+    changeSchedule({QStringLiteral("schedule")},
+                   i18n("Authentication was canceled or failed. Updates were not scheduled."),
+                   [](const QString &detail) {
+                       return detail.isEmpty() ? i18n("Updates could not be scheduled.")
+                                               : i18n("Updates could not be scheduled: %1", detail);
+                   });
 }
 
 void Updates::cancelTonight() {
+    changeSchedule({QStringLiteral("schedule"), QStringLiteral("--cancel")},
+                   i18n("Authentication was canceled or failed. Tonight's updates are still scheduled."),
+                   [](const QString &detail) {
+                       return detail.isEmpty() ? i18n("Tonight's updates could not be canceled.")
+                                               : i18n("Tonight's updates could not be canceled: %1", detail);
+                   });
+}
+
+void Updates::changeSchedule(const QStringList &arguments, const QString &authenticationFailedMessage,
+                             const std::function<QString(const QString &detail)> &failedMessage) {
     if (m_running || m_scheduling) {
         return;
     }
     m_scheduleChangeInFlight = true;
     setScheduling(true);
-    runHelper({QStringLiteral("schedule"), QStringLiteral("--cancel")}, true,
-              [this](const int exitCode, const QByteArray &, const QByteArray &err) {
+    runHelper(arguments, true,
+              [this, authenticationFailedMessage, failedMessage](const int exitCode, const QByteArray &,
+                                                                 const QByteArray &err) {
                   m_scheduleChangeInFlight = false;
                   if (Pkexec::isAuthenticationFailure(exitCode)) {
-                      setActionError(
-                          i18n("Authentication was canceled or failed. Tonight's updates are still scheduled."));
+                      setActionError(authenticationFailedMessage);
                   } else if (exitCode != 0) {
-                      const QString detail = helperText(err);
-                      setActionError(detail.isEmpty() ? i18n("Tonight's updates could not be canceled.")
-                                                      : i18n("Tonight's updates could not be canceled: %1", detail));
+                      setActionError(failedMessage(helperText(err)));
                   }
                   refreshSchedule();
               });
@@ -555,7 +529,7 @@ void Updates::refresh() {
 
     const QString helper = UpdatesHelper::executable();
     if (helper.isEmpty()) {
-        const QString message = i18n("The update helper (ultramarine-updates) is not installed.");
+        const QString message = helperNotInstalledMessage();
         setRefreshError(message);
         setStatus(message);
         showPendingSuccess();
@@ -581,7 +555,7 @@ void Updates::applyUpdates() {
 
     const QString helper = UpdatesHelper::executable();
     if (helper.isEmpty()) {
-        const QString message = i18n("The update helper (ultramarine-updates) is not installed.");
+        const QString message = helperNotInstalledMessage();
         setActionError(message);
         finishOperation(message);
         return;
@@ -647,19 +621,20 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
 }
 
 void Updates::processError(const QProcess::ProcessError error) {
-    if (error == QProcess::FailedToStart && m_process) {
-        const bool refreshing = std::exchange(m_operation, Operation::None) == Operation::Refresh;
-        std::exchange(m_process, nullptr)->deleteLater();
-        const QString message = i18n("Could not start the update helper.");
-        if (refreshing) {
-            setRefreshError(message);
-        } else {
-            setActionError(message);
-        }
-        finishOperation(message);
-        if (refreshing) {
-            showPendingSuccess();
-        }
+    if (error != QProcess::FailedToStart || !m_process) {
+        return;
+    }
+    const bool refreshing = std::exchange(m_operation, Operation::None) == Operation::Refresh;
+    std::exchange(m_process, nullptr)->deleteLater();
+    const QString message = i18n("Could not start the update helper.");
+    if (refreshing) {
+        setRefreshError(message);
+    } else {
+        setActionError(message);
+    }
+    finishOperation(message);
+    if (refreshing) {
+        showPendingSuccess();
     }
 }
 
@@ -671,8 +646,7 @@ void Updates::readProcessOutput() {
     const QByteArray stdErr = m_process->readAllStandardError();
     m_processStdout += stdOut;
     m_processStderr += stdErr;
-    const bool showsProgress = m_operation == Operation::Install;
-    if (!showsProgress || (stdOut.isEmpty() && stdErr.isEmpty())) {
+    if (m_operation != Operation::Install || (stdOut.isEmpty() && stdErr.isEmpty())) {
         return;
     }
     if (const QString line = lastOutputLine(stdErr.isEmpty() ? m_processStdout : m_processStderr); !line.isEmpty()) {
@@ -751,16 +725,8 @@ QString composeErrorMessage(const QString &actionError, const QString &refreshEr
 QString helperText(const QByteArray &output) { return QString::fromUtf8(output).trimmed(); }
 
 QString lastOutputLine(const QByteArray &output) {
-    const auto isAsciiWhitespace = [](const char c) { return c == ' ' || (c >= '\t' && c <= '\r'); };
-    qsizetype end = output.size();
-    while (end > 0 && isAsciiWhitespace(output.at(end - 1))) {
-        --end;
-    }
-    if (end == 0) {
-        return {};
-    }
-    const qsizetype start = output.lastIndexOf('\n', end - 1) + 1;
-    return helperText(output.sliced(start, end - start));
+    const QByteArray trimmed = output.trimmed();
+    return helperText(trimmed.sliced(trimmed.lastIndexOf('\n') + 1));
 }
 
 QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalInformation, QStringList *errors,
@@ -770,9 +736,9 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         return {};
     }
 
+    const QJsonObject root = document.object();
     QList<UpdateItem> result;
-    for (const QJsonArray updates = document.object().value(QStringLiteral("updates")).toArray();
-         const auto &value: updates) {
+    for (const QJsonArray updates = root.value(QStringLiteral("updates")).toArray(); const auto &value: updates) {
         const QJsonObject object = value.toObject();
         UpdateItem item;
         item.name = object.value(QStringLiteral("name")).toString();
@@ -805,17 +771,16 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
     };
     std::ranges::stable_sort(result, {}, mostRecognizableFirst);
 
-    QString technical;
-    for (const UpdateItem &item: std::as_const(result)) {
-        technical += QStringLiteral("%1: %2 → %3 (%4)\n").arg(item.name, item.oldVersion, item.newVersion, item.source);
-    }
-
     if (technicalInformation) {
-        *technicalInformation = technical;
+        technicalInformation->clear();
+        for (const UpdateItem &item: std::as_const(result)) {
+            *technicalInformation +=
+                QStringLiteral("%1: %2 → %3 (%4)\n").arg(item.name, item.oldVersion, item.newVersion, item.source);
+        }
     }
     if (errors) {
         errors->clear();
-        for (const QJsonArray errorList = document.object().value(QStringLiteral("errors")).toArray();
+        for (const QJsonArray errorList = root.value(QStringLiteral("errors")).toArray();
              const auto &value: errorList) {
             if (const QString error = value.toString(); !error.isEmpty()) {
                 errors->append(error);
@@ -823,11 +788,10 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         }
     }
     if (restart) {
-        restart->offlinePending = document.object().value(QStringLiteral("offline_pending")).toBool();
-        restart->required =
-            restart->offlinePending || document.object().value(QStringLiteral("restart_required")).toBool();
+        restart->offlinePending = root.value(QStringLiteral("offline_pending")).toBool();
+        restart->required = restart->offlinePending || root.value(QStringLiteral("restart_required")).toBool();
         restart->stagedVersion =
-            restart->required ? document.object().value(QStringLiteral("staged_version")).toString() : QString();
+            restart->required ? root.value(QStringLiteral("staged_version")).toString() : QString();
     }
     return result;
 }
@@ -835,10 +799,9 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
 bool UpgradeSettings::isValid() const { return !windowEnabled || windowStart != windowEnd; }
 
 bool UpgradeSettings::operator==(const UpgradeSettings &other) const {
-    const bool windowTimesStored = windowEnabled;
     return automatic == other.automatic && offline == other.offline && inactiveMinutes == other.inactiveMinutes &&
         windowEnabled == other.windowEnabled &&
-        (!windowTimesStored || (windowStart == other.windowStart && windowEnd == other.windowEnd));
+        (!windowEnabled || (windowStart == other.windowStart && windowEnd == other.windowEnd));
 }
 
 bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
@@ -851,14 +814,14 @@ bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
     parsed.automatic = object.value(QStringLiteral("automatic")).toBool(parsed.automatic);
     parsed.offline = object.value(QStringLiteral("offline")).toBool(parsed.offline);
     parsed.inactiveMinutes = object.value(QStringLiteral("inactive_minutes")).toInt(parsed.inactiveMinutes);
-    const QTime start =
-        QTime::fromString(object.value(QStringLiteral("window_start")).toString(), QStringLiteral("H:mm"));
-    if (const QTime end =
-            QTime::fromString(object.value(QStringLiteral("window_end")).toString(), QStringLiteral("H:mm"));
-        start.isValid() && end.isValid()) {
+    const auto clockTime = [&object](const QString &key) {
+        return QTime::fromString(object.value(key).toString(), QStringLiteral("H:mm"));
+    };
+    const QTime start = clockTime(QStringLiteral("window_start"));
+    if (const QTime end = clockTime(QStringLiteral("window_end")); start.isValid() && end.isValid()) {
         parsed.windowEnabled = true;
-        parsed.windowStart = start.msecsSinceStartOfDay() / 60000;
-        parsed.windowEnd = end.msecsSinceStartOfDay() / 60000;
+        parsed.windowStart = start.hour() * 60 + start.minute();
+        parsed.windowEnd = end.hour() * 60 + end.minute();
     }
     if (settings) {
         *settings = parsed;
@@ -889,11 +852,12 @@ bool parseScheduleStatus(const QByteArray &json, bool *scheduled, bool *partial)
     if (!document.isObject()) {
         return false;
     }
+    const QJsonObject status = document.object();
     if (scheduled) {
-        *scheduled = document.object().value(QStringLiteral("scheduled")).toBool();
+        *scheduled = status.value(QStringLiteral("scheduled")).toBool();
     }
     if (partial) {
-        *partial = document.object().value(QStringLiteral("partial")).toBool();
+        *partial = status.value(QStringLiteral("partial")).toBool();
     }
     return true;
 }
@@ -924,17 +888,13 @@ void Updates::finishOperation(const QString &statusText) {
 }
 
 void Updates::setStatus(const QString &value) {
-    if (m_status == value) {
-        return;
+    if (assign(m_status, value)) {
+        Q_EMIT statusChanged();
     }
-    m_status = value;
-    Q_EMIT statusChanged();
 }
 
 void Updates::setTechnicalInformation(const QString &information) {
-    if (m_technicalInformation == information) {
-        return;
+    if (assign(m_technicalInformation, information)) {
+        Q_EMIT technicalInformationChanged();
     }
-    m_technicalInformation = information;
-    Q_EMIT technicalInformationChanged();
 }

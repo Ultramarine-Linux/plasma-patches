@@ -14,9 +14,10 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        const QSet<QString> &optionsTakingValue() {
-            static const QSet<QString> options{u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s};
-            return options;
+        const QSet<QString> optionsTakingValue{u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s};
+
+        QString incompatible(const QString &option, const QString &with) {
+            return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", option, with);
         }
     } // namespace
 
@@ -66,17 +67,17 @@ namespace UltramarineUpdates {
         }
         for (const QStringList names = parser.optionNames(); const QString &name: names) {
             if (!allowed->contains(name)) {
-                return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", name, command);
+                return incompatible(name, command);
             }
         }
-        if (command == "schedule"_L1 && parser.isSet(u"status"_s)) {
-            if (parser.isSet(u"cancel"_s)) {
-                return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", u"cancel"_s,
-                             u"--status"_s);
+        if (command == "schedule"_L1) {
+            const bool cancel = parser.isSet(u"cancel"_s);
+            if (parser.isSet(u"status"_s) && cancel) {
+                return incompatible(u"cancel"_s, u"--status"_s);
             }
-        } else if (command == "schedule"_L1 && parser.isSet(u"json"_s)) {
-            return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", u"json"_s,
-                         parser.isSet(u"cancel"_s) ? u"--cancel"_s : command);
+            if (!parser.isSet(u"status"_s) && parser.isSet(u"json"_s)) {
+                return incompatible(u"json"_s, cancel ? u"--cancel"_s : command);
+            }
         }
         return {};
     }
@@ -84,7 +85,7 @@ namespace UltramarineUpdates {
     QStringList escalatedCommandLine(const QString &command, const QCommandLineParser &parser) {
         QStringList arguments{command};
         for (const QStringList names = parser.optionNames(); const QString &name: names) {
-            if (optionsTakingValue().contains(name)) {
+            if (optionsTakingValue.contains(name)) {
                 arguments << u"--%1=%2"_s.arg(name, parser.value(name));
             } else {
                 arguments << (name == "y"_L1 ? u"--yes"_s : u"--"_s + name);

@@ -26,6 +26,13 @@ namespace UltramarineUpdates {
         bool operator==(const UpgradeSize &) const = default;
     };
 
+    struct UpgradeSizes {
+        QHash<QString, UpgradeSize> upgrades;
+        QHash<QString, UpgradeSize> current;
+
+        void annotate(PackageUpdate &update, const QString &key) const;
+    };
+
     QList<RpmUpdate> parseDnfCheckUpdate(const QString &output);
 
     QHash<QString, QString> parseRpmInstalled(const QString &output);

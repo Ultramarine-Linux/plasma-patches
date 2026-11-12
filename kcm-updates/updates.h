@@ -256,7 +256,10 @@ private:
     void showPendingSuccess();
 
     void loadSettings(bool keepEdits);
+    void notifySettingsEdited();
     void refreshSchedule();
+    void changeSchedule(const QStringList &arguments, const QString &authenticationFailedMessage,
+                        const std::function<QString(const QString &detail)> &failedMessage);
     void setScheduling(bool value);
     [[nodiscard]] bool isSaveNeeded() const override;
     [[nodiscard]] bool isDefaults() const override;

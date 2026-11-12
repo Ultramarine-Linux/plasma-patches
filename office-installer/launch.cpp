@@ -47,10 +47,7 @@ namespace OfficeInstaller {
         QHash<QString, KService::Ptr> services;
         QHash<QString, QList<QUrl>> urlsByService;
         for (const QUrl &url: urls) {
-            const QMimeDatabase db;
-            const QMimeType mimeType =
-                url.isLocalFile() ? db.mimeTypeForFile(url.toLocalFile()) : db.mimeTypeForUrl(url);
-            const KService::Ptr service = handlerListingExactMimeType(mimeType);
+            const KService::Ptr service = handlerListingExactMimeType(mimeTypeOf(url));
             if (!service) {
                 return false;
             }
@@ -78,6 +75,11 @@ namespace OfficeInstaller {
             job->start();
         }
         return true;
+    }
+
+    QMimeType mimeTypeOf(const QUrl &url) {
+        const QMimeDatabase db;
+        return url.isLocalFile() ? db.mimeTypeForFile(url.toLocalFile()) : db.mimeTypeForUrl(url);
     }
 
     KService::Ptr findInstalledSuite() {

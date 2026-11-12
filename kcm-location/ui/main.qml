@@ -39,8 +39,6 @@ KCMUtils.SimpleKCM {
         spacing: 0
 
         ColumnLayout {
-            id: intro
-
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Kirigami.Units.gridUnit * 2
@@ -72,8 +70,6 @@ KCMUtils.SimpleKCM {
 
         FormCard.FormCard {
             FormCard.FormSwitchDelegate {
-                id: toggle
-
                 hoverEnabled: false
                 icon.name: "find-location"
                 text: i18nc("@option:check", "Location Services")
@@ -131,8 +127,6 @@ KCMUtils.SimpleKCM {
     }
 
     Item {
-        id: centeredPlaceholderArea
-
         visible: !kcm.available
         height: parent ? parent.height : 0
 

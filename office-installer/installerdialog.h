@@ -49,6 +49,7 @@ namespace OfficeInstaller {
         void install();
         void installFinished(bool success, bool canceled, const QString &error);
         void openDocuments();
+        void returnToChoiceWithError(const QString &error);
         void setBusy(bool busy) const;
 
         [[nodiscard]] const Suite &selectedSuite() const;

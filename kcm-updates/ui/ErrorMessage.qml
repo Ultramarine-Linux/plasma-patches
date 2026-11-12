@@ -7,6 +7,8 @@ import QtQuick
 import org.kde.kirigami as Kirigami
 
 Kirigami.InlineMessage {
+    readonly property bool pageShown: parent !== null && parent.visible
+
     position: Kirigami.InlineMessage.Position.Header
     type: Kirigami.MessageType.Error
     text: kcm.errorMessage
@@ -14,7 +16,6 @@ Kirigami.InlineMessage {
     visible: false
     showCloseButton: true
     onTextChanged: visible = text.length > 0
-    readonly property bool pageShown: parent !== null && parent.visible
     onVisibleChanged: if (!visible && pageShown) kcm.clearError()
     Component.onCompleted: visible = text.length > 0
     actions: Kirigami.Action {

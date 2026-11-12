@@ -6,6 +6,7 @@
 
 #include <KService>
 
+#include <QMimeType>
 #include <QUrl>
 
 #include <functional>
@@ -19,5 +20,7 @@ namespace OfficeInstaller {
     bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context, const LaunchesFinished &done);
 
     KService::Ptr findInstalledSuite();
+
+    QMimeType mimeTypeOf(const QUrl &url);
 
 } // namespace OfficeInstaller

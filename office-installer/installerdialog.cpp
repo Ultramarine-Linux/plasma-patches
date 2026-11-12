@@ -14,7 +14,6 @@
 #include <QFileInfo>
 #include <QLabel>
 #include <QListWidget>
-#include <QMimeDatabase>
 #include <QPainter>
 #include <QProcess>
 #include <QProgressBar>
@@ -45,6 +44,7 @@ namespace OfficeInstaller {
 
         constexpr int SuiteIconSize = 48;
         constexpr int HeaderIconSize = 48;
+        constexpr int ProgressIconSize = 64;
 
         QString sourceName(const Source source) {
             switch (source) {
@@ -86,9 +86,7 @@ namespace OfficeInstaller {
         QIcon documentIcon(const QList<QUrl> &urls) {
             QSet<QString> iconNames;
             for (const QUrl &url: urls) {
-                const QMimeDatabase db;
-                const QMimeType mimeType =
-                    url.isLocalFile() ? db.mimeTypeForFile(url.toLocalFile()) : db.mimeTypeForUrl(url);
+                const QMimeType mimeType = mimeTypeOf(url);
                 iconNames.insert(QIcon::hasThemeIcon(mimeType.iconName()) ? mimeType.iconName()
                                                                           : mimeType.genericIconName());
             }
@@ -145,19 +143,21 @@ namespace OfficeInstaller {
                 painter->save();
                 painter->setRenderHint(QPainter::Antialiasing);
 
+                const auto translucentAccent = [&accentEvenWhenUnfocused](const qreal alpha) {
+                    QColor color = accentEvenWhenUnfocused;
+                    color.setAlphaF(alpha);
+                    return color;
+                };
+
                 const QRectF card = QRectF(opt.rect).adjusted(0.5, 0.5, -0.5, -0.5);
                 const qreal cardRadius = opt.fontMetrics.height() / 3.0;
                 if (opt.state & QStyle::State_Selected) {
-                    QColor fill = accentEvenWhenUnfocused;
-                    fill.setAlphaF(0.12);
                     painter->setPen(QPen(accentEvenWhenUnfocused, 1));
-                    painter->setBrush(fill);
+                    painter->setBrush(translucentAccent(0.12));
                     painter->drawRoundedRect(card, cardRadius, cardRadius);
                 } else if (opt.state & QStyle::State_MouseOver) {
-                    QColor fill = accentEvenWhenUnfocused;
-                    fill.setAlphaF(0.06);
                     painter->setPen(Qt::NoPen);
-                    painter->setBrush(fill);
+                    painter->setBrush(translucentAccent(0.06));
                     painter->drawRoundedRect(card, cardRadius, cardRadius);
                 }
 
@@ -171,10 +171,8 @@ namespace OfficeInstaller {
 
                 if (geometry.badge.isValid()) {
                     const QRectF badge = QRectF(geometry.badge.translated(origin)).adjusted(0.5, 0.5, -0.5, -0.5);
-                    QColor fill = accentEvenWhenUnfocused;
-                    fill.setAlphaF(0.15);
                     painter->setPen(QPen(accentEvenWhenUnfocused, 1));
-                    painter->setBrush(fill);
+                    painter->setBrush(translucentAccent(0.15));
                     const qreal radius = badge.height() / 2.0;
                     painter->drawRoundedRect(badge, radius, radius);
                     painter->setPen(opt.palette.color(group, QPalette::Text));
@@ -422,7 +420,7 @@ namespace OfficeInstaller {
                 m_suiteList->item(row)->setIcon(suiteIcon(m_suites.at(row)));
             }
             if (m_installer) {
-                m_progressIcon->setPixmap(suiteIcon(selectedSuite()).pixmap(64, 64));
+                m_progressIcon->setPixmap(suiteIcon(selectedSuite()).pixmap(ProgressIconSize, ProgressIconSize));
             }
         });
         updater->start();
@@ -433,7 +431,7 @@ namespace OfficeInstaller {
         page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         auto *layout = new QVBoxLayout(page);
         layout->addStretch();
-        m_progressIcon->setFixedSize(64, 64);
+        m_progressIcon->setFixedSize(ProgressIconSize, ProgressIconSize);
         layout->addWidget(m_progressIcon, 0, Qt::AlignHCenter);
         layout->addSpacing(fontMetrics().height() / 2);
         m_progressTitle->setAlignment(Qt::AlignCenter);
@@ -531,7 +529,7 @@ namespace OfficeInstaller {
         connect(m_installer, &Installer::finished, this, &InstallerDialog::installFinished);
 
         m_error->animatedHide();
-        m_progressIcon->setPixmap(suiteIcon(suite).pixmap(64, 64));
+        m_progressIcon->setPixmap(suiteIcon(suite).pixmap(ProgressIconSize, ProgressIconSize));
         m_progressTitle->setText(i18nc("@info:status %1 is an office suite", "Installing %1…", suite.name));
         m_progressDetail->clear();
         setBusy(true);
@@ -567,6 +565,14 @@ namespace OfficeInstaller {
         m_error->animatedShow();
     }
 
+    void InstallerDialog::returnToChoiceWithError(const QString &error) {
+        setBusy(false);
+        registerOnBus();
+        m_error->setMessageType(KMessageWidget::Error);
+        m_error->setText(error);
+        m_error->animatedShow();
+    }
+
     void InstallerDialog::openDocuments() {
         m_progressTitle->setText(i18nc("@info:status %1 is an office suite", "Opening %1…", selectedSuite().name));
         m_progressDetail->clear();
@@ -583,11 +589,7 @@ namespace OfficeInstaller {
                 m_urls = failed;
                 m_subtitle->setText(subtitle(m_urls, m_incapableInstalledSuite));
                 show();
-                setBusy(false);
-                registerOnBus();
-                m_error->setMessageType(KMessageWidget::Error);
-                m_error->setText(error);
-                m_error->animatedShow();
+                returnToChoiceWithError(error);
             })) {
             return;
         }
@@ -599,12 +601,8 @@ namespace OfficeInstaller {
                                [](const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); });
         if (const auto [program, arguments] = openFilesCommand(selectedSuite(), selectedSource(), files);
             !QProcess::startDetached(program, arguments)) {
-            setBusy(false);
-            registerOnBus();
-            m_error->setMessageType(KMessageWidget::Error);
-            m_error->setText(i18nc("@info %1 is an office suite", "%1 was installed, but could not be started.",
-                                   selectedSuite().name));
-            m_error->animatedShow();
+            returnToChoiceWithError(i18nc("@info %1 is an office suite", "%1 was installed, but could not be started.",
+                                          selectedSuite().name));
             return;
         }
         accept();

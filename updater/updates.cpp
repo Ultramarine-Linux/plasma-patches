@@ -115,18 +115,19 @@ namespace UltramarineUpdates {
             pending.push_back(querySourceAsync(i18nc("@item an update source", "your Nix profile"), nixPackageUpdates));
         }
         if (hasExecutable(u"flatpak"_s)) {
-            for (const QString &installation: flatpakInstallations()) {
-                pending.push_back(querySourceAsync(
+            const auto flatpakSource = [](const QString &installation) {
+                return querySourceAsync(
                     i18nc("@item an update source, %1 is a Flatpak installation like user or system", "Flatpak (%1)",
                           installation),
-                    [installation](QString *error) { return flatpakPackageUpdates(installation, error); }));
-            }
+                    [installation](QString *error) { return flatpakPackageUpdates(installation, error); });
+            };
+            pending.push_back(flatpakSource(u"system"_s));
+            pending.push_back(flatpakSource(u"user"_s));
         }
 
-        std::optional<SourceResult> plasmoidsQueriedOnMainThread;
+        std::optional<SourceResult> plasmoids;
         if (canManagePlasmoids()) {
-            plasmoidsQueriedOnMainThread =
-                querySource(i18nc("@item an update source", "Plasma widgets"), plasmoidUpdates);
+            plasmoids = querySource(i18nc("@item an update source", "Plasma widgets"), plasmoidUpdates);
         }
 
         const auto collect = [&response](const SourceResult &result) {
@@ -141,8 +142,8 @@ namespace UltramarineUpdates {
         for (std::future<SourceResult> &source: pending) {
             collect(source.get());
         }
-        if (plasmoidsQueriedOnMainThread) {
-            collect(*plasmoidsQueriedOnMainThread);
+        if (plasmoids) {
+            collect(*plasmoids);
         }
         if (imageMode) {
             response.restartRequired = image.staged;
@@ -183,6 +184,14 @@ namespace UltramarineUpdates {
             return arguments;
         }
 
+        int updateFlatpaks(const QString &flatpak, const QString &installationFlag, const bool assumeYes) {
+            QStringList arguments{u"update"_s, installationFlag};
+            if (assumeYes) {
+                arguments.append(u"--noninteractive"_s);
+            }
+            return runForwarded(flatpak, arguments);
+        }
+
         bool upgradeRpms(const QString &dnf, const bool assumeYes, const bool offline, QString *error) {
             QStringList arguments{u"upgrade"_s, u"--refresh"_s};
             if (offline) {
@@ -194,7 +203,7 @@ namespace UltramarineUpdates {
             if (assumeYes) {
                 arguments.append(u"-y"_s);
             }
-            if (const int exitCode = runForwarded(dnf, arguments); exitCode != 0) {
+            if (const int exitCode = runForwarded(dnf, arguments)) {
                 *error = i18nc("@info:status", "Updating RPM packages failed (exit code %1).", exitCode);
                 return false;
             }
@@ -206,11 +215,7 @@ namespace UltramarineUpdates {
         ApplyResult result;
         if (const QString flatpak = QStandardPaths::findExecutable(u"flatpak"_s); !flatpak.isEmpty()) {
             result.updated = true;
-            QStringList arguments{u"update"_s, u"--user"_s};
-            if (assumeYes) {
-                arguments.append(u"--noninteractive"_s);
-            }
-            if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
+            if (const int exitCode = updateFlatpaks(flatpak, u"--user"_s, assumeYes)) {
                 result.fail(i18nc("@info:status", "Updating your Flatpaks failed (exit code %1).", exitCode));
             } else {
                 result.succeed();
@@ -218,7 +223,7 @@ namespace UltramarineUpdates {
         }
         if (canManageNixProfile()) {
             result.updated = true;
-            if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
+            if (const int exitCode = upgradeNixProfile()) {
                 result.fail(i18nc("@info:status", "Updating your Nix profile failed (exit code %1).", exitCode));
             } else {
                 result.succeed();
@@ -255,7 +260,7 @@ namespace UltramarineUpdates {
         }
         if (!determinateNixdBinary().isEmpty()) {
             result.updated = true;
-            if (const int exitCode = upgradeDeterminateNix(); exitCode != 0) {
+            if (const int exitCode = upgradeDeterminateNix()) {
                 result.fail(i18nc("@info:status", "Updating Determinate Nix failed (exit code %1).", exitCode));
             } else {
                 result.succeed();
@@ -263,11 +268,7 @@ namespace UltramarineUpdates {
         }
         if (const QString flatpak = QStandardPaths::findExecutable(u"flatpak"_s); !flatpak.isEmpty()) {
             result.updated = true;
-            QStringList arguments{u"update"_s, u"--system"_s};
-            if (assumeYes) {
-                arguments.append(u"--noninteractive"_s);
-            }
-            if (const int exitCode = runForwarded(flatpak, arguments); exitCode != 0) {
+            if (const int exitCode = updateFlatpaks(flatpak, u"--system"_s, assumeYes)) {
                 result.fail(i18nc("@info:status", "Updating system Flatpaks failed (exit code %1).", exitCode));
             } else {
                 result.succeed();

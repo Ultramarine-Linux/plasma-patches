@@ -22,20 +22,19 @@ namespace UltramarineUpdates {
     namespace {
         constexpr int maxInactiveMinutes = 24 * 60;
 
-        void makeDirectoryWorldReadable(const QString &directory) {
-            QFile::setPermissions(directory,
-                                  QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |
-                                      QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther);
-        }
+        constexpr QFile::Permissions worldReadableFile =
+            QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
+        constexpr QFile::Permissions worldReadableDirectory =
+            worldReadableFile | QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther;
 
-        void makeFileWorldReadable(const QString &path) {
-            QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
+        QString inactiveMinutesOutOfRange() {
+            return i18nc("@info:status", "The inactive time must be between 0 and %1 minutes.", maxInactiveMinutes);
         }
     } // namespace
 
     QString Settings::validate() const {
         if (inactiveMinutes < 0 || inactiveMinutes > maxInactiveMinutes) {
-            return i18nc("@info:status", "The inactive time must be between 0 and %1 minutes.", maxInactiveMinutes);
+            return inactiveMinutesOutOfRange();
         }
         if (windowStart.isEmpty() != windowEnd.isEmpty()) {
             return i18nc("@info:status", "A time window needs both a start and an end.");
@@ -126,36 +125,39 @@ namespace UltramarineUpdates {
     bool parseSettings(const QByteArray &json, Settings *settings, QString *error) {
         QJsonParseError parseError{};
         const QJsonDocument document = QJsonDocument::fromJson(json, &parseError);
-        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-            *error = parseError.error != QJsonParseError::NoError ? parseError.errorString()
-                                                                  : i18nc("@info:status", "expected a JSON object");
+        if (parseError.error != QJsonParseError::NoError) {
+            *error = parseError.errorString();
+            return false;
+        }
+        if (!document.isObject()) {
+            *error = i18nc("@info:status", "expected a JSON object");
             return false;
         }
         const QJsonObject object = document.object();
         Settings parsed;
         const auto readBool = [&object, error](const QString &key, bool *value) {
-            const QJsonValue json_value = object.value(key);
-            if (json_value.isUndefined()) {
+            const QJsonValue field = object.value(key);
+            if (field.isUndefined()) {
                 return true;
             }
-            if (!json_value.isBool()) {
+            if (!field.isBool()) {
                 *error =
                     i18nc("@info:status %1 is a settings key, don't translate it", "%1 must be true or false", key);
                 return false;
             }
-            *value = json_value.toBool();
+            *value = field.toBool();
             return true;
         };
         const auto readString = [&object, error](const QString &key, QString *value) {
-            const QJsonValue json_value = object.value(key);
-            if (json_value.isUndefined()) {
+            const QJsonValue field = object.value(key);
+            if (field.isUndefined()) {
                 return true;
             }
-            if (!json_value.isString()) {
+            if (!field.isString()) {
                 *error = i18nc("@info:status %1 is a settings key, don't translate it", "%1 must be a string", key);
                 return false;
             }
-            *value = json_value.toString();
+            *value = field.toString();
             return true;
         };
         if (!readBool(u"automatic"_s, &parsed.automatic) || !readBool(u"offline"_s, &parsed.offline) ||
@@ -170,8 +172,7 @@ namespace UltramarineUpdates {
                 return false;
             }
             if (value < 0 || value > maxInactiveMinutes) {
-                *error =
-                    i18nc("@info:status", "The inactive time must be between 0 and %1 minutes.", maxInactiveMinutes);
+                *error = inactiveMinutesOutOfRange();
                 return false;
             }
             parsed.inactiveMinutes = static_cast<int>(value);
@@ -186,19 +187,19 @@ namespace UltramarineUpdates {
 
     bool loadSettings(Settings *settings, QString *error) {
         *settings = Settings{};
-        QFile file(settingsPath());
+        const QString path = settingsPath();
+        QFile file(path);
         if (!file.exists()) {
             return true;
         }
         if (!file.open(QIODevice::ReadOnly)) {
-            *error = u"%1: %2"_s.arg(settingsPath(), file.errorString());
+            *error = u"%1: %2"_s.arg(path, file.errorString());
             return false;
         }
         QString parseError;
         if (!parseSettings(file.readAll(), settings, &parseError)) {
             *settings = Settings{};
-            *error = i18nc("@info:status %1 is a file path, %2 an error message", "Invalid %1: %2", settingsPath(),
-                           parseError);
+            *error = i18nc("@info:status %1 is a file path, %2 an error message", "Invalid %1: %2", path, parseError);
             return false;
         }
         return true;
@@ -220,19 +221,15 @@ namespace UltramarineUpdates {
             return false;
         }
         if (created) {
-            makeDirectoryWorldReadable(directory);
+            QFile::setPermissions(directory, worldReadableDirectory);
         }
         QSaveFile file(path);
-        if (!file.open(QIODevice::WriteOnly)) {
+        if (!file.open(QIODevice::WriteOnly) ||
+            file.write(QJsonDocument(settings.toJson()).toJson(QJsonDocument::Indented)) < 0 || !file.commit()) {
             *error = u"%1: %2"_s.arg(path, file.errorString());
             return false;
         }
-        file.write(QJsonDocument(settings.toJson()).toJson(QJsonDocument::Indented));
-        if (!file.commit()) {
-            *error = u"%1: %2"_s.arg(path, file.errorString());
-            return false;
-        }
-        makeFileWorldReadable(path);
+        QFile::setPermissions(path, worldReadableFile);
         return true;
     }
 

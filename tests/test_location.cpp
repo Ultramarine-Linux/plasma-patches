@@ -6,6 +6,8 @@
 
 #include "location.h"
 
+using namespace Qt::StringLiterals;
+
 namespace {
     class LocationTest : public QObject {
         Q_OBJECT
@@ -18,47 +20,42 @@ namespace {
 } // namespace
 
 void LocationTest::parsesUnitFileStates() {
-    QCOMPARE(parseUnitFileState(QStringLiteral("static")), LocationState::Enabled);
-    QCOMPARE(parseUnitFileState(QStringLiteral("enabled")), LocationState::Enabled);
-    QCOMPARE(parseUnitFileState(QStringLiteral("disabled")), LocationState::Enabled);
-    QCOMPARE(parseUnitFileState(QStringLiteral("masked")), LocationState::Disabled);
-    QCOMPARE(parseUnitFileState(QStringLiteral("masked-runtime")), LocationState::DisabledRuntime);
-    QCOMPARE(parseUnitFileState(QStringLiteral("not-found")), LocationState::Unavailable);
-    QCOMPARE(parseUnitFileState(QStringLiteral("bad")), LocationState::ReadFailed);
+    QCOMPARE(parseUnitFileState(u"static"_s), LocationState::Enabled);
+    QCOMPARE(parseUnitFileState(u"enabled"_s), LocationState::Enabled);
+    QCOMPARE(parseUnitFileState(u"disabled"_s), LocationState::Enabled);
+    QCOMPARE(parseUnitFileState(u"masked"_s), LocationState::Disabled);
+    QCOMPARE(parseUnitFileState(u"masked-runtime"_s), LocationState::DisabledRuntime);
+    QCOMPARE(parseUnitFileState(u"not-found"_s), LocationState::Unavailable);
+    QCOMPARE(parseUnitFileState(u"bad"_s), LocationState::ReadFailed);
     QCOMPARE(parseUnitFileState(QString()), LocationState::Unavailable);
 }
 
 void LocationTest::parsesUnitFileStateErrors() {
     // systemd 259 answers GetUnitFileState for a missing unit with FileNotFound
-    QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.DBus.Error.FileNotFound")),
-             LocationState::Unavailable);
-    QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.systemd1.NoSuchUnit")),
-             LocationState::Unavailable);
-    QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.DBus.Error.NoReply")), LocationState::ReadFailed);
-    QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.DBus.Error.AccessDenied")),
-             LocationState::ReadFailed);
+    QCOMPARE(parseUnitFileStateError(u"org.freedesktop.DBus.Error.FileNotFound"_s), LocationState::Unavailable);
+    QCOMPARE(parseUnitFileStateError(u"org.freedesktop.systemd1.NoSuchUnit"_s), LocationState::Unavailable);
+    QCOMPARE(parseUnitFileStateError(u"org.freedesktop.DBus.Error.NoReply"_s), LocationState::ReadFailed);
+    QCOMPARE(parseUnitFileStateError(u"org.freedesktop.DBus.Error.AccessDenied"_s), LocationState::ReadFailed);
     QCOMPARE(parseUnitFileStateError(QString()), LocationState::ReadFailed);
 }
 
 void LocationTest::reportsHelperResults() {
-    QVERIFY(helperErrorMessage(0, QProcess::NormalExit, QStringLiteral("Created symlink")).isEmpty());
+    QVERIFY(helperErrorMessage(0, QProcess::NormalExit, u"Created symlink"_s).isEmpty());
 
     constexpr int PkexecDismissed = 126;
     constexpr int PkexecNotAuthorized = 127;
     for (const int code: {PkexecDismissed, PkexecNotAuthorized}) {
         const QString message = helperErrorMessage(code, QProcess::NormalExit, {});
-        QVERIFY(message.contains(QLatin1String("No changes were made")));
+        QVERIFY(message.contains("No changes were made"_L1));
     }
 
-    const QString failedAfterAuthentication =
-        helperErrorMessage(1, QProcess::NormalExit, QStringLiteral("  Failed to stop\n"));
-    QVERIFY(!failedAfterAuthentication.contains(QLatin1String("No changes were made")));
-    QVERIFY(failedAfterAuthentication.contains(QLatin1String("partly applied")));
-    QVERIFY(failedAfterAuthentication.endsWith(QLatin1String("Failed to stop")));
+    const QString failedAfterAuthentication = helperErrorMessage(1, QProcess::NormalExit, u"  Failed to stop\n"_s);
+    QVERIFY(!failedAfterAuthentication.contains("No changes were made"_L1));
+    QVERIFY(failedAfterAuthentication.contains("partly applied"_L1));
+    QVERIFY(failedAfterAuthentication.endsWith("Failed to stop"_L1));
 
-    QVERIFY(
-        !helperErrorMessage(PkexecDismissed, QProcess::CrashExit, {}).contains(QLatin1String("No changes were made")));
-    QVERIFY(helperErrorMessage(1, QProcess::NormalExit, {}).contains(QLatin1String("partly applied")));
+    QVERIFY(!helperErrorMessage(PkexecDismissed, QProcess::CrashExit, {}).contains("No changes were made"_L1));
+    QVERIFY(helperErrorMessage(1, QProcess::NormalExit, {}).contains("partly applied"_L1));
 }
 
 QTEST_GUILESS_MAIN(LocationTest)

@@ -34,18 +34,17 @@ KCMUtils.ScrollViewKCM {
         }
     }
 
-    function confirmIfNeededThenChange(tweakId, description, type, stability, warning, enable) {
-        const risky = warning.length > 0 || (stability.length > 0 && stability !== "stable");
-        const irreversible = type !== "toggle";
-        if (enable && (risky || irreversible)) {
-            confirmDialog.tweakId = tweakId;
-            confirmDialog.type = type;
-            confirmDialog.title = description;
-            confirmDialog.subtitle = confirmDialog.message(type, stability, warning);
-            confirmDialog.open();
+    function requestChange(tweak, enable) {
+        const risky = tweak.warning.length > 0 || (tweak.stability.length > 0 && tweak.stability !== "stable");
+        if (!enable || (!risky && tweak.type === "toggle")) {
+            kcm.setTweakEnabled(tweak.tweakId, enable);
             return;
         }
-        kcm.setTweakEnabled(tweakId, enable);
+        confirmDialog.tweakId = tweak.tweakId;
+        confirmDialog.type = tweak.type;
+        confirmDialog.title = tweak.description;
+        confirmDialog.subtitle = confirmDialog.message(tweak.type, tweak.stability, tweak.warning);
+        confirmDialog.open();
     }
 
     headerPaddingEnabled: false
@@ -182,8 +181,7 @@ KCMUtils.ScrollViewKCM {
                     onToggled: {
                         const requestedState = checked;
                         checked = Qt.binding(() => delegate.tweakEnabled);
-                        root.confirmIfNeededThenChange(delegate.tweakId, delegate.description, delegate.type,
-                                                         delegate.stability, delegate.warning, requestedState);
+                        root.requestChange(delegate, requestedState);
                     }
                     QQC2.ToolTip.visible: hovered
                     QQC2.ToolTip.text: delegate.tweakEnabled ? i18nc("@info:tooltip", "Disable this tweak")
@@ -199,8 +197,7 @@ KCMUtils.ScrollViewKCM {
                     Accessible.name: delegate.tweakEnabled
                         ? i18nc("@action:button accessible name, %1 is a tweak", "“%1” applied", delegate.description)
                         : i18nc("@action:button accessible name, %1 is a tweak", "Apply “%1”", delegate.description)
-                    onClicked: root.confirmIfNeededThenChange(delegate.tweakId, delegate.description, delegate.type,
-                                                                delegate.stability, delegate.warning, true)
+                    onClicked: root.requestChange(delegate, true)
                 }
 
                 QQC2.Button {
@@ -209,8 +206,7 @@ KCMUtils.ScrollViewKCM {
                     text: i18nc("@action:button", "Run")
                     icon.name: "media-playback-start"
                     Accessible.name: i18nc("@action:button accessible name, %1 is a tweak", "Run “%1”", delegate.description)
-                    onClicked: root.confirmIfNeededThenChange(delegate.tweakId, delegate.description, delegate.type,
-                                                                delegate.stability, delegate.warning, true)
+                    onClicked: root.requestChange(delegate, true)
                 }
             }
         }
@@ -254,7 +250,7 @@ KCMUtils.ScrollViewKCM {
         property string type
 
         function message(type, stability, warning) {
-            let parts = [];
+            const parts = [];
             if (stability === "gfl") {
                 parts.push(i18nc("@info", "This tweak comes with no guarantees. Use it at your own risk."));
             } else if (stability === "devel") {

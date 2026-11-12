@@ -20,8 +20,6 @@ namespace UltramarineUpdates {
         bool operator==(const FlatpakUpdate &) const = default;
     };
 
-    QStringList flatpakInstallations();
-
     QList<FlatpakUpdate> parseFlatpakRemoteLs(const QString &output);
 
     PackageUpdate flatpakPackageUpdate(const FlatpakUpdate &update, const QString &installation,

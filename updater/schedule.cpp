@@ -13,7 +13,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <functional>
 
 #include <pwd.h>
 #include <unistd.h>
@@ -24,7 +23,6 @@
 #include "lock.h"
 #include "packagekit.h"
 #include "process.h"
-#include "updates.h"
 
 using namespace Qt::StringLiterals;
 using namespace std::chrono_literals;
@@ -37,6 +35,9 @@ namespace UltramarineUpdates {
         const auto tonightDefaultStart = u"22:00"_s;
         const auto tonightDefaultEnd = u"06:00"_s;
         const auto pollCalendar = u"*:0/5"_s;
+        const auto tonightScheduledFile = u"/tonight-scheduled"_s;
+        const QStringList developmentOverrides{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
+        const QStringList openUpdatesCommand{u"systemsettings"_s, u"kcm_ultramarine_updates"_s};
 
         constexpr std::chrono::seconds minTimeBetweenInstalls = 20h;
         constexpr std::chrono::seconds minTimeBetweenUpdateNotifications = 24h;
@@ -54,15 +55,25 @@ namespace UltramarineUpdates {
             std::fflush(stdout);
         }
 
-        const auto tonightScheduledFile = u"/tonight-scheduled"_s;
+        void writeTimestampOrWarn(const QString &path, const QDateTime &time) {
+            if (QString warning; !writeTimestamp(path, time, &warning)) {
+                warn(warning);
+            }
+        }
 
-        const QStringList developmentOverrides{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
-
-        int systemctl(const bool userManager, QStringList arguments) {
+        CommandResult systemctl(const bool userManager, QStringList arguments) {
             if (userManager) {
                 arguments.prepend(u"--user"_s);
             }
-            return capture(u"systemctl"_s, arguments).exitCode;
+            return capture(u"systemctl"_s, arguments);
+        }
+
+        QString stateDirFor(const bool userManager) { return userManager ? userStateDir() : systemStateDir(); }
+
+        QString tonightTimerFor(const bool userManager) { return userManager ? tonightUserTimer : tonightTimer; }
+
+        void stopTonightTimer(const bool userManager) {
+            systemctl(userManager, {u"stop"_s, tonightTimerFor(userManager) + ".timer"_L1});
         }
 
         Settings loadSettingsOrWarn() {
@@ -75,18 +86,15 @@ namespace UltramarineUpdates {
         }
 
         bool serviceRunning(const bool userManager, const QString &unit) {
-            QStringList arguments{u"show"_s, u"-p"_s, u"ActiveState"_s, u"--value"_s, unit};
-            if (userManager) {
-                arguments.prepend(u"--user"_s);
-            }
-            const QString state = QString::fromUtf8(capture(u"systemctl"_s, arguments).out).trimmed();
+            const QString state =
+                QString::fromUtf8(
+                    systemctl(userManager, {u"show"_s, u"-p"_s, u"ActiveState"_s, u"--value"_s, unit}).out)
+                    .trimmed();
             return state == "activating"_L1 || state == "active"_L1 || state == "deactivating"_L1 ||
                 state == "reloading"_L1;
         }
 
-        QString tonightScheduledPath(const bool userManager) {
-            return (userManager ? userStateDir() : systemStateDir()) + tonightScheduledFile;
-        }
+        QString tonightScheduledPath(const bool userManager) { return stateDirFor(userManager) + tonightScheduledFile; }
 
         bool replaceTransientTimer(const bool userManager, const QString &unit, const QStringList &arguments,
                                    QString *error) {
@@ -116,10 +124,7 @@ namespace UltramarineUpdates {
             }
             runArguments << u"--"_s << QCoreApplication::applicationFilePath();
             runArguments += arguments;
-            if (QString warning;
-                !writeTimestamp(tonightScheduledPath(userManager), QDateTime::currentDateTime(), &warning)) {
-                warn(warning);
-            }
+            writeTimestampOrWarn(tonightScheduledPath(userManager), QDateTime::currentDateTime());
             if (const CommandResult result = capture(u"systemd-run"_s, runArguments); !result.succeeded()) {
                 *error = i18nc("@info:status %1 is an error message", "systemd-run failed: %1",
                                QString::fromUtf8(result.out + result.err).trimmed());
@@ -133,16 +138,21 @@ namespace UltramarineUpdates {
             return entry ? QString::fromLocal8Bit(entry->pw_name) : QString();
         }
 
-        const QStringList openUpdatesCommand{u"systemsettings"_s, u"kcm_ultramarine_updates"_s};
-
         // notify-send blocks until the notification is closed, which can be never, so it gets its own service
-        void showUpdatesNotification(const QString &notifySend, const qsizetype count) {
+        void showUpdatesNotification(const qsizetype count) {
+            const QString readyMessage =
+                i18ncp("@info", "1 update is ready to install.", "%1 updates are ready to install.", count);
+            const QString notifySend = QStandardPaths::findExecutable(u"notify-send"_s);
+            if (notifySend.isEmpty()) {
+                say(readyMessage);
+                return;
+            }
             const QStringList notification{
                 u"--app-name="_s + i18nc("@title the app name in notifications", "Updates"),
                 u"--icon=system-software-update"_s,
                 u"--action=open="_s + i18nc("@action:button", "Open Updates"),
                 i18nc("@title", "Updates are ready"),
-                i18ncp("@info", "1 update is ready to install.", "%1 updates are ready to install.", count),
+                readyMessage,
             };
             if (const QString systemdRun = QStandardPaths::findExecutable(u"systemd-run"_s); !systemdRun.isEmpty()) {
                 const QString script =
@@ -189,9 +199,7 @@ namespace UltramarineUpdates {
                 return;
             }
             updateBootcStatusCache();
-            if (QString error; !writeTimestamp(checked, now, &error)) {
-                warn(error);
-            }
+            writeTimestampOrWarn(checked, now);
         }
 
         bool screenInhibitedByAnyone(const QList<LoginSession> &sessions, const QDateTime &now) {
@@ -206,10 +214,7 @@ namespace UltramarineUpdates {
     QString lastInstallPath(const QString &stateDir) { return stateDir + "/last-automatic-update"_L1; }
 
     void recordManualInstall(const bool userManager, const QDateTime &now) {
-        const QString stateDir = userManager ? userStateDir() : systemStateDir();
-        if (QString warning; !writeTimestamp(lastInstallPath(stateDir), now, &warning)) {
-            warn(warning);
-        }
+        writeTimestampOrWarn(lastInstallPath(stateDirFor(userManager)), now);
         if (QString warning; !cancelTonight(userManager, &warning)) {
             warn(warning);
         }
@@ -234,16 +239,12 @@ namespace UltramarineUpdates {
         }
         const ApplyResult result = install();
         if (!result.countsAsInstalled()) {
-            if (QString warning; !writeTimestamp(lastFailurePath, now, &warning)) {
-                warn(warning);
-            }
+            writeTimestampOrWarn(lastFailurePath, now);
             *error = result.error();
             return false;
         }
         QFile::remove(lastFailurePath);
-        if (QString warning; !writeTimestamp(installedPath, now, &warning)) {
-            warn(warning);
-        }
+        writeTimestampOrWarn(installedPath, now);
         *installed = true;
         if (!result.ok()) {
             *error = result.error();
@@ -261,9 +262,7 @@ namespace UltramarineUpdates {
         if (response.allFailed()) {
             return;
         }
-        if (QString error; !writeTimestamp(checkedPath, now, &error)) {
-            warn(error);
-        }
+        writeTimestampOrWarn(checkedPath, now);
         if (const qsizetype count = response.updates.size(); count > 0) {
             notify(count);
         }
@@ -327,24 +326,18 @@ namespace UltramarineUpdates {
     }
 
     ScheduleStatus tonightStatus() {
-        const auto timerStatus = [](const bool userManager, const QString &timer) {
-            QStringList arguments{u"show"_s,
-                                  u"--timestamp=unix"_s,
-                                  u"-p"_s,
-                                  u"ActiveState"_s,
-                                  u"-p"_s,
-                                  u"NextElapseUSecRealtime"_s,
-                                  timer + ".timer"_L1};
-            if (userManager) {
-                arguments.prepend(u"--user"_s);
-            }
-            return parseTimerShow(QString::fromUtf8(capture(u"systemctl"_s, arguments).out));
+        const auto timerStatus = [](const bool userManager) {
+            return parseTimerShow(
+                QString::fromUtf8(systemctl(userManager,
+                                            {u"show"_s, u"--timestamp=unix"_s, u"-p"_s, u"ActiveState"_s, u"-p"_s,
+                                             u"NextElapseUSecRealtime"_s, tonightTimerFor(userManager) + ".timer"_L1})
+                                      .out));
         };
-        const ScheduleStatus system = timerStatus(false, tonightTimer);
+        const ScheduleStatus system = timerStatus(false);
         if (geteuid() == 0) {
             return system;
         }
-        return combineTonightStatus(system, timerStatus(true, tonightUserTimer));
+        return combineTonightStatus(system, timerStatus(true));
     }
 
     bool readyToInstall(const Settings &settings, const bool tonight, const bool inUse,
@@ -383,6 +376,34 @@ namespace UltramarineUpdates {
         return true;
     }
 
+    namespace {
+        bool tonightInstalledSinceScheduled(const bool userManager) {
+            return tonightAlreadyInstalled(readTimestamp(lastInstallPath(stateDirFor(userManager))),
+                                           readTimestamp(tonightScheduledPath(userManager)));
+        }
+
+        bool installWhenInactive(const bool userManager, const Settings &settings, const bool tonight, const bool inUse,
+                                 const std::optional<QDateTime> &idleSince, const QDateTime &now,
+                                 const std::function<ApplyResult()> &install, QString *error) {
+            const QString stateDir = stateDirFor(userManager);
+            const QString installedPath = lastInstallPath(stateDir);
+            const std::chrono::seconds inactive =
+                ActivityTracker(stateDir + "/inactive-since"_L1, stateDir + "/last-poll"_L1)
+                    .inactiveFor(inUse, now, idleSince);
+            const bool installedRecently = within(installedPath, minTimeBetweenInstalls, now);
+            if (!readyToInstall(settings, tonight, inUse, inactive, installedRecently, now) || !onACPower()) {
+                return true;
+            }
+            bool installed = false;
+            const bool ok = installFromTimer(userManager ? userLockPath() : systemLockPath(), stateDir, installedPath,
+                                             now, install, &installed, error);
+            if (tonight && installed) {
+                stopTonightTimer(userManager);
+            }
+            return ok;
+        }
+    } // namespace
+
     bool runScheduled(const bool tonight, QString *error) {
         if (geteuid() != 0) {
             *error = i18nc("@info:shell", "run-scheduled is run by the system timers as root.");
@@ -394,11 +415,9 @@ namespace UltramarineUpdates {
         if (!tonight && !settings.automatic) {
             return true;
         }
-        const QString stateDir = systemStateDir();
-        const QString installed = lastInstallPath(stateDir);
-        if (tonight && tonightAlreadyInstalled(readTimestamp(installed), readTimestamp(tonightScheduledPath(false)))) {
+        if (tonight && tonightInstalledSinceScheduled(false)) {
             say(i18nc("@info:status", "Updates were already installed since Apply Tonight was scheduled."));
-            systemctl(false, {u"stop"_s, tonightTimer + ".timer"_L1});
+            stopTonightTimer(false);
             return true;
         }
         QList<LoginSession> sessions;
@@ -407,14 +426,6 @@ namespace UltramarineUpdates {
         }
         const bool inUse = sessionInUse(sessions).has_value() || idleInhibited(logindInhibitors(), sessions) ||
             screenInhibitedByAnyone(sessions, now);
-        const std::chrono::seconds inactive =
-            ActivityTracker(stateDir + "/inactive-since"_L1, stateDir + "/last-poll"_L1)
-                .inactiveFor(inUse, now, sessionsIdleSince(sessions));
-        if (!readyToInstall(settings, tonight, inUse, inactive, within(installed, minTimeBetweenInstalls, now), now) ||
-            !onACPower()) {
-            return true;
-        }
-
         const auto install = [&settings] {
             say(i18nc("@info:progress", "No one is using the device. Installing updates…"));
             const ShutdownInhibitor inhibitor(
@@ -427,12 +438,7 @@ namespace UltramarineUpdates {
             }
             return result;
         };
-        bool installedNow = false;
-        const bool ok = installFromTimer(systemLockPath(), stateDir, installed, now, install, &installedNow, error);
-        if (tonight && installedNow) {
-            systemctl(false, {u"stop"_s, tonightTimer + ".timer"_L1});
-        }
-        return ok;
+        return installWhenInactive(false, settings, tonight, inUse, sessionsIdleSince(sessions), now, install, error);
     }
 
     bool runUser(const bool tonight, QString *error) {
@@ -451,22 +457,12 @@ namespace UltramarineUpdates {
             sessionsKnown && hasActiveSession(sessions, userName) && screenInhibitedInSession();
         writeScreenInhibitedMarker(screenInhibited, now);
         if (!tonight && !settings.automatic) {
-            notifyPendingUpdates(userStateDir() + "/last-update-check"_L1, now, listUpdates, [](const qsizetype count) {
-                if (const QString notifySend = QStandardPaths::findExecutable(u"notify-send"_s);
-                    !notifySend.isEmpty()) {
-                    showUpdatesNotification(notifySend, count);
-                } else {
-                    say(i18ncp("@info", "1 update is ready to install.", "%1 updates are ready to install.", count));
-                }
-            });
+            notifyPendingUpdates(userStateDir() + "/last-update-check"_L1, now, listUpdates, showUpdatesNotification);
             return true;
         }
-
-        const QString stateDir = userStateDir();
-        const QString installed = lastInstallPath(stateDir);
-        if (tonight && tonightAlreadyInstalled(readTimestamp(installed), readTimestamp(tonightScheduledPath(true)))) {
+        if (tonight && tonightInstalledSinceScheduled(true)) {
             say(i18nc("@info:status", "Your updates were already installed since Apply Tonight was scheduled."));
-            systemctl(true, {u"stop"_s, tonightUserTimer + ".timer"_L1});
+            stopTonightTimer(true);
             return true;
         }
         if (!sessionsKnown) {
@@ -475,37 +471,23 @@ namespace UltramarineUpdates {
         }
         const bool inUse = sessionInUse(sessions, userName).has_value() ||
             idleInhibited(logindInhibitors(), sessions, userName) || screenInhibited;
-        const std::chrono::seconds inactive =
-            ActivityTracker(stateDir + "/inactive-since"_L1, stateDir + "/last-poll"_L1)
-                .inactiveFor(inUse, now, sessionsIdleSince(sessions, userName));
-        if (!readyToInstall(settings, tonight, inUse, inactive, within(installed, minTimeBetweenInstalls, now), now) ||
-            !onACPower()) {
-            return true;
-        }
-
         const auto install = [] {
             say(i18nc("@info:progress", "You're not using the device. Installing your updates…"));
             const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing your updates"));
             return applyUser(true);
         };
-        bool installedNow = false;
-        const bool ok = installFromTimer(userLockPath(), stateDir, installed, now, install, &installedNow, error);
-        if (tonight && installedNow) {
-            systemctl(true, {u"stop"_s, tonightUserTimer + ".timer"_L1});
-        }
-        return ok;
+        return installWhenInactive(true, settings, tonight, inUse, sessionsIdleSince(sessions, userName), now, install,
+                                   error);
     }
 
     bool scheduleTonight(const bool userManager, QString *error) {
-        if (userManager) {
-            return replaceTransientTimer(true, tonightUserTimer, {u"run-user"_s, u"--tonight"_s}, error);
-        }
-        return replaceTransientTimer(false, tonightTimer, {u"run-scheduled"_s, u"--tonight"_s}, error);
+        const QStringList command{userManager ? u"run-user"_s : u"run-scheduled"_s, u"--tonight"_s};
+        return replaceTransientTimer(userManager, tonightTimerFor(userManager), command, error);
     }
 
     bool cancelTonight(const bool userManager, QString *error) {
-        const QString timer = (userManager ? tonightUserTimer : tonightTimer) + ".timer"_L1;
-        if (const int exitCode = systemctl(userManager, {u"stop"_s, timer});
+        const QString timer = tonightTimerFor(userManager) + ".timer"_L1;
+        if (const int exitCode = systemctl(userManager, {u"stop"_s, timer}).exitCode;
             exitCode != 0 && exitCode != systemctlUnitNotLoaded) {
             *error =
                 i18nc("@info:status %1 is a systemd unit", "systemctl stop %1 failed (exit code %2)", timer, exitCode);

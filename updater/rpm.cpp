@@ -20,12 +20,10 @@ namespace UltramarineUpdates {
     QList<RpmUpdate> parseDnfCheckUpdate(const QString &output) {
         QList<RpmUpdate> updates;
         for (const QStringList lines = output.split(u'\n'); const QString &line: lines) {
-            if (const bool obsoletesSectionStarts = line.trimmed().startsWith("Obsoleting"_L1);
-                obsoletesSectionStarts) {
+            if (line.trimmed().startsWith("Obsoleting"_L1)) {
                 break;
             }
-            if (const bool isContinuationLine = !line.isEmpty() && (line.front() == u' ' || line.front() == u'\t');
-                line.isEmpty() || isContinuationLine) {
+            if (line.isEmpty() || line.startsWith(u' ') || line.startsWith(u'\t')) {
                 continue;
             }
             const QStringList fields = line.simplified().split(u' ', Qt::SkipEmptyParts);
@@ -80,6 +78,17 @@ namespace UltramarineUpdates {
         return sizes;
     }
 
+    void UpgradeSizes::annotate(PackageUpdate &update, const QString &key) const {
+        const auto size = upgrades.constFind(key);
+        if (size == upgrades.constEnd()) {
+            return;
+        }
+        update.downloadSize = size->download;
+        if (size->installed > 0) {
+            update.installedSizeChange = size->installed - current.value(key).download;
+        }
+    }
+
     namespace {
         QHash<QString, QString> installedRpmVersions() {
             QString output;
@@ -90,37 +99,15 @@ namespace UltramarineUpdates {
             return parseRpmInstalled(output);
         }
 
-        struct RpmSizes {
-            QHash<QString, UpgradeSize> upgrades;
-            QHash<QString, UpgradeSize> installedSizeColumns;
-
-            [[nodiscard]] qint64 installedSize(const QString &nameArch) const {
-                return installedSizeColumns.value(nameArch).download;
-            }
-        };
-
-        RpmSizes rpmSizes(const QStringList &nameArchs) {
-            RpmSizes sizes;
-            sizes.upgrades = parseTabSizes(
-                localeIndependentOutput(u"dnf"_s,
-                                        {u"repoquery"_s, u"--upgrades"_s, u"--latest-limit=1"_s, u"--queryformat"_s,
-                                         u"%{name}.%{arch}\t%{downloadsize}\t%{installsize}\n"_s}));
-            sizes.installedSizeColumns = parseTabSizes(localeIndependentOutput(
-                u"rpm"_s, QStringList{u"-q"_s, u"--qf"_s, u"%{NAME}.%{ARCH}\t%{SIZE}\n"_s} + nameArchs));
-            return sizes;
-        }
-
-        void applyRpmSizes(QList<PackageUpdate> &updates, const RpmSizes &sizes) {
-            for (PackageUpdate &update: updates) {
-                const auto size = sizes.upgrades.constFind(update.id);
-                if (size == sizes.upgrades.constEnd()) {
-                    continue;
-                }
-                update.downloadSize = size->download;
-                if (size->installed > 0) {
-                    update.installedSizeChange = size->installed - sizes.installedSize(update.id);
-                }
-            }
+        UpgradeSizes rpmSizes(const QStringList &nameArchs) {
+            return {
+                .upgrades = parseTabSizes(
+                    localeIndependentOutput(u"dnf"_s,
+                                            {u"repoquery"_s, u"--upgrades"_s, u"--latest-limit=1"_s, u"--queryformat"_s,
+                                             u"%{name}.%{arch}\t%{downloadsize}\t%{installsize}\n"_s})),
+                .current = parseTabSizes(localeIndependentOutput(
+                    u"rpm"_s, QStringList{u"-q"_s, u"--qf"_s, u"%{NAME}.%{ARCH}\t%{SIZE}\n"_s} + nameArchs)),
+            };
         }
     } // namespace
 
@@ -145,23 +132,24 @@ namespace UltramarineUpdates {
         QList<PackageUpdate> result;
         result.reserve(updates.size());
         for (const auto &[nameArch, version, repo]: updates) {
-            PackageUpdate packageUpdate;
-            packageUpdate.id = nameArch;
-            packageUpdate.name = rpmPackageName(nameArch);
-            packageUpdate.source = u"RPM (%1)"_s.arg(repo);
-            packageUpdate.backend = u"rpm"_s;
-            packageUpdate.kind = QString::fromLatin1(Kind::Package);
-            packageUpdate.newVersion = version;
-            packageUpdate.icon = u"package-x-generic"_s;
-            result.append(packageUpdate);
+            PackageUpdate update;
+            update.id = nameArch;
+            update.name = rpmPackageName(nameArch);
+            update.source = u"RPM (%1)"_s.arg(repo);
+            update.backend = u"rpm"_s;
+            update.kind = QString::fromLatin1(Kind::Package);
+            update.newVersion = version;
+            update.icon = u"package-x-generic"_s;
+            result.append(update);
         }
         annotateRpmApps(result);
 
         const QHash<QString, QString> installedVersions = installed.get();
+        const UpgradeSizes upgradeSizes = sizes.get();
         for (PackageUpdate &update: result) {
             update.oldVersion = installedVersions.value(update.id);
+            upgradeSizes.annotate(update, update.id);
         }
-        applyRpmSizes(result, sizes.get());
         return result;
     }
 

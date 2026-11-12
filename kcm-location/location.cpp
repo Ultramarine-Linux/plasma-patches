@@ -74,14 +74,9 @@ Location::Location(QObject *parent, const KPluginMetaData &metaData) : KQuickCon
     setButtons(NoAdditionalButton);
 }
 
-Location::~Location() { detachRunningPkexec(); }
-
-// ~QProcess would block System Settings for up to 30 seconds trying to kill a root process it can't kill
-void Location::detachRunningPkexec() {
+Location::~Location() {
     if (m_runningPkexec && m_runningPkexec->state() != QProcess::NotRunning) {
-        m_runningPkexec->disconnect(this);
-        m_runningPkexec->setParent(nullptr);
-        connect(m_runningPkexec, &QProcess::finished, m_runningPkexec, &QObject::deleteLater);
+        DetachedProcess::letFinishAfterModuleCloses(m_runningPkexec, this);
     }
 }
 
@@ -128,8 +123,7 @@ void Location::load() {
                 : i18n("Could not read the state of location services: systemd reports geoclue.service as “%1”.",
                        reply.value());
             setErrorMessage(m_lastReadError);
-        } else if (const QString readError = std::exchange(m_lastReadError, {});
-                   !readError.isEmpty() && m_errorMessage == readError) {
+        } else if (std::exchange(m_lastReadError, {}) == m_errorMessage) {
             setErrorMessage({});
         }
         setState(state);
@@ -158,25 +152,22 @@ void Location::setLocationEnabled(const bool enabled) {
     m_runningPkexec = process;
     process->setProcessChannelMode(QProcess::MergedChannels);
     DetachedProcess::detachFromTerminal(process);
-    connect(process, &QProcess::finished, this, &Location::helperFinished);
+    connect(process, &QProcess::finished, this,
+            [this, process](const int exitCode, const QProcess::ExitStatus exitStatus) {
+                process->deleteLater();
+                finishChange(helperErrorMessage(exitCode, exitStatus, QString::fromLocal8Bit(process->readAll())));
+            });
     connect(process, &QProcess::errorOccurred, this, [this, process](const QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             process->deleteLater();
-            setErrorMessage(i18n("Could not start pkexec."));
-            setBusy(false);
-            load();
+            finishChange(i18n("Could not start pkexec."));
         }
     });
     process->start(pkexec, {helper, enabled ? QStringLiteral("enable") : QStringLiteral("disable")});
 }
 
-void Location::helperFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
-    QString output;
-    if (m_runningPkexec) {
-        output = QString::fromLocal8Bit(m_runningPkexec->readAll());
-        m_runningPkexec->deleteLater();
-    }
-    setErrorMessage(helperErrorMessage(exitCode, exitStatus, output));
+void Location::finishChange(const QString &error) {
+    setErrorMessage(error);
     setBusy(false);
     load();
 }

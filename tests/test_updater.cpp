@@ -43,6 +43,19 @@ namespace {
         };
     }
 
+    QDateTime referenceTime() { return QDateTime::fromSecsSinceEpoch(1'800'000'000); }
+
+    QDateTime minutesLater(const int minutes) { return referenceTime().addSecs(minutes * 60LL); }
+
+    ActivityTracker trackerIn(const QTemporaryDir &dir) {
+        return ActivityTracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
+    }
+
+    bool writeFile(const QString &path, const QByteArray &contents) {
+        QFile file(path);
+        return file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size();
+    }
+
     class UpdaterTest : public QObject {
         Q_OBJECT
 
@@ -455,15 +468,12 @@ void UpdaterTest::evaluatesNixUpgradesPerElement() {
         QSKIP("nix isn't installed");
     }
     const QTemporaryDir dir;
-    QFile flake(dir.path() + "/flake.nix"_L1);
-    QVERIFY(flake.open(QIODevice::WriteOnly));
-    flake.write(R"nix({
+    QVERIFY(writeFile(dir.path() + "/flake.nix"_L1, R"nix({
   outputs = { self }: {
     good = derivation { name = "good-1.0"; system = "x86_64-linux"; builder = "/bin/sh"; outputs = [ "out" "dev" ]; };
     unfree = { type = "derivation"; name = "unfree-1.0"; out = throw "unfree"; };
   };
-})nix");
-    flake.close();
+})nix"));
     const auto element = [&dir](const QString &attrPath, const std::optional<QStringList> &outputs = std::nullopt) {
         NixProfileElement e;
         e.name = attrPath;
@@ -695,17 +705,12 @@ void UpdaterTest::settingsRoundTrip() {
     QCOMPARE(got, want);
     QVERIFY(QFile::permissions(path) & QFile::ReadOther);
 
-    QFile file(path);
-    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
-    file.write(R"({"offline": true})");
-    file.close();
+    QVERIFY(writeFile(path, R"({"offline": true})"));
     QVERIFY(loadSettings(&got, &error));
     QCOMPARE(got,
              (Settings{.automatic = true, .offline = true, .inactiveMinutes = 5, .windowStart = {}, .windowEnd = {}}));
 
-    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
-    file.write("nope");
-    file.close();
+    QVERIFY(writeFile(path, "nope"));
     QVERIFY(!loadSettings(&got, &error));
     QCOMPARE(got, Settings{});
 
@@ -725,17 +730,12 @@ void UpdaterTest::brokenSettingsFallBackToDefaults() {
     QCOMPARE(loadSettingsOrDefaults(&warning), Settings{});
     QVERIFY(warning.isEmpty());
 
-    QFile file(path);
-    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
-    file.write(R"({"automatic": false, "inactive_minutes": 30})");
-    file.close();
+    QVERIFY(writeFile(path, R"({"automatic": false, "inactive_minutes": 30})"));
     QCOMPARE(loadSettingsOrDefaults(&warning).inactiveMinutes, 30);
     QVERIFY(warning.isEmpty());
 
     for (const QByteArray &broken: {QByteArray("{\"automatic\": tru"), QByteArray(R"({"automatic": "no"})")}) {
-        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
-        file.write(broken);
-        file.close();
+        QVERIFY(writeFile(path, broken));
         QCOMPARE(loadSettingsOrDefaults(&warning), Settings{});
         QVERIFY(!warning.isEmpty());
     }
@@ -892,17 +892,14 @@ void UpdaterTest::sessionInUse() {
 void UpdaterTest::timestamps() {
     const QTemporaryDir dir;
     const QString stamp = dir.path() + "/x/stamp"_L1;
-    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const QDateTime now = referenceTime();
     QVERIFY(!within(stamp, 1h, now));
     QVERIFY(writeTimestamp(stamp, now.addSecs(-30 * 60LL), nullptr));
     QVERIFY(within(stamp, 1h, now));
     QVERIFY(!within(stamp, 10min, now));
     QVERIFY(writeTimestamp(stamp, now.addSecs(60 * 60LL), nullptr));
     QVERIFY(!within(stamp, 24h, now));
-    QFile file(stamp);
-    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
-    file.write("9223372036854775807\n");
-    file.close();
+    QVERIFY(writeFile(stamp, "9223372036854775807\n"));
     QVERIFY(!readTimestamp(stamp));
     QVERIFY(!within(stamp, 24h, now));
     QVERIFY(!parseTimestamp("-9223372036854775807"));
@@ -911,10 +908,8 @@ void UpdaterTest::timestamps() {
 
 void UpdaterTest::activityTracker() {
     const QTemporaryDir dir;
-    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
-    const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
-    const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
-    QCOMPARE(tracker.inactiveFor(false, start), 0s);
+    const ActivityTracker tracker = trackerIn(dir);
+    QCOMPARE(tracker.inactiveFor(false, referenceTime()), 0s);
     for (int minutes = 5; minutes <= 25; minutes += 5) {
         QCOMPARE(tracker.inactiveFor(false, minutesLater(minutes)),
                  std::chrono::seconds(std::chrono::minutes(minutes)));
@@ -926,10 +921,8 @@ void UpdaterTest::activityTracker() {
 
 void UpdaterTest::activityTrackerRestartsAfterGaps() {
     const QTemporaryDir dir;
-    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
-    const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
-    const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
-    QCOMPARE(tracker.inactiveFor(false, start), 0s);
+    const ActivityTracker tracker = trackerIn(dir);
+    QCOMPARE(tracker.inactiveFor(false, referenceTime()), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(5)), std::chrono::seconds(5min));
     QCOMPARE(tracker.inactiveFor(false, minutesLater(15)), std::chrono::seconds(15min));
     QCOMPARE(tracker.inactiveFor(false, minutesLater(15 + 8 * 60)), 0s);
@@ -937,18 +930,16 @@ void UpdaterTest::activityTrackerRestartsAfterGaps() {
     QCOMPARE(tracker.inactiveFor(false, minutesLater(10)), 0s);
 
     const QTemporaryDir upgraded;
-    QVERIFY(writeTimestamp(upgraded.path() + "/inactive-since"_L1, start, nullptr));
-    const ActivityTracker fresh(upgraded.path() + "/inactive-since"_L1, upgraded.path() + "/last-poll"_L1);
+    QVERIFY(writeTimestamp(upgraded.path() + "/inactive-since"_L1, referenceTime(), nullptr));
+    const ActivityTracker fresh = trackerIn(upgraded);
     QCOMPARE(fresh.inactiveFor(false, minutesLater(60)), 0s);
     QCOMPARE(fresh.inactiveFor(false, minutesLater(65)), std::chrono::seconds(5min));
 }
 
 void UpdaterTest::activityTrackerCountsFromIdleHint() {
     const QTemporaryDir dir;
-    const ActivityTracker tracker(dir.path() + "/inactive-since"_L1, dir.path() + "/last-poll"_L1);
-    const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
-    const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
-    QCOMPARE(tracker.inactiveFor(true, start), 0s);
+    const ActivityTracker tracker = trackerIn(dir);
+    QCOMPARE(tracker.inactiveFor(true, referenceTime()), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(5), minutesLater(2)), std::chrono::seconds(3min));
     QCOMPARE(tracker.inactiveFor(false, minutesLater(10), minutesLater(9)), std::chrono::seconds(8min));
 
@@ -972,18 +963,17 @@ void UpdaterTest::sessionsIdleSince() {
                           u"Active=yes\nIdleHint=yes\nIdleSinceHint=1800000600000000\n"_s);
     QCOMPARE(sessions.size(), 3);
     QCOMPARE(sessions.at(0).uid, 1000U);
-    QCOMPARE(sessions.at(0).idleSince, QDateTime::fromSecsSinceEpoch(1'800'000'000));
+    QCOMPARE(sessions.at(0).idleSince, referenceTime());
     QVERIFY(!sessions.at(1).idleSince);
-    QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions), QDateTime::fromSecsSinceEpoch(1'800'000'600));
-    QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions, u"cypress"_s),
-             QDateTime::fromSecsSinceEpoch(1'800'000'000));
+    QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions), minutesLater(10));
+    QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions, u"cypress"_s), referenceTime());
     QVERIFY(!UltramarineUpdates::sessionsIdleSince(sessions, u"guest"_s));
 
     QList<LoginSession> locked = sessions;
     locked[2].idle = false;
     locked[2].locked = true;
     QVERIFY(!UltramarineUpdates::sessionsIdleSince(locked));
-    QCOMPARE(UltramarineUpdates::sessionsIdleSince(locked, u"cypress"_s), QDateTime::fromSecsSinceEpoch(1'800'000'000));
+    QCOMPARE(UltramarineUpdates::sessionsIdleSince(locked, u"cypress"_s), referenceTime());
 }
 
 void UpdaterTest::idleInhibited() {
@@ -1035,7 +1025,7 @@ void UpdaterTest::idleInhibited() {
 void UpdaterTest::screenInhibitedMarker() {
     const QTemporaryDir dir;
     const QString path = dir.path() + "/screen-inhibited"_L1;
-    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const QDateTime now = referenceTime();
     const uint uid = getuid();
     QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now));
     QVERIFY(writeTimestamp(path, now.addSecs(-60), nullptr));
@@ -1052,10 +1042,7 @@ void UpdaterTest::screenInhibitedMarker() {
     const QString fifo = dir.path() + "/fifo"_L1;
     QCOMPARE(mkfifo(QFile::encodeName(fifo).constData(), 0600), 0);
     QVERIFY(!freshScreenInhibitedMarker(fifo, uid, maxPollGap, now));
-    QFile huge(path);
-    QVERIFY(huge.open(QIODevice::WriteOnly | QIODevice::Truncate));
-    huge.write("9223372036854775807\n");
-    huge.close();
+    QVERIFY(writeFile(path, "9223372036854775807\n"));
     QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now));
 }
 
@@ -1198,7 +1185,7 @@ namespace {
 
 void UpdaterTest::installFromTimerRecordsInstalls() {
     TimerFixture fixture;
-    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const QDateTime now = referenceTime();
     bool installedNow = false;
     QString error;
     QVERIFY(fixture.run(now, succeeded(), &installedNow, &error));
@@ -1210,7 +1197,7 @@ void UpdaterTest::installFromTimerRecordsInstalls() {
 
 void UpdaterTest::installFromTimerRetriesAfterAnHour() {
     TimerFixture fixture;
-    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const QDateTime now = referenceTime();
     ApplyResult failure;
     failure.updated = true;
     failure.fail(u"Updating RPM packages failed (exit code 1)."_s, true);
@@ -1235,7 +1222,7 @@ void UpdaterTest::installFromTimerRetriesAfterAnHour() {
 
 void UpdaterTest::installFromTimerKeepsPartialInstalls() {
     TimerFixture fixture;
-    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const QDateTime now = referenceTime();
     ApplyResult partial = succeeded();
     partial.fail(u"Updating system Flatpaks failed (exit code 1)."_s);
     bool installedNow = false;
@@ -1254,20 +1241,20 @@ void UpdaterTest::installFromTimerSkipsWhileBusy() {
     QCOMPARE(holder.tryLock(), InstallLock::Result::Acquired);
     bool installedNow = true;
     QString error;
-    QVERIFY(fixture.run(QDateTime::fromSecsSinceEpoch(1'800'000'000), succeeded(), &installedNow, &error));
+    QVERIFY(fixture.run(referenceTime(), succeeded(), &installedNow, &error));
     QVERIFY(!installedNow);
     QVERIFY(error.isEmpty());
     QCOMPARE(fixture.runs, 0);
 
     QVERIFY(!installFromTimer(fixture.dir.path() + "/missing/updates.lock"_L1, fixture.dir.path(), fixture.installed,
-                              QDateTime::fromSecsSinceEpoch(1'800'000'000), succeeded, &installedNow, &error));
+                              referenceTime(), succeeded, &installedNow, &error));
     QVERIFY(!error.isEmpty());
 }
 
 void UpdaterTest::notifiesOnlyAfterASuccessfulListing() {
     const QTemporaryDir dir;
     const QString checked = dir.path() + "/last-update-check"_L1;
-    const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
+    const QDateTime now = referenceTime();
     int listings = 0;
     QList<qsizetype> notified;
     ListResponse response;
@@ -1326,11 +1313,6 @@ namespace {
                 .results = lib + "/offline-update-competed"_L1,
                 .osRelease = dir.path() + "/os-release"_L1,
                 .rpmDatabase = dir.path() + "/rpmdb.sqlite"_L1};
-    }
-
-    bool writeFile(const QString &path, const QByteArray &contents) {
-        QFile file(path);
-        return file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size();
     }
 
     // as pk-offline-update writes them after a failed update in PackageKit 1.4

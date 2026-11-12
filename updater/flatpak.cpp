@@ -4,17 +4,13 @@
 
 #include "flatpak.h"
 
-#include <algorithm>
 #include <future>
-#include <iterator>
 
 #include "process.h"
 
 using namespace Qt::StringLiterals;
 
 namespace UltramarineUpdates {
-
-    QStringList flatpakInstallations() { return {u"system"_s, u"user"_s}; }
 
     QList<FlatpakUpdate> parseFlatpakRemoteLs(const QString &output) {
         QList<FlatpakUpdate> updates;
@@ -44,11 +40,9 @@ namespace UltramarineUpdates {
         if (!update.origin.isEmpty()) {
             result.source += u" (%1)"_s.arg(update.origin);
         }
-        if (!system) {
-            result.source += u" [%1]"_s.arg(installation);
-        }
         result.id = update.appId + "//"_L1 + update.branch;
         if (!system) {
+            result.source += u" [%1]"_s.arg(installation);
             result.id += u'@' + installation;
         }
         const bool app = update.ref.startsWith("app/"_L1);
@@ -120,39 +114,15 @@ namespace UltramarineUpdates {
             return versions;
         }
 
-        struct FlatpakSizes {
-            QHash<QString, UpgradeSize> remote;
-            QHash<QString, UpgradeSize> localSizeColumns;
-
-            [[nodiscard]] qint64 installedSize(const QString &key) const {
-                return localSizeColumns.value(key).download;
-            }
-        };
-
-        FlatpakSizes flatpakSizes(const QString &installation) {
+        UpgradeSizes flatpakSizes(const QString &installation) {
             return {
-                .remote = parseFlatpakSizes(
+                .upgrades = parseFlatpakSizes(
                     localeIndependentOutput(u"flatpak"_s,
                                             {u"remote-ls"_s, u"--"_s + installation, u"--updates"_s,
                                              u"--columns=application,branch,download-size,installed-size"_s})),
-                .localSizeColumns = parseFlatpakSizes(localeIndependentOutput(
+                .current = parseFlatpakSizes(localeIndependentOutput(
                     u"flatpak"_s, {u"list"_s, u"--"_s + installation, u"--columns=application,branch,size"_s})),
             };
-        }
-
-        void applyFlatpakSizes(QList<PackageUpdate> &updates, const QList<FlatpakUpdate> &refs,
-                               const FlatpakSizes &sizes) {
-            for (qsizetype i = 0; i < updates.size(); ++i) {
-                const QString key = refs[i].appId + u'/' + refs[i].branch;
-                const auto size = sizes.remote.constFind(key);
-                if (size == sizes.remote.constEnd()) {
-                    continue;
-                }
-                updates[i].downloadSize = size->download;
-                if (size->installed > 0) {
-                    updates[i].installedSizeChange = size->installed - sizes.installedSize(key);
-                }
-            }
         }
     } // namespace
 
@@ -170,12 +140,13 @@ namespace UltramarineUpdates {
             return {};
         }
         const QHash<QString, QString> installed = installedFlatpakVersions(installation);
+        const UpgradeSizes upgradeSizes = sizes.get();
         QList<PackageUpdate> result;
         result.reserve(updates.size());
-        std::ranges::transform(updates, std::back_inserter(result), [&](const FlatpakUpdate &update) {
-            return flatpakPackageUpdate(update, installation, installed);
-        });
-        applyFlatpakSizes(result, updates, sizes.get());
+        for (const FlatpakUpdate &update: updates) {
+            PackageUpdate &packageUpdate = result.emplaceBack(flatpakPackageUpdate(update, installation, installed));
+            upgradeSizes.annotate(packageUpdate, update.appId + u'/' + update.branch);
+        }
         return result;
     }
 

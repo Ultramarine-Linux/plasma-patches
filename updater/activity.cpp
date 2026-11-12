@@ -49,6 +49,10 @@ namespace UltramarineUpdates {
 
             int fd;
         };
+
+        bool belongsTo(const LoginSession &session, const QString &userName) {
+            return userName.isEmpty() || session.name == userName;
+        }
     } // namespace
 
     bool LoginSession::interactive() const {
@@ -110,15 +114,13 @@ namespace UltramarineUpdates {
     }
 
     std::optional<LoginSession> sessionInUse(const QList<LoginSession> &sessions, const QString &userName) {
-        for (const LoginSession &session: sessions) {
-            if (!userName.isEmpty() && session.name != userName) {
-                continue;
-            }
-            if (session.inUse()) {
-                return session;
-            }
+        const auto found = std::ranges::find_if(sessions, [&userName](const LoginSession &session) {
+            return belongsTo(session, userName) && session.inUse();
+        });
+        if (found == sessions.cend()) {
+            return std::nullopt;
         }
-        return std::nullopt;
+        return *found;
     }
 
     bool loginSessions(QList<LoginSession> *sessions, QString *error) {
@@ -151,7 +153,7 @@ namespace UltramarineUpdates {
     std::optional<QDateTime> sessionsIdleSince(const QList<LoginSession> &sessions, const QString &userName) {
         std::optional<QDateTime> since;
         for (const LoginSession &session: sessions) {
-            if ((!userName.isEmpty() && session.name != userName) || !session.interactive() || !session.active) {
+            if (!belongsTo(session, userName) || !session.interactive() || !session.active) {
                 continue;
             }
             if (!session.idle || !session.idleSince) {
@@ -174,7 +176,7 @@ namespace UltramarineUpdates {
                        const QString &userName) {
         QSet<uint> owners;
         for (const LoginSession &session: sessions) {
-            if (session.interactive() && session.uid != 0 && (userName.isEmpty() || session.name == userName)) {
+            if (session.interactive() && session.uid != 0 && belongsTo(session, userName)) {
                 owners.insert(session.uid);
             }
         }
@@ -284,11 +286,10 @@ namespace UltramarineUpdates {
         if (!ok) {
             return std::nullopt;
         }
-        QDateTime time = QDateTime::fromSecsSinceEpoch(seconds);
-        if (!time.isValid()) {
-            return std::nullopt;
+        if (QDateTime time = QDateTime::fromSecsSinceEpoch(seconds); time.isValid()) {
+            return time;
         }
-        return time;
+        return std::nullopt;
     }
 
     std::optional<QDateTime> readTimestamp(const QString &path) {
@@ -300,9 +301,9 @@ namespace UltramarineUpdates {
     }
 
     bool writeTimestamp(const QString &path, const QDateTime &time, QString *error) {
-        if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        if (const QString directory = QFileInfo(path).absolutePath(); !QDir().mkpath(directory)) {
             if (error) {
-                *error = i18nc("@info:status %1 is a directory", "Could not create %1", QFileInfo(path).absolutePath());
+                *error = i18nc("@info:status %1 is a directory", "Could not create %1", directory);
             }
             return false;
         }
@@ -318,10 +319,7 @@ namespace UltramarineUpdates {
 
     bool within(const QString &path, const std::chrono::seconds duration, const QDateTime &now) {
         const std::optional<QDateTime> time = readTimestamp(path);
-        if (!time || !now.isValid() || *time > now) {
-            return false;
-        }
-        return time->secsTo(now) < duration.count();
+        return time && now.isValid() && *time <= now && time->secsTo(now) < duration.count();
     }
 
     std::chrono::seconds ActivityTracker::inactiveFor(const bool inUse, const QDateTime &now,

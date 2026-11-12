@@ -12,7 +12,6 @@
 #include <optional>
 #include <utility>
 
-#include "apps.h"
 #include "updates.h"
 
 namespace UltramarineUpdates {
@@ -41,8 +40,6 @@ namespace UltramarineUpdates {
     QString drvVersion(const QString &name);
 
     std::optional<PackageUpdate> nixUpdateFor(const NixProfileElement &element, const NixEvalResult &result);
-
-    AppFiles nixAppFiles(const QStringList &storePaths);
 
     std::pair<QString, QString> determinateNixVersions(const QString &output);
 

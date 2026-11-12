@@ -67,12 +67,21 @@ namespace UltramarineUpdates {
             return file.open(QIODevice::ReadOnly) ? QString::fromLatin1(file.readAll().trimmed()) : QString();
         }
 
-        PackageUpdate imageUpdate(const QString &name, const QString &backend, const QString &source,
+        std::optional<BootcStatus> liveBootcStatus(const QString &bootc) {
+            return parseBootcStatus(capture(bootc, {u"status"_s, u"--format=json"_s}).out);
+        }
+
+        QString imageCheckError(const CommandResult &result) {
+            return i18nc("@info:status %1 is an error message", "Checking for a new system image failed: %1",
+                         QString::fromUtf8(result.err).trimmed());
+        }
+
+        PackageUpdate imageUpdate(const QString &name, const QString &backend, const QString &origin,
                                   const QString &oldVersion, const QString &newVersion) {
             PackageUpdate update;
             update.id = u"image:system"_s;
             update.name = name;
-            update.source = source;
+            update.source = origin.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(origin);
             update.backend = backend;
             update.kind = QString::fromLatin1(Kind::Package);
             update.icon = u"system-software-update"_s;
@@ -122,8 +131,8 @@ namespace UltramarineUpdates {
             return state;
         }
         const QString image = cached.value("image"_L1).toObject().value("image"_L1).toString();
-        state.update = imageUpdate(name, u"bootc"_s, image.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(image),
-                                   versionOf(bootedImage, u"imageDigest"_s), versionOf(cached, u"imageDigest"_s));
+        state.update = imageUpdate(name, u"bootc"_s, image, versionOf(bootedImage, u"imageDigest"_s),
+                                   versionOf(cached, u"imageDigest"_s));
         return state;
     }
 
@@ -157,8 +166,8 @@ namespace UltramarineUpdates {
         if (origin.isEmpty()) {
             origin = booted.value("container-image-reference"_L1).toString();
         }
-        state.update = imageUpdate(name, backend, origin.isEmpty() ? u"Image"_s : u"Image (%1)"_s.arg(origin),
-                                   versionOf(booted, u"checksum"_s), versionOf(cached, u"checksum"_s));
+        state.update =
+            imageUpdate(name, backend, origin, versionOf(booted, u"checksum"_s), versionOf(cached, u"checksum"_s));
         return state;
     }
 
@@ -213,15 +222,16 @@ namespace UltramarineUpdates {
 
     ImageState imageState(QString *error) {
         const QString name = osName();
-        if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
+        const QString bootc = QStandardPaths::findExecutable(u"bootc"_s);
+        if (!bootc.isEmpty()) {
             std::optional<QByteArray> status;
             if (const CommandResult result = capture(bootc, {u"status"_s, u"--format=json"_s}); result.succeeded()) {
                 status = result.out;
             } else if (QFile cache(bootcStatusCachePath()); cache.open(QIODevice::ReadOnly)) {
                 status = parseBootcStatusCache(cache.readAll(), bootId());
             }
-            const std::optional<BootcStatus> parsed = status ? parseBootcStatus(*status) : std::nullopt;
-            if (const bool tracksBootcImage = parsed && !parsed->image.isEmpty(); tracksBootcImage) {
+            if (const std::optional<BootcStatus> parsed = status ? parseBootcStatus(*status) : std::nullopt;
+                parsed && !parsed->image.isEmpty()) {
                 return parseBootcState(*status, name);
             }
         }
@@ -235,21 +245,18 @@ namespace UltramarineUpdates {
                            QString::fromUtf8(result.err).trimmed());
             return {};
         }
-        const QString backend = QStandardPaths::findExecutable(u"bootc"_s).isEmpty() ? u"rpm-ostree"_s : u"bootc"_s;
-        return parseRpmOstreeState(result.out, name, backend);
+        return parseRpmOstreeState(result.out, name, bootc.isEmpty() ? u"rpm-ostree"_s : u"bootc"_s);
     }
 
     bool checkImageUpdate(QString *error) {
         if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
-            const CommandResult status = capture(bootc, {u"status"_s, u"--format=json"_s});
-            const std::optional<BootcStatus> parsed = parseBootcStatus(status.out);
-            if (parsed && isUmEnvImage(parsed->image)) {
-                return true;
-            }
-            if (parsed && !parsed->image.isEmpty()) {
-                if (const CommandResult result = capture(bootc, {u"upgrade"_s, u"--check"_s}); !result.succeeded()) {
-                    *error = i18nc("@info:status %1 is an error message", "Checking for a new system image failed: %1",
-                                   QString::fromUtf8(result.err).trimmed());
+            if (const std::optional<BootcStatus> status = liveBootcStatus(bootc); status && !status->image.isEmpty()) {
+                if (isUmEnvImage(status->image)) {
+                    return true;
+                }
+                const CommandResult result = capture(bootc, {u"upgrade"_s, u"--check"_s});
+                if (!result.succeeded()) {
+                    *error = imageCheckError(result);
                     return false;
                 }
                 return true;
@@ -263,8 +270,7 @@ namespace UltramarineUpdates {
         constexpr int rpmOstreeNoUpdateExitCode = 77;
         if (const CommandResult result = capture(rpmOstree, {u"upgrade"_s, u"--check"_s});
             !result.started || (result.exitCode != 0 && result.exitCode != rpmOstreeNoUpdateExitCode)) {
-            *error = i18nc("@info:status %1 is an error message", "Checking for a new system image failed: %1",
-                           QString::fromUtf8(result.err).trimmed());
+            *error = imageCheckError(result);
             return false;
         }
         return true;
@@ -272,23 +278,18 @@ namespace UltramarineUpdates {
 
     bool upgradeImage(QString *error) {
         if (const QString bootc = QStandardPaths::findExecutable(u"bootc"_s); !bootc.isEmpty()) {
-            const CommandResult status = capture(bootc, {u"status"_s, u"--format=json"_s});
-            const std::optional<BootcStatus> parsed = parseBootcStatus(status.out);
-            if (parsed && isUmEnvImage(parsed->image)) {
-                const QString um = QStandardPaths::findExecutable(u"um"_s);
-                if (um.isEmpty()) {
-                    *error = i18nc("@info:status", "This system uses um env, but um is not installed.");
-                    return false;
-                }
-                if (const int exitCode = runForwarded(um, {u"env"_s, u"update"_s}); exitCode != 0) {
-                    *error = i18nc("@info:status", "Updating the um env image failed (exit code %1).", exitCode);
-                    return false;
-                }
-                updateBootcStatusCache();
-                return true;
-            }
-            if (parsed && !parsed->image.isEmpty()) {
-                if (const int exitCode = runForwarded(bootc, {u"upgrade"_s}); exitCode != 0) {
+            if (const std::optional<BootcStatus> status = liveBootcStatus(bootc); status && !status->image.isEmpty()) {
+                if (isUmEnvImage(status->image)) {
+                    const QString um = QStandardPaths::findExecutable(u"um"_s);
+                    if (um.isEmpty()) {
+                        *error = i18nc("@info:status", "This system uses um env, but um is not installed.");
+                        return false;
+                    }
+                    if (const int exitCode = runForwarded(um, {u"env"_s, u"update"_s})) {
+                        *error = i18nc("@info:status", "Updating the um env image failed (exit code %1).", exitCode);
+                        return false;
+                    }
+                } else if (const int exitCode = runForwarded(bootc, {u"upgrade"_s})) {
                     *error = i18nc("@info:status", "Updating the system image failed (exit code %1).", exitCode);
                     return false;
                 }
@@ -301,7 +302,7 @@ namespace UltramarineUpdates {
             *error = i18nc("@info:status", "Neither bootc nor rpm-ostree is installed.");
             return false;
         }
-        if (const int exitCode = runForwarded(rpmOstree, {u"upgrade"_s}); exitCode != 0) {
+        if (const int exitCode = runForwarded(rpmOstree, {u"upgrade"_s})) {
             *error = i18nc("@info:status", "Updating the system image failed (exit code %1).", exitCode);
             return false;
         }

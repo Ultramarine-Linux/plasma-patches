@@ -72,8 +72,7 @@ Q_SIGNALS:
     void errorMessageChanged();
 
 private:
-    void detachRunningPkexec();
-    void helperFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void finishChange(const QString &error);
 
     void setState(LocationState state);
     void setLoading(bool value);

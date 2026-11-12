@@ -59,8 +59,7 @@ namespace UltramarineUpdates {
             }
             const QStringList arguments =
                 QStringList{u"-q"_s, u"--qf"_s, u"[%{=NAME}.%{=ARCH}\t%{FILENAMES}\n]"_s} + nameArchs;
-            const QByteArray outputIgnoringPackagesNotInstalled = capture(u"rpm"_s, arguments).out;
-            return parseRpmAppFiles(QString::fromUtf8(outputIgnoringPackagesNotInstalled));
+            return parseRpmAppFiles(QString::fromUtf8(capture(u"rpm"_s, arguments).out));
         }
     } // namespace
 
@@ -118,7 +117,7 @@ namespace UltramarineUpdates {
         if (xml.hasError() || (type != "desktop-application"_L1 && type != "desktop"_L1)) {
             return std::nullopt;
         }
-        if (const bool legacyIdNamesLauncher = info.desktopIds.isEmpty() && !info.id.isEmpty(); legacyIdNamesLauncher) {
+        if (info.desktopIds.isEmpty() && !info.id.isEmpty()) {
             info.desktopIds.append(info.id.endsWith(".desktop"_L1) ? info.id : info.id + ".desktop"_L1);
         }
         if (info.id.isEmpty() || info.name.isEmpty()) {
@@ -220,7 +219,8 @@ namespace UltramarineUpdates {
             }
             return app;
         }
-        if (const bool metainfoSaysNotAnApp = !files->metainfo.isEmpty(); metainfoSaysNotAnApp) {
+        const bool hasMetainfoButNoApp = !files->metainfo.isEmpty();
+        if (hasMetainfoButNoApp) {
             return std::nullopt;
         }
 

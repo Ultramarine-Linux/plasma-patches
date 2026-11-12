@@ -36,6 +36,13 @@ KCMUtils.SimpleKCM {
         font: Kirigami.Theme.smallFont
     }
 
+    component RadioDescription: QQC2.Label {
+        Layout.fillWidth: true
+        font: Kirigami.Theme.smallFont
+        opacity: 0.7
+        wrapMode: Text.Wrap
+    }
+
     function formatSize(bytes) {
         return Qt.locale().formattedDataSize(Math.abs(bytes), 0, Locale.DataSizeSIFormat);
     }
@@ -277,8 +284,6 @@ KCMUtils.SimpleKCM {
                     }
 
                     Item {
-                        id: updateList
-
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.shownUpdates * root.updateRowHeight
                                                 + (root.shownUpdates - 1) * updateRows.spacing
@@ -329,12 +334,13 @@ KCMUtils.SimpleKCM {
                                     required property string oldVersion
                                     required property string newVersion
 
-                                    function withoutRpmEpochAndRelease(version) {
-                                        const noEpoch = version.includes(":") ? version.substring(version.indexOf(":") + 1) : version;
-                                        return noEpoch.includes("-") ? noEpoch.substring(0, noEpoch.lastIndexOf("-")) : noEpoch;
-                                    }
                                     function displayVersion(version) {
-                                        return backend === "rpm" ? withoutRpmEpochAndRelease(version) : version;
+                                        if (backend !== "rpm") {
+                                            return version;
+                                        }
+                                        const withoutEpoch = version.substring(version.indexOf(":") + 1);
+                                        const release = withoutEpoch.lastIndexOf("-");
+                                        return release >= 0 ? withoutEpoch.substring(0, release) : withoutEpoch;
                                     }
                                     readonly property bool systemImage: backend === "bootc" || backend === "rpm-ostree"
                                     readonly property string fromVersion: systemImage ? "" : displayVersion(oldVersion)
@@ -449,13 +455,9 @@ KCMUtils.SimpleKCM {
                         onToggled: kcm.automaticUpdates = true
                     }
 
-                    QQC2.Label {
-                        Layout.fillWidth: true
+                    RadioDescription {
                         leftPadding: automaticButton.indicator.width + automaticButton.spacing
                         text: i18nc("@info", "Updates automatically install when you’re not active")
-                        font: Kirigami.Theme.smallFont
-                        opacity: 0.7
-                        wrapMode: Text.Wrap
                     }
 
                     QQC2.RadioButton {
@@ -465,13 +467,9 @@ KCMUtils.SimpleKCM {
                         onToggled: kcm.automaticUpdates = false
                     }
 
-                    QQC2.Label {
-                        Layout.fillWidth: true
+                    RadioDescription {
                         leftPadding: automaticButton.indicator.width + automaticButton.spacing
                         text: i18nc("@info", "You’re notified when updates are ready to go")
-                        font: Kirigami.Theme.smallFont
-                        opacity: 0.7
-                        wrapMode: Text.Wrap
                     }
                 }
 
@@ -482,7 +480,6 @@ KCMUtils.SimpleKCM {
                 }
 
                 QQC2.Button {
-                    id: advancedButton
                     text: i18nc("@action:button", "Advanced Settings")
                     icon.name: "configure"
                     onClicked: kcm.push("AdvancedSettings.qml")

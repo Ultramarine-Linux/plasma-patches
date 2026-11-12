@@ -7,13 +7,9 @@
 #include <QProcessEnvironment>
 #include <QVariantMap>
 
-#include <optional>
-
 namespace DgpuLaunch {
 
     QProcessEnvironment gpuEnvironment(const QList<QVariantMap> &gpus);
-
-    std::optional<QList<QVariantMap>> switcherooGpus();
 
     QProcessEnvironment fallbackEnvironment(bool nvidiaLoaded);
 

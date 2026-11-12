@@ -22,8 +22,8 @@ namespace {
     constexpr uint PkExitNeedUntrusted = 8;
     constexpr uint PkExitCancelledPriority = 9;
     constexpr uint PkErrorTransactionCancelled = 17;
-    constexpr uint PkErrorCannotCancel = 30;
-    constexpr uint UnrelatedPkError = 13;
+    constexpr uint PkErrorCannotCancel = 25;
+    constexpr uint PkErrorDepResolutionFailed = 13;
 
     Suite suiteWithFlatpak(const QString &flatpakId) {
         const QList<Suite> all = offeredSuites();
@@ -137,7 +137,7 @@ void OfficeInstallerTest::reportsCancelOnlyWhenCanceled() {
     QVERIFY(failure.canceled);
     QVERIFY(failure.error.isEmpty());
 
-    failure = transactionFailure(PkExitFailed, UnrelatedPkError, u"Nothing provides libfoo"_s, {});
+    failure = transactionFailure(PkExitFailed, PkErrorDepResolutionFailed, u"Nothing provides libfoo"_s, {});
     QVERIFY(!failure.canceled);
     QCOMPARE(failure.error, u"Nothing provides libfoo"_s);
 

@@ -41,13 +41,21 @@ namespace {
         std::fflush(stdout);
     }
 
+    void printLine(const QString &text) { print(text + u'\n'); }
+
     void printJson(const QJsonObject &object) {
-        print(QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact)) + u'\n');
+        printLine(QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact)));
     }
 
+    void printError(const QString &message) { std::fprintf(stderr, "%s\n", qPrintable(message)); }
+
     int fail(const QString &message, const int exitCode = 1) {
-        std::fprintf(stderr, "%s\n", qPrintable(message));
+        printError(message);
         return exitCode;
+    }
+
+    void warn(const QString &message) {
+        printError(i18nc("@info:status %1 is a warning message", "Warning: %1", message));
     }
 
     int runAsRoot(const QStringList &escalatedArguments, bool *ranThroughSudo = nullptr) {
@@ -60,8 +68,8 @@ namespace {
         } else {
             program = u"/usr/bin/sudo"_s;
             for (const QString &name: environmentForwardedThroughSudo) {
-                if (qEnvironmentVariableIsSet(name.toLatin1().constData())) {
-                    argv << name + u'=' + qEnvironmentVariable(name.toLatin1().constData());
+                if (const QByteArray variable = name.toLatin1(); qEnvironmentVariableIsSet(variable.constData())) {
+                    argv << name + u'=' + qEnvironmentVariable(variable.constData());
                 }
             }
         }
@@ -73,9 +81,7 @@ namespace {
         std::fflush(stderr);
         const int exitCode = runForwarded(program, argv);
         if (exitCode < 0) {
-            std::fprintf(stderr, "%s\n",
-                         qPrintable(i18nc("@info:status %1 is a program", "Could not run %1", program)));
-            return 1;
+            return fail(i18nc("@info:status %1 is a program", "Could not run %1", program));
         }
         return exitCode;
     }
@@ -100,15 +106,12 @@ namespace {
                 print(u"%1: %2 -> %3 (%4)\n"_s.arg(update.name, update.oldVersion, update.newVersion, update.source));
             }
             for (const QString &error: response.errors) {
-                std::fprintf(stderr, "%s\n",
-                             qPrintable(i18nc("@info:status %1 is a source and its error message",
-                                              "Warning: failed to list updates from %1", error)));
+                printError(i18nc("@info:status %1 is a source and its error message",
+                                 "Warning: failed to list updates from %1", error));
             }
             if (!response.offlineError.isEmpty()) {
-                std::fprintf(stderr, "%s\n",
-                             qPrintable(i18nc("@info:status %1 is an error message",
-                                              "Warning: the updates installed while restarting failed: %1",
-                                              response.offlineError)));
+                printError(i18nc("@info:status %1 is an error message",
+                                 "Warning: the updates installed while restarting failed: %1", response.offlineError));
             }
         }
         return response.allFailed() ? 1 : 0;
@@ -151,7 +154,7 @@ namespace {
             return InstallLock(imageCheckLockPath()).tryLock() == InstallLock::Result::Busy;
         };
         if (locked == InstallLock::Result::Busy && imageCheckRunning()) {
-            print(i18nc("@info:progress", "Waiting for the check for a new system image to finish…") + u'\n');
+            printLine(i18nc("@info:progress", "Waiting for the check for a new system image to finish…"));
             locked = systemLock.tryLock(&error, imageCheckWait);
         }
         if (locked != InstallLock::Result::Acquired) {
@@ -160,8 +163,7 @@ namespace {
         QString settingsWarning;
         const Settings settings = loadSettingsOrDefaults(&settingsWarning);
         if (!settingsWarning.isEmpty()) {
-            std::fprintf(stderr, "%s\n",
-                         qPrintable(i18nc("@info:status %1 is a warning message", "Warning: %1", settingsWarning)));
+            warn(settingsWarning);
         }
         const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing system updates"));
         const ApplyResult result = applySystem(assumeYes, settings.offline);
@@ -175,57 +177,63 @@ namespace {
             return failSystem(i18nc("@info:status", "No supported package manager was found."));
         }
         if (!isImageMode() && offlineUpdatePending()) {
-            print(i18nc("@info:status", "System updates will be installed during the next restart.") + u'\n');
+            printLine(i18nc("@info:status", "System updates will be installed during the next restart."));
         }
         return 0;
+    }
+
+    QString changeSettings(const QCommandLineParser &parser) {
+        Settings settings;
+        QString error;
+        loadSettings(&settings, &error);
+        const auto readBool = [&parser](const QString &name, bool *value) {
+            if (!parser.isSet(name)) {
+                return true;
+            }
+            const std::optional<bool> parsed = parseBool(parser.value(name));
+            *value = parsed.value_or(*value);
+            return parsed.has_value();
+        };
+        if (!readBool(u"automatic"_s, &settings.automatic)) {
+            return i18nc("@info:shell", "--automatic must be true or false.");
+        }
+        if (!readBool(u"offline"_s, &settings.offline)) {
+            return i18nc("@info:shell", "--offline must be true or false.");
+        }
+        if (parser.isSet(u"inactive-minutes"_s)) {
+            bool ok = false;
+            settings.inactiveMinutes = parser.value(u"inactive-minutes"_s).toInt(&ok);
+            if (!ok) {
+                return i18nc("@info:shell", "--inactive-minutes must be a number.");
+            }
+        }
+        if (parser.isSet(u"window"_s) &&
+            !parseWindow(parser.value(u"window"_s), &settings.windowStart, &settings.windowEnd, &error)) {
+            return error;
+        }
+        if (const QString invalid = settings.validate(); !invalid.isEmpty()) {
+            return invalid;
+        }
+        if (!saveSettings(settings, &error)) {
+            return i18nc("@info:status %1 is an error message", "Failed to save the settings: %1", error);
+        }
+        return {};
     }
 
     int settingsCommand(const QString &command, const QCommandLineParser &parser) {
         const bool changing = parser.isSet(u"automatic"_s) || parser.isSet(u"offline"_s) ||
             parser.isSet(u"inactive-minutes"_s) || parser.isSet(u"window"_s);
-        QString error;
         if (changing) {
             const bool usingDevelopmentSettings = !qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG");
             if (geteuid() != 0 && !usingDevelopmentSettings) {
                 return runAsRoot(escalatedCommandLine(command, parser));
             }
-            Settings settings;
-            loadSettings(&settings, &error);
-            const auto readBool = [&parser](const QString &name, bool *value) {
-                if (!parser.isSet(name)) {
-                    return true;
-                }
-                const std::optional<bool> parsed = parseBool(parser.value(name));
-                if (parsed) {
-                    *value = *parsed;
-                }
-                return parsed.has_value();
-            };
-            if (!readBool(u"automatic"_s, &settings.automatic)) {
-                return fail(i18nc("@info:shell", "--automatic must be true or false."));
-            }
-            if (!readBool(u"offline"_s, &settings.offline)) {
-                return fail(i18nc("@info:shell", "--offline must be true or false."));
-            }
-            if (parser.isSet(u"inactive-minutes"_s)) {
-                bool ok = false;
-                settings.inactiveMinutes = parser.value(u"inactive-minutes"_s).toInt(&ok);
-                if (!ok) {
-                    return fail(i18nc("@info:shell", "--inactive-minutes must be a number."));
-                }
-            }
-            if (parser.isSet(u"window"_s) &&
-                !parseWindow(parser.value(u"window"_s), &settings.windowStart, &settings.windowEnd, &error)) {
+            if (const QString error = changeSettings(parser); !error.isEmpty()) {
                 return fail(error);
-            }
-            if (const QString invalid = settings.validate(); !invalid.isEmpty()) {
-                return fail(invalid);
-            }
-            if (!saveSettings(settings, &error)) {
-                return fail(i18nc("@info:status %1 is an error message", "Failed to save the settings: %1", error));
             }
         }
 
+        QString error;
         Settings settings;
         if (!loadSettings(&settings, &error)) {
             return fail(error);
@@ -246,23 +254,23 @@ namespace {
         return 0;
     }
 
+    void printTonightStatus(const ScheduleStatus &status, const bool json) {
+        if (json) {
+            printJson(status.toJson());
+        } else if (status.scheduled) {
+            printLine(i18nc("@info:status", "Updates are scheduled to install tonight."));
+        } else if (status.partial) {
+            printLine(i18nc("@info:status",
+                            "Only some of tonight's updates are still scheduled. Schedule them "
+                            "again to install all of them."));
+        } else {
+            printLine(i18nc("@info:status", "No updates are scheduled."));
+        }
+    }
+
     int scheduleCommand(const QString &command, const QCommandLineParser &parser) {
         if (parser.isSet(u"status"_s)) {
-            const ScheduleStatus status = tonightStatus();
-            if (parser.isSet(u"json"_s)) {
-                printJson(status.toJson());
-            } else {
-                if (status.scheduled) {
-                    print(i18nc("@info:status", "Updates are scheduled to install tonight.") + u'\n');
-                } else if (status.partial) {
-                    print(i18nc("@info:status",
-                                "Only some of tonight's updates are still scheduled. Schedule them "
-                                "again to install all of them.") +
-                          u'\n');
-                } else {
-                    print(i18nc("@info:status", "No updates are scheduled.") + u'\n');
-                }
-            }
+            printTonightStatus(tonightStatus(), parser.isSet(u"json"_s));
             return 0;
         }
 
@@ -287,13 +295,13 @@ namespace {
             if (!cancelTonight(false, &error)) {
                 return fail(i18nc("@info:status %1 is an error message", "Failed to cancel the updates: %1", error));
             }
-            print(i18nc("@info:status", "Tonight's updates were canceled.") + u'\n');
+            printLine(i18nc("@info:status", "Tonight's updates were canceled."));
             return 0;
         }
         if (!scheduleTonight(false, &error)) {
             return fail(i18nc("@info:status %1 is an error message", "Failed to schedule the updates: %1", error));
         }
-        print(i18nc("@info:status", "Updates will be installed tonight, when the device isn't in use.") + u'\n');
+        printLine(i18nc("@info:status", "Updates will be installed tonight, when the device isn't in use."));
         return 0;
     }
 

@@ -13,8 +13,10 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <chrono>
 #include <climits>
 #include <cmath>
+#include <optional>
 #include <ranges>
 #include <utility>
 
@@ -42,8 +44,29 @@ namespace {
         return 3;
     }
 
-    constexpr int ChangeOutputPollMs = 200;
-    constexpr int VersionOfUnversionedTweaksOutput = 1;
+    constexpr std::chrono::milliseconds ChangeOutputPollInterval{200};
+    constexpr int ImplicitTweaksOutputVersion = 1;
+
+    std::optional<QJsonObject> parseJsonObject(const QString &output) {
+        QJsonParseError error;
+        const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8(), &error);
+        if (error.error != QJsonParseError::NoError || !document.isObject()) {
+            return std::nullopt;
+        }
+        return document.object();
+    }
+
+    int outputVersion(const QJsonObject &output) {
+        const QJsonValue version = output.value(QStringLiteral("version"));
+        if (version.isUndefined()) {
+            return ImplicitTweaksOutputVersion;
+        }
+        const double number = version.toDouble(-1);
+        if (!version.isDouble() || number < 1 || number > INT_MAX || std::floor(number) != number) {
+            return UnrecognizedTweaksOutputVersion;
+        }
+        return static_cast<int>(number);
+    }
 
     QString lastUmError(const QString &output) {
         for (const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
@@ -93,56 +116,37 @@ namespace {
 } // namespace
 
 int tweaksOutputVersion(const QString &output) {
-    QJsonParseError error;
-    const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8(), &error);
-    if (error.error != QJsonParseError::NoError || !document.isObject()) {
-        return 0;
-    }
-    const QJsonValue version = document.object().value(QStringLiteral("version"));
-    if (version.isUndefined()) {
-        return VersionOfUnversionedTweaksOutput;
-    }
-    if (!version.isDouble()) {
-        return UnrecognizedTweaksOutputVersion;
-    }
-    const double number = version.toDouble();
-    if (number < 1 || number > INT_MAX || std::floor(number) != number) {
-        return UnrecognizedTweaksOutputVersion;
-    }
-    return static_cast<int>(number);
+    const std::optional<QJsonObject> object = parseJsonObject(output);
+    return object ? outputVersion(*object) : 0;
 }
 
 bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks) {
-    QJsonParseError error;
-    const QJsonDocument document = QJsonDocument::fromJson(output.toUtf8(), &error);
-    if (error.error != QJsonParseError::NoError || !document.isObject()) {
+    const std::optional<QJsonObject> object = parseJsonObject(output);
+    if (!object || outputVersion(*object) != SupportedTweaksOutputVersion) {
         return false;
     }
-    if (tweaksOutputVersion(output) != SupportedTweaksOutputVersion) {
-        return false;
-    }
-    const QJsonValue list = document.object().value(QStringLiteral("tweaks"));
+    const QJsonValue list = object->value(QStringLiteral("tweaks"));
     if (!list.isArray()) {
         return false;
     }
 
     QList<TweakItem> result;
     for (const QJsonArray array = list.toArray(); const auto &value: array) {
-        const QJsonObject object = value.toObject();
+        const QJsonObject entry = value.toObject();
         TweakItem item;
-        item.id = object.value(QStringLiteral("id")).toString();
+        item.id = entry.value(QStringLiteral("id")).toString();
         if (item.id.isEmpty()) {
             continue;
         }
-        item.description = object.value(QStringLiteral("description")).toString();
+        item.description = entry.value(QStringLiteral("description")).toString();
         if (item.description.isEmpty()) {
             item.description = item.id;
         }
-        item.type = object.value(QStringLiteral("type")).toString();
-        item.stability = object.value(QStringLiteral("stability")).toString();
-        item.warning = object.value(QStringLiteral("warning")).toString();
-        item.stateError = object.value(QStringLiteral("state_error")).toString();
-        item.enabled = item.stateError.isEmpty() && object.value(QStringLiteral("enabled")).toBool();
+        item.type = entry.value(QStringLiteral("type")).toString();
+        item.stability = entry.value(QStringLiteral("stability")).toString();
+        item.warning = entry.value(QStringLiteral("warning")).toString();
+        item.stateError = entry.value(QStringLiteral("state_error")).toString();
+        item.enabled = item.stateError.isEmpty() && entry.value(QStringLiteral("enabled")).toBool();
         result.append(item);
     }
 
@@ -225,7 +229,7 @@ QVariant TweaksModel::data(const QModelIndex &index, const int role) const {
     case EnabledRole:
         return enabled;
     case BusyRole:
-        return !m_busyId.isEmpty() && id == m_busyId;
+        return id == m_busyId;
     default:
         return {};
     }
@@ -283,13 +287,12 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
         if (error == QProcess::FailedToStart) {
             setLoading(false);
             m_reloadAfterCurrentLoad = false;
-            setListError(i18n("Could not start um."));
-            setListState(m_loaded, true);
+            setListResult(i18n("Could not start um."));
         }
     });
 
     m_changeProcess->setProcessChannelMode(QProcess::MergedChannels);
-    m_changeOutputPollTimer.setInterval(ChangeOutputPollMs);
+    m_changeOutputPollTimer.setInterval(ChangeOutputPollInterval);
     connect(&m_changeOutputPollTimer, &QTimer::timeout, this, &Tweaks::readChangeOutput);
     connect(m_changeProcess, &QProcess::started, this, [this] { QFile::remove(m_changeOutputFile.fileName()); });
     connect(m_changeProcess, &QProcess::finished, this, &Tweaks::changeFinished);
@@ -307,7 +310,10 @@ Tweaks::Tweaks(QObject *parent, const KPluginMetaData &metaData) :
 Tweaks::~Tweaks() {
     m_listProcess.disconnect(this);
     killListProcessGroup();
-    detachRunningChange();
+    if (m_changeProcess->state() != QProcess::NotRunning) {
+        closeChangeOutput();
+        DetachedProcess::letFinishAfterModuleCloses(m_changeProcess, this);
+    }
 }
 
 void Tweaks::killListProcessGroup() {
@@ -319,17 +325,6 @@ void Tweaks::killListProcessGroup() {
     }
     m_listProcess.kill();
     m_listProcess.waitForFinished();
-}
-
-// ~QProcess would block System Settings for up to 30 seconds trying to kill um running as root
-void Tweaks::detachRunningChange() {
-    if (m_changeProcess->state() == QProcess::NotRunning) {
-        return;
-    }
-    closeChangeOutput();
-    m_changeProcess->disconnect(this);
-    m_changeProcess->setParent(nullptr);
-    connect(m_changeProcess, &QProcess::finished, m_changeProcess, &QObject::deleteLater);
 }
 
 void Tweaks::load() {
@@ -360,8 +355,7 @@ void Tweaks::refresh() {
     }
     const QString um = UmCli::executable();
     if (um.isEmpty()) {
-        setListError(i18n("um is not installed."));
-        setListState(m_loaded, true);
+        setListResult(i18n("um is not installed."));
         return;
     }
     setLoading(true);
@@ -375,12 +369,12 @@ void Tweaks::setTweakEnabled(const QString &id, const bool enabled) {
     }
     if (tweak->type == QLatin1String("toggle")) {
         if (enabled) {
-            startChange(id, {QStringLiteral("enable")}, i18n("Enabling “%1”…", tweak->description));
+            startChange(id, QStringLiteral("enable"), i18n("Enabling “%1”…", tweak->description));
         } else {
-            startChange(id, {QStringLiteral("disable")}, i18n("Disabling “%1”…", tweak->description));
+            startChange(id, QStringLiteral("disable"), i18n("Disabling “%1”…", tweak->description));
         }
     } else if (tweak->type == QLatin1String("oneshot") && enabled) {
-        startChange(id, {QStringLiteral("enable")}, i18n("Applying “%1”…", tweak->description));
+        startChange(id, QStringLiteral("enable"), i18n("Applying “%1”…", tweak->description));
     }
 }
 
@@ -389,10 +383,10 @@ void Tweaks::runTweak(const QString &id) {
     if (!tweak || tweak->type != QLatin1String("script")) {
         return;
     }
-    startChange(id, {QStringLiteral("run")}, i18n("Running “%1”…", tweak->description));
+    startChange(id, QStringLiteral("run"), i18n("Running “%1”…", tweak->description));
 }
 
-void Tweaks::startChange(const QString &id, const QStringList &arguments, const QString &progressMessage) {
+void Tweaks::startChange(const QString &id, const QString &verb, const QString &progressMessage) {
     if (m_running) {
         return;
     }
@@ -419,14 +413,12 @@ void Tweaks::startChange(const QString &id, const QStringList &arguments, const 
     Q_EMIT outputChanged();
     m_changeDecoder.resetState();
     m_unfinishedChangeLine.clear();
-    m_changeIsScript = arguments.contains(QStringLiteral("run"));
+    m_changeIsScript = verb == QLatin1String("run");
     m_tweaks.setBusyId(id);
     setRunning(true);
     setStatus(progressMessage);
 
-    const QStringList umArguments =
-        QStringList{QStringLiteral("tweaks")} + arguments + QStringList{QStringLiteral("--yes"), id};
-    m_changeProcess->start(um, umArguments);
+    m_changeProcess->start(um, {QStringLiteral("tweaks"), verb, QStringLiteral("--yes"), id});
     m_changeOutputPollTimer.start();
 }
 
@@ -441,13 +433,11 @@ void Tweaks::listFinished(const int exitCode, const QProcess::ExitStatus exitSta
 
     QList<TweakItem> items;
     if (exitStatus != QProcess::NormalExit || exitCode != 0 || !parseTweaksOutput(stdOut, &items)) {
-        setListError(listErrorMessage(exitCode, exitStatus, stdOut, stdErr));
-        setListState(m_loaded, true);
+        setListResult(listErrorMessage(exitCode, exitStatus, stdOut, stdErr));
         return;
     }
     m_tweaks.setTweaks(std::move(items));
-    setListError({});
-    setListState(true, false);
+    setListResult({});
 }
 
 void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
@@ -457,7 +447,6 @@ void Tweaks::changeFinished(const int exitCode, const QProcess::ExitStatus exitS
     setRunning(false);
     setStatus({});
 
-    m_unfinishedChangeLine.clear();
     if (const QString message = changeErrorMessage(m_changeIsScript, exitCode, exitStatus, m_output);
         !message.isEmpty()) {
         setChangeError(message);
@@ -484,7 +473,7 @@ void Tweaks::readChangeOutput() {
     }
     const QString complete = m_unfinishedChangeLine.left(end);
     m_unfinishedChangeLine.remove(0, end + 1);
-    showLastMeaningfulLineAsStatus(complete);
+    showLastLineAsStatus(complete);
 }
 
 void Tweaks::closeChangeOutput() {
@@ -495,14 +484,12 @@ void Tweaks::closeChangeOutput() {
     }
 }
 
-void Tweaks::showLastMeaningfulLineAsStatus(const QString &completeLines) {
-    for (const QStringList split = completeLines.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-         const QString &rawLine: split | std::views::reverse) {
+void Tweaks::showLastLineAsStatus(const QString &completeLines) {
+    for (const QStringList lines = completeLines.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+         const QString &rawLine: lines | std::views::reverse) {
         if (const QString line = withoutAnsibleHeaderPadding(rawLine); !line.isEmpty()) {
-            if (m_running) {
-                setStatus(line);
-            }
-            break;
+            setStatus(line);
+            return;
         }
     }
 }
@@ -537,9 +524,17 @@ void Tweaks::clearError() {
     updateErrorMessage();
 }
 
-void Tweaks::setListError(const QString &message) {
-    m_listError = message;
+void Tweaks::setListResult(const QString &error) {
+    m_listError = error;
     updateErrorMessage();
+    const bool failed = !error.isEmpty();
+    const bool nowLoaded = m_loaded || !failed;
+    if (m_loaded == nowLoaded && m_listFailed == failed) {
+        return;
+    }
+    m_loaded = nowLoaded;
+    m_listFailed = failed;
+    Q_EMIT listStateChanged();
 }
 
 void Tweaks::setChangeError(const QString &message) {
@@ -554,13 +549,4 @@ void Tweaks::updateErrorMessage() {
     }
     m_errorMessage = message;
     Q_EMIT errorMessageChanged();
-}
-
-void Tweaks::setListState(const bool wasLoaded, const bool failed) {
-    if (m_loaded == wasLoaded && m_listFailed == failed) {
-        return;
-    }
-    m_loaded = wasLoaded;
-    m_listFailed = failed;
-    Q_EMIT listStateChanged();
 }

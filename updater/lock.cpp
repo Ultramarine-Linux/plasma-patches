@@ -5,8 +5,8 @@
 #include "lock.h"
 
 #include <KLocalizedString>
-#include <QFile>
 
+#include <QFile>
 #include <QStandardPaths>
 #include <QThread>
 
@@ -20,6 +20,12 @@
 using namespace Qt::StringLiterals;
 
 namespace UltramarineUpdates {
+
+    namespace {
+        QString describeError(const QString &path, const int errorNumber) {
+            return u"%1: %2"_s.arg(path, QString::fromLocal8Bit(std::strerror(errorNumber)));
+        }
+    } // namespace
 
     InstallLock::~InstallLock() {
         if (m_fd >= 0) {
@@ -36,7 +42,7 @@ namespace UltramarineUpdates {
             open(QFile::encodeName(m_path).constData(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, ownerOnly);
         if (fd < 0) {
             if (error) {
-                *error = u"%1: %2"_s.arg(m_path, QString::fromLocal8Bit(std::strerror(errno)));
+                *error = describeError(m_path, errno);
             }
             return Result::Failed;
         }
@@ -55,7 +61,7 @@ namespace UltramarineUpdates {
                 return Result::Busy;
             }
             if (error) {
-                *error = u"%1: %2"_s.arg(m_path, QString::fromLocal8Bit(std::strerror(lockError)));
+                *error = describeError(m_path, lockError);
             }
             return Result::Failed;
         }

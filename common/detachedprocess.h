@@ -24,4 +24,11 @@ namespace DetachedProcess {
         process->setUnixProcessParameters(flags);
     }
 
+    // ~QProcess would block System Settings for up to 30 seconds trying to kill a root process it can't kill
+    inline void letFinishAfterModuleCloses(QProcess *process, const QObject *module) {
+        process->disconnect(module);
+        process->setParent(nullptr);
+        QObject::connect(process, &QProcess::finished, process, &QObject::deleteLater);
+    }
+
 } // namespace DetachedProcess

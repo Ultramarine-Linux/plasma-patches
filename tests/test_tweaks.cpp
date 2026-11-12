@@ -16,6 +16,8 @@
 #include "tweaks.h"
 #include "umcli.h"
 
+using namespace Qt::StringLiterals;
+
 namespace {
     TweakItem tweakWithId(const QString &id) {
         TweakItem item;
@@ -24,7 +26,7 @@ namespace {
     }
 
     bool isProcessGoneOrZombie(const qint64 pid) {
-        QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+        QFile stat(u"/proc/%1/stat"_s.arg(pid));
         if (!stat.open(QIODevice::ReadOnly)) {
             return true;
         }
@@ -70,97 +72,97 @@ namespace {
 
 void TweaksTest::parsesAndGroupsTweaks() {
     QList<TweakItem> tweaks;
-    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[
+    QVERIFY(parseTweaksOutput(uR"({"tweaks":[
         {"id":"cleanup","description":"Remove old kernels.","type":"script","stability":"stable","enabled":false},
         {"id":"zz","description":"Zebra","type":"toggle","enabled":true},
         {"id":"nix","description":"Install Nix","type":"toggle","stability":"alpha","warning":"careful","enabled":false},
         {"id":"once","type":"oneshot","enabled":true},
         {"description":"missing id is skipped","type":"toggle"}
-    ]})"),
+    ]})"_s,
                               &tweaks));
 
     QCOMPARE(tweaks.size(), 4);
-    QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
-    QCOMPARE(tweaks.at(0).stability, QStringLiteral("alpha"));
-    QCOMPARE(tweaks.at(0).warning, QStringLiteral("careful"));
-    QCOMPARE(tweaks.at(1).id, QStringLiteral("zz"));
+    QCOMPARE(tweaks.at(0).id, u"nix"_s);
+    QCOMPARE(tweaks.at(0).stability, u"alpha"_s);
+    QCOMPARE(tweaks.at(0).warning, u"careful"_s);
+    QCOMPARE(tweaks.at(1).id, u"zz"_s);
     QVERIFY(tweaks.at(1).enabled);
-    QCOMPARE(tweaks.at(2).id, QStringLiteral("once"));
-    QCOMPARE(tweaks.at(2).description, QStringLiteral("once"));
-    QCOMPARE(tweaks.at(3).type, QStringLiteral("script"));
+    QCOMPARE(tweaks.at(2).id, u"once"_s);
+    QCOMPARE(tweaks.at(2).description, u"once"_s);
+    QCOMPARE(tweaks.at(3).type, u"script"_s);
 }
 
 void TweaksTest::rejectsInvalidOutput() {
-    QList tweaks{tweakWithId(QStringLiteral("keep"))};
-    QVERIFY(!parseTweaksOutput(QStringLiteral("- ID: nix"), &tweaks));
-    QVERIFY(!parseTweaksOutput(QStringLiteral(R"({"updates":[]})"), &tweaks));
+    QList tweaks{tweakWithId(u"keep"_s)};
+    QVERIFY(!parseTweaksOutput(u"- ID: nix"_s, &tweaks));
+    QVERIFY(!parseTweaksOutput(uR"({"updates":[]})"_s, &tweaks));
     QCOMPARE(tweaks.size(), 1);
-    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[]})"), &tweaks));
+    QVERIFY(parseTweaksOutput(uR"({"tweaks":[]})"_s, &tweaks));
     QVERIFY(tweaks.isEmpty());
 }
 
 void TweaksTest::checksOutputVersion() {
-    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"version":1,"tweaks":[]})")), 1);
-    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"tweaks":[]})")), 1);
-    QCOMPARE(tweaksOutputVersion(QStringLiteral("- ID: nix")), 0);
+    QCOMPARE(tweaksOutputVersion(uR"({"version":1,"tweaks":[]})"_s), 1);
+    QCOMPARE(tweaksOutputVersion(uR"({"tweaks":[]})"_s), 1);
+    QCOMPARE(tweaksOutputVersion(u"- ID: nix"_s), 0);
 
-    QList tweaks{tweakWithId(QStringLiteral("keep"))};
-    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"version":1,"tweaks":[{"id":"nix","type":"toggle"}]})"), &tweaks));
+    QList tweaks{tweakWithId(u"keep"_s)};
+    QVERIFY(parseTweaksOutput(uR"({"version":1,"tweaks":[{"id":"nix","type":"toggle"}]})"_s, &tweaks));
     QCOMPARE(tweaks.size(), 1);
-    QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
-    QVERIFY(!parseTweaksOutput(QStringLiteral(R"({"version":2,"tweaks":[{"id":"new","type":"toggle"}]})"), &tweaks));
-    QCOMPARE(tweaks.at(0).id, QStringLiteral("nix"));
+    QCOMPARE(tweaks.at(0).id, u"nix"_s);
+    QVERIFY(!parseTweaksOutput(uR"({"version":2,"tweaks":[{"id":"new","type":"toggle"}]})"_s, &tweaks));
+    QCOMPARE(tweaks.at(0).id, u"nix"_s);
 }
 
 void TweaksTest::rejectsUnrecognizedVersions() {
     for (const char *version: {R"("2")", "2.5", "null", "0", "-1", "true", "{}"}) {
-        const QString output = QStringLiteral(R"({"version":%1,"tweaks":[]})").arg(QLatin1String(version));
+        const QString output = uR"({"version":%1,"tweaks":[]})"_s.arg(QLatin1StringView(version));
         QCOMPARE(tweaksOutputVersion(output), UnrecognizedTweaksOutputVersion);
         QVERIFY(!parseTweaksOutput(output, nullptr));
     }
-    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"version":2.0,"tweaks":[]})")), 2);
-    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"version":1e20,"tweaks":[]})")), UnrecognizedTweaksOutputVersion);
-    QCOMPARE(tweaksOutputVersion(QStringLiteral(R"({"tweaks":[]})")), 1);
-    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[]})"), nullptr));
+    QCOMPARE(tweaksOutputVersion(uR"({"version":2.0,"tweaks":[]})"_s), 2);
+    QCOMPARE(tweaksOutputVersion(uR"({"version":1e20,"tweaks":[]})"_s), UnrecognizedTweaksOutputVersion);
+    QCOMPARE(tweaksOutputVersion(uR"({"tweaks":[]})"_s), 1);
+    QVERIFY(parseTweaksOutput(uR"({"tweaks":[]})"_s, nullptr));
 }
 
 void TweaksTest::modelExposesRoles() {
     TweaksModel model;
     const QSignalSpy countChanged(&model, &TweaksModel::countChanged);
-    model.setTweaks({{.id = QStringLiteral("nix"),
-                      .description = QStringLiteral("Install Nix"),
-                      .type = QStringLiteral("toggle"),
-                      .stability = QStringLiteral("alpha"),
-                      .warning = QStringLiteral("careful"),
+    model.setTweaks({{.id = u"nix"_s,
+                      .description = u"Install Nix"_s,
+                      .type = u"toggle"_s,
+                      .stability = u"alpha"_s,
+                      .warning = u"careful"_s,
                       .stateError = {},
                       .enabled = true}});
 
     QCOMPARE(model.count(), 1);
     QCOMPARE(countChanged.count(), 1);
     const QModelIndex index = model.index(0, 0);
-    QCOMPARE(model.data(index, TweaksModel::IdRole).toString(), QStringLiteral("nix"));
-    QCOMPARE(model.data(index, TweaksModel::DescriptionRole).toString(), QStringLiteral("Install Nix"));
-    QCOMPARE(model.data(index, TweaksModel::TypeRole).toString(), QStringLiteral("toggle"));
-    QCOMPARE(model.data(index, TweaksModel::StabilityRole).toString(), QStringLiteral("alpha"));
-    QCOMPARE(model.data(index, TweaksModel::WarningRole).toString(), QStringLiteral("careful"));
+    QCOMPARE(model.data(index, TweaksModel::IdRole).toString(), u"nix"_s);
+    QCOMPARE(model.data(index, TweaksModel::DescriptionRole).toString(), u"Install Nix"_s);
+    QCOMPARE(model.data(index, TweaksModel::TypeRole).toString(), u"toggle"_s);
+    QCOMPARE(model.data(index, TweaksModel::StabilityRole).toString(), u"alpha"_s);
+    QCOMPARE(model.data(index, TweaksModel::WarningRole).toString(), u"careful"_s);
     QVERIFY(model.data(index, TweaksModel::EnabledRole).toBool());
     QVERIFY(!model.data(index, TweaksModel::BusyRole).toBool());
-    QVERIFY(model.find(QStringLiteral("nix")));
-    QVERIFY(!model.find(QStringLiteral("missing")));
+    QVERIFY(model.find(u"nix"_s));
+    QVERIFY(!model.find(u"missing"_s));
     QVERIFY(model.roleNames().values().contains("tweakEnabled"));
 }
 
 void TweaksTest::modelTracksBusyTweak() {
     TweaksModel model;
-    model.setTweaks({tweakWithId(QStringLiteral("a")), tweakWithId(QStringLiteral("b"))});
+    model.setTweaks({tweakWithId(u"a"_s), tweakWithId(u"b"_s)});
     QSignalSpy dataChanged(&model, &TweaksModel::dataChanged);
 
-    model.setBusyId(QStringLiteral("b"));
+    model.setBusyId(u"b"_s);
     QCOMPARE(dataChanged.count(), 1);
     QVERIFY(!model.data(model.index(0, 0), TweaksModel::BusyRole).toBool());
     QVERIFY(model.data(model.index(1, 0), TweaksModel::BusyRole).toBool());
 
-    model.setBusyId(QStringLiteral("b"));
+    model.setBusyId(u"b"_s);
     QCOMPARE(dataChanged.count(), 1);
     model.setBusyId({});
     QVERIFY(!model.data(model.index(1, 0), TweaksModel::BusyRole).toBool());
@@ -174,14 +176,14 @@ void TweaksTest::authenticationExitCodes() {
 
 void TweaksTest::parsesStateErrors() {
     QList<TweakItem> tweaks;
-    QVERIFY(parseTweaksOutput(QStringLiteral(R"({"tweaks":[
+    QVERIFY(parseTweaksOutput(uR"({"tweaks":[
         {"id":"broken","type":"toggle","enabled":true,"state_error":"check script for broken timed out"},
         {"id":"fine","type":"toggle","enabled":true}
-    ]})"),
+    ]})"_s,
                               &tweaks));
     QCOMPARE(tweaks.size(), 2);
-    QCOMPARE(tweaks.at(0).id, QStringLiteral("broken"));
-    QCOMPARE(tweaks.at(0).stateError, QStringLiteral("check script for broken timed out"));
+    QCOMPARE(tweaks.at(0).id, u"broken"_s);
+    QCOMPARE(tweaks.at(0).stateError, u"check script for broken timed out"_s);
     QVERIFY(!tweaks.at(0).enabled);
     QVERIFY(tweaks.at(1).stateError.isEmpty());
     QVERIFY(tweaks.at(1).enabled);
@@ -189,15 +191,14 @@ void TweaksTest::parsesStateErrors() {
     TweaksModel model;
     model.setTweaks(tweaks);
     QCOMPARE(model.data(model.index(0, 0), TweaksModel::StateErrorRole).toString(),
-             QStringLiteral("check script for broken timed out"));
+             u"check script for broken timed out"_s);
     QVERIFY(model.roleNames().values().contains("stateError"));
 }
 
 void TweaksTest::stripsGoLogTimestamps() {
-    QCOMPARE(stripGoLogTimestamp(QStringLiteral("2026/11/02 13:04:05 tweak nix not found")),
-             QStringLiteral("tweak nix not found"));
-    QCOMPARE(stripGoLogTimestamp(QStringLiteral("tweak nix not found")), QStringLiteral("tweak nix not found"));
-    QCOMPARE(stripGoLogTimestamp(QStringLiteral("x 2026/11/02 13:04:05 y")), QStringLiteral("x 2026/11/02 13:04:05 y"));
+    QCOMPARE(stripGoLogTimestamp(u"2026/11/02 13:04:05 tweak nix not found"_s), u"tweak nix not found"_s);
+    QCOMPARE(stripGoLogTimestamp(u"tweak nix not found"_s), u"tweak nix not found"_s);
+    QCOMPARE(stripGoLogTimestamp(u"x 2026/11/02 13:04:05 y"_s), u"x 2026/11/02 13:04:05 y"_s);
 }
 
 void TweaksTest::reportsChangeErrors() {
@@ -205,25 +206,23 @@ void TweaksTest::reportsChangeErrors() {
     QVERIFY(changeErrorMessage(true, 0, QProcess::NormalExit, {}).isEmpty());
 
     // um maps its playbooks' own 126 and 127 to 1, so these always come from pkexec
-    QVERIFY(changeErrorMessage(false, 126, QProcess::NormalExit, {}).contains(QLatin1String("No changes were made")));
-    QVERIFY(changeErrorMessage(true, 127, QProcess::NormalExit, {}).contains(QLatin1String("No changes were made")));
+    QVERIFY(changeErrorMessage(false, 126, QProcess::NormalExit, {}).contains("No changes were made"_L1));
+    QVERIFY(changeErrorMessage(true, 127, QProcess::NormalExit, {}).contains("No changes were made"_L1));
 
     const QString crashedWithMeaninglessCode = changeErrorMessage(false, 9, QProcess::CrashExit, {});
     QVERIFY(!crashedWithMeaninglessCode.isEmpty());
-    QVERIFY(!crashedWithMeaninglessCode.contains(QLatin1String("9")));
+    QVERIFY(!crashedWithMeaninglessCode.contains("9"_L1));
 
-    QCOMPARE(changeErrorMessage(false, 1, QProcess::NormalExit,
-                                QStringLiteral("TASK [x]\n2026/11/02 13:04:05 tweak is locked\n")),
-             QStringLiteral("The tweak could not be changed: tweak is locked"));
-    QVERIFY(changeErrorMessage(false, 2, QProcess::NormalExit, QStringLiteral("fatal: [localhost]"))
-                .contains(QLatin1String("exit code 2")));
+    QCOMPARE(changeErrorMessage(false, 1, QProcess::NormalExit, u"TASK [x]\n2026/11/02 13:04:05 tweak is locked\n"_s),
+             u"The tweak could not be changed: tweak is locked"_s);
+    QVERIFY(changeErrorMessage(false, 2, QProcess::NormalExit, u"fatal: [localhost]"_s).contains("exit code 2"_L1));
 }
 
 void TweaksTest::composesErrors() {
     QVERIFY(composeTweaksError({}, {}).isEmpty());
-    QCOMPARE(composeTweaksError(QStringLiteral("change"), {}), QStringLiteral("change"));
-    QCOMPARE(composeTweaksError({}, QStringLiteral("list")), QStringLiteral("list"));
-    QCOMPARE(composeTweaksError(QStringLiteral("change"), QStringLiteral("list")), QStringLiteral("change\nlist"));
+    QCOMPARE(composeTweaksError(u"change"_s, {}), u"change"_s);
+    QCOMPARE(composeTweaksError({}, u"list"_s), u"list"_s);
+    QCOMPARE(composeTweaksError(u"change"_s, u"list"_s), u"change\nlist"_s);
 }
 
 void TweaksTest::init() {
@@ -253,24 +252,24 @@ void TweaksTest::listsTweaks() {
     QVERIFY(!tweaks->listFailed());
     QVERIFY(tweaks->errorMessage().isEmpty());
     QCOMPARE(tweaks->tweaks()->count(), 2);
-    QVERIFY(tweaks->tweaks()->find(QStringLiteral("nix")));
+    QVERIFY(tweaks->tweaks()->find(u"nix"_s));
 }
 
 void TweaksTest::listFailures_data() {
     QTest::addColumn<QByteArray>("mode");
     QTest::addColumn<QString>("error");
     QTest::newRow("too old") << QByteArray("too-old")
-                             << QStringLiteral("This version of um is too old to manage tweaks from System Settings.");
+                             << u"This version of um is too old to manage tweaks from System Settings."_s;
     QTest::newRow("too new") << QByteArray("too-new")
-                             << QStringLiteral("This version of um is too new for this version of System Settings. "
-                                               "Update System Settings to manage tweaks.");
+                             << u"This version of um is too new for this version of System Settings. "
+                                u"Update System Settings to manage tweaks."_s;
     QTest::newRow("unrecognized version")
         << QByteArray("unrecognized")
-        << QStringLiteral("um listed the tweaks with a format version System Settings doesn't recognize. Check that "
-                          "um and System Settings are up to date.");
+        << u"um listed the tweaks with a format version System Settings doesn't recognize. Check that "
+           u"um and System Settings are up to date."_s;
     QTest::newRow("um error") << QByteArray("error")
-                              << QStringLiteral("Could not load the list of tweaks: open /usr/share/um/tweaks: no "
-                                                "such file or directory");
+                              << u"Could not load the list of tweaks: open /usr/share/um/tweaks: no "
+                                 u"such file or directory"_s;
 }
 
 void TweaksTest::listFailures() {
@@ -289,7 +288,7 @@ void TweaksTest::changeSucceeds() {
     const auto tweaks = loadedTweaks();
     QVERIFY(tweaks);
     QSignalSpy running(tweaks.get(), &Tweaks::runningChanged);
-    tweaks->setTweakEnabled(QStringLiteral("nix"), true);
+    tweaks->setTweakEnabled(u"nix"_s, true);
     QVERIFY(tweaks->running());
     QVERIFY(tweaks->tweaks()->data(tweaks->tweaks()->index(0, 0), TweaksModel::BusyRole).toBool());
     QTRY_VERIFY(!tweaks->running());
@@ -297,12 +296,12 @@ void TweaksTest::changeSucceeds() {
 
     QCOMPARE(running.count(), 2);
     QVERIFY(tweaks->errorMessage().isEmpty());
-    QCOMPARE(tweaks->output(), QStringLiteral("TASK [Install Nix] *****\nok: [localhost]\n"));
-    QFile args(QDir(m_dir->path()).filePath(QStringLiteral("change.args")));
+    QCOMPARE(tweaks->output(), u"TASK [Install Nix] *****\nok: [localhost]\n"_s);
+    QFile args(m_dir->filePath(u"change.args"_s));
     QVERIFY(args.open(QIODevice::ReadOnly));
     QCOMPARE(args.readAll().trimmed(), QByteArray("tweaks enable --yes nix"));
     QVERIFY(QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation))
-                .entryList({QStringLiteral("kcm_ultramarine_tweaks-*.log")}, QDir::Files)
+                .entryList({u"kcm_ultramarine_tweaks-*.log"_s}, QDir::Files)
                 .isEmpty());
 }
 
@@ -310,12 +309,12 @@ void TweaksTest::changeFails() {
     qputenv("FAKE_UM_CHANGE", "fail");
     const auto tweaks = loadedTweaks();
     QVERIFY(tweaks);
-    tweaks->runTweak(QStringLiteral("cleanup"));
+    tweaks->runTweak(u"cleanup"_s);
     QVERIFY(tweaks->running());
     QTRY_VERIFY(!tweaks->running());
     QTRY_VERIFY(!tweaks->loading());
-    QVERIFY(tweaks->output().contains(QLatin1String("2026/11/02 13:04:05 tweak is locked")));
-    QCOMPARE(tweaks->errorMessage(), QStringLiteral("The maintenance task failed: tweak is locked"));
+    QVERIFY(tweaks->output().contains("2026/11/02 13:04:05 tweak is locked"_L1));
+    QCOMPARE(tweaks->errorMessage(), u"The maintenance task failed: tweak is locked"_s);
     QVERIFY(tweaks->loaded());
     QVERIFY(!tweaks->listFailed());
 }
@@ -324,12 +323,12 @@ void TweaksTest::showsChangeProgress() {
     qputenv("FAKE_UM_CHANGE", "slow");
     const auto tweaks = loadedTweaks();
     QVERIFY(tweaks);
-    tweaks->setTweakEnabled(QStringLiteral("nix"), true);
-    QTRY_COMPARE(tweaks->status(), QStringLiteral("TASK [first step]"));
+    tweaks->setTweakEnabled(u"nix"_s, true);
+    QTRY_COMPARE(tweaks->status(), u"TASK [first step]"_s);
     QVERIFY(tweaks->running());
     QTRY_VERIFY_WITH_TIMEOUT(!tweaks->running(), 10000);
     QVERIFY(tweaks->status().isEmpty());
-    QVERIFY(tweaks->output().endsWith(QLatin1String("TASK [second step] *****\n")));
+    QVERIFY(tweaks->output().endsWith("TASK [second step] *****\n"_L1));
 }
 
 void TweaksTest::destroyingWhileListingIsSafe() {
@@ -337,7 +336,7 @@ void TweaksTest::destroyingWhileListingIsSafe() {
     auto tweaks = std::make_unique<Tweaks>(nullptr, KPluginMetaData());
     tweaks->load();
     QVERIFY(tweaks->loading());
-    QFile pidFile(QDir(m_dir->path()).filePath(QStringLiteral("check.pid")));
+    QFile pidFile(m_dir->filePath(u"check.pid"_s));
     QTRY_VERIFY(pidFile.exists() && pidFile.size() > 0);
     QVERIFY(pidFile.open(QIODevice::ReadOnly));
     const qint64 umChildCheckScriptPid = pidFile.readAll().trimmed().toLongLong();
@@ -356,14 +355,14 @@ void TweaksTest::destroyingWhileChangingLetsItFinish() {
     qputenv("FAKE_UM_CHANGE", "slow");
     auto tweaks = loadedTweaks();
     QVERIFY(tweaks);
-    tweaks->setTweakEnabled(QStringLiteral("nix"), true);
-    QTRY_VERIFY(!tweaks->status().isEmpty() && tweaks->status() != QStringLiteral("Enabling “Install Nix”…"));
+    tweaks->setTweakEnabled(u"nix"_s, true);
+    QTRY_VERIFY(!tweaks->status().isEmpty() && tweaks->status() != u"Enabling “Install Nix”…"_s);
 
     QElapsedTimer timer;
     timer.start();
     tweaks.reset();
     QVERIFY(timer.elapsed() < 500);
-    const QString done = QDir(m_dir->path()).filePath(QStringLiteral("change.done"));
+    const QString done = m_dir->filePath(u"change.done"_s);
     QVERIFY(!QFile::exists(done));
     QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(done), 10000);
 }

@@ -12,6 +12,8 @@
 #include <QFileInfo>
 
 #include <algorithm>
+#include <functional>
+#include <optional>
 
 using namespace Qt::StringLiterals;
 
@@ -25,34 +27,34 @@ namespace DgpuLaunch {
             }
             return environment;
         }
+
+        std::optional<QList<QVariantMap>> switcherooGpus() {
+            QDBusMessage call =
+                QDBusMessage::createMethodCall(u"net.hadess.SwitcherooControl"_s, u"/net/hadess/SwitcherooControl"_s,
+                                               u"org.freedesktop.DBus.Properties"_s, u"Get"_s);
+            call << u"net.hadess.SwitcherooControl"_s << u"GPUs"_s;
+            const QDBusReply<QDBusVariant> reply = QDBusConnection::systemBus().call(call);
+            if (!reply.isValid()) {
+                return std::nullopt;
+            }
+            QList<QVariantMap> gpus;
+            qvariant_cast<QDBusArgument>(reply.value().variant()) >> gpus;
+            return gpus;
+        }
     } // namespace
 
     QProcessEnvironment gpuEnvironment(const QList<QVariantMap> &gpus) {
         const auto isDefault = [](const QVariantMap &gpu) { return gpu.value(u"Default"_s).toBool(); };
-        auto gpu = std::ranges::find_if(
-            gpus, [&](const QVariantMap &gpu) { return gpu.value(u"Discrete"_s).toBool() && !isDefault(gpu); });
-        if (gpu == gpus.end()) {
-            gpu = std::ranges::find_if(gpus, [&](const QVariantMap &gpu) { return !isDefault(gpu); });
+        const auto isDiscrete = [](const QVariantMap &gpu) { return gpu.value(u"Discrete"_s).toBool(); };
+        auto chosen =
+            std::ranges::find_if(gpus, [&](const QVariantMap &gpu) { return isDiscrete(gpu) && !isDefault(gpu); });
+        if (chosen == gpus.end()) {
+            chosen = std::ranges::find_if(gpus, std::not_fn(isDefault));
         }
-
-        if (gpu == gpus.end()) {
+        if (chosen == gpus.end()) {
             return {};
         }
-        return environmentFromNameValuePairs(gpu->value(u"Environment"_s).toStringList());
-    }
-
-    std::optional<QList<QVariantMap>> switcherooGpus() {
-        QDBusMessage call =
-            QDBusMessage::createMethodCall(u"net.hadess.SwitcherooControl"_s, u"/net/hadess/SwitcherooControl"_s,
-                                           u"org.freedesktop.DBus.Properties"_s, u"Get"_s);
-        call << u"net.hadess.SwitcherooControl"_s << u"GPUs"_s;
-        const QDBusReply<QDBusVariant> reply = QDBusConnection::systemBus().call(call);
-        if (!reply.isValid()) {
-            return std::nullopt;
-        }
-        QList<QVariantMap> gpus;
-        qvariant_cast<QDBusArgument>(reply.value().variant()) >> gpus;
-        return gpus;
+        return environmentFromNameValuePairs(chosen->value(u"Environment"_s).toStringList());
     }
 
     QProcessEnvironment fallbackEnvironment(const bool nvidiaLoaded) {

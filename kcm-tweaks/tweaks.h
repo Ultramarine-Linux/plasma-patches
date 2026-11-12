@@ -132,23 +132,21 @@ Q_SIGNALS:
     void outputChanged();
 
 private:
-    void startChange(const QString &id, const QStringList &arguments, const QString &progressMessage);
+    void startChange(const QString &id, const QString &verb, const QString &progressMessage);
 
     void listFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void changeFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void readChangeOutput();
     void closeChangeOutput();
-    void showLastMeaningfulLineAsStatus(const QString &completeLines);
+    void showLastLineAsStatus(const QString &completeLines);
 
     void setLoading(bool value);
     void setRunning(bool value);
     void setStatus(const QString &value);
-    void setListError(const QString &message);
+    void setListResult(const QString &error);
     void setChangeError(const QString &message);
     void updateErrorMessage();
-    void setListState(bool wasLoaded, bool failed);
     void killListProcessGroup();
-    void detachRunningChange();
 
     TweaksModel m_tweaks;
     QProcess m_listProcess;

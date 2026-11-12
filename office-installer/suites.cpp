@@ -75,7 +75,7 @@ namespace OfficeInstaller {
         switch (source) {
         case Source::Flatpak:
             if (localPaths.isEmpty()) {
-                return {u"flatpak"_s, {u"run"_s, suite.flatpakId}};
+                return {.program = u"flatpak"_s, .arguments = {u"run"_s, suite.flatpakId}};
             }
             return {.program = u"flatpak"_s,
                     .arguments = QStringList{u"run"_s, u"--file-forwarding"_s, suite.flatpakId, u"@@"_s} + localPaths +

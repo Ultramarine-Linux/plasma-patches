@@ -21,6 +21,7 @@ namespace UltramarineUpdates {
 
     namespace {
         constexpr auto resultsGroup = "[PackageKit Offline Update Results]";
+        constexpr qint64 maxKeyFileSize = 64 * 1024;
 
         QString unescapeKeyFileValue(const QByteArray &value) {
             QByteArray result;
@@ -146,11 +147,10 @@ namespace UltramarineUpdates {
         if (!results.open(QIODevice::ReadOnly)) {
             return {};
         }
-        QString error = parseOfflineResultsError(results.read(qint64{64} * 1024));
         const QFileInfo rpmDatabase(paths.rpmDatabase);
         const bool packagesChangedSinceFailure =
             rpmDatabase.exists() && rpmDatabase.lastModified() > results.fileTime(QFileDevice::FileModificationTime);
-        return packagesChangedSinceFailure ? QString() : error;
+        return packagesChangedSinceFailure ? QString() : parseOfflineResultsError(results.read(maxKeyFileSize));
     }
 
     QString parseOsReleaseVersionId(const QByteArray &osRelease) {
@@ -173,7 +173,7 @@ namespace UltramarineUpdates {
         if (!osRelease.open(QIODevice::ReadOnly)) {
             return {};
         }
-        const QString versionId = parseOsReleaseVersionId(osRelease.read(qint64{64} * 1024));
+        const QString versionId = parseOsReleaseVersionId(osRelease.read(maxKeyFileSize));
         return versionId.isEmpty() ? QString() : u"/var/cache/PackageKit/%1/metadata"_s.arg(versionId);
     }
 

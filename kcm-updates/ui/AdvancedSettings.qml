@@ -28,15 +28,19 @@ KCMUtils.SimpleKCM {
     function halfHourChoicesIncluding(current) {
         const choices = [];
         for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
-            if (current > minutes - 30 && current < minutes && current % 30 !== 0) {
-                choices.push(timeChoice(current));
-            }
             choices.push(timeChoice(minutes));
         }
-        if (current > 24 * 60 - 30 && current % 30 !== 0) {
-            choices.push(timeChoice(current));
+        if (current % 30 !== 0) {
+            choices.splice(Math.ceil(current / 30), 0, timeChoice(current));
         }
         return choices;
+    }
+
+    component Hint: QQC2.Label {
+        Layout.fillWidth: true
+        Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+        font: Kirigami.Theme.smallFont
+        wrapMode: Text.Wrap
     }
 
     function timeIndex(choices, minutes) {
@@ -45,8 +49,6 @@ KCMUtils.SimpleKCM {
 
     Kirigami.FormLayout {
         QQC2.SpinBox {
-            id: inactiveSpin
-
             Kirigami.FormData.label: i18nc("@label:spinbox", "Install when unused for:")
             from: 0
             to: 24 * 60
@@ -57,12 +59,8 @@ KCMUtils.SimpleKCM {
             valueFromText: (text, locale) => parseInt(text) || 0
         }
 
-        QQC2.Label {
-            Layout.fillWidth: true
-            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+        Hint {
             text: i18nc("@info", "Used for automatic updates and Apply Tonight. The device counts as in use while anyone is logged in with their screen unlocked.")
-            font: Kirigami.Theme.smallFont
-            wrapMode: Text.Wrap
         }
 
         Item {
@@ -70,8 +68,6 @@ KCMUtils.SimpleKCM {
         }
 
         QQC2.CheckBox {
-            id: windowCheck
-
             Kirigami.FormData.label: i18nc("@label", "Update times:")
             text: i18nc("@option:check", "Only during these hours")
             checked: kcm.windowEnabled
@@ -108,15 +104,11 @@ KCMUtils.SimpleKCM {
             text: i18nc("@info", "Choose different start and end times.")
         }
 
-        QQC2.Label {
-            Layout.fillWidth: true
-            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+        Hint {
             text: kcm.windowEnabled
                 ? i18nc("@info", "Also used for Apply Tonight.")
                 : i18nc("@info %1 and %2 are times of day", "Updates install whenever the device isn’t in use. Apply Tonight installs between %1 and %2.",
                         page.timeChoice(page.applyTonightDefaultStart).text, page.timeChoice(page.applyTonightDefaultEnd).text)
-            font: Kirigami.Theme.smallFont
-            wrapMode: Text.Wrap
         }
 
         Item {
@@ -131,14 +123,10 @@ KCMUtils.SimpleKCM {
             onToggled: kcm.offlineUpdates = checked
         }
 
-        QQC2.Label {
-            Layout.fillWidth: true
-            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+        Hint {
             text: kcm.imageMode
                 ? i18nc("@info", "This system updates as a whole: the new version is prepared in the background and takes over the next time you restart. Your device is never restarted for you.")
                 : i18nc("@info", "Updates are downloaded ahead of time and installed the next time you restart. Your device is never restarted for you.")
-            font: Kirigami.Theme.smallFont
-            wrapMode: Text.Wrap
         }
     }
 }

@@ -210,8 +210,7 @@ namespace OfficeInstaller {
             });
     }
 
-    void PackageKitInstaller::onPackage(const uint info, const QString &packageId, const QString &summary) {
-        Q_UNUSED(summary)
+    void PackageKitInstaller::onPackage(const uint info, const QString &packageId, const QString & /*summary*/) {
         if (m_step == Step::Resolving) {
             m_resolved.append({.pkInfo = info, .packageId = packageId});
         } else if (m_step == Step::Installing) {
@@ -224,22 +223,14 @@ namespace OfficeInstaller {
         m_error = details;
     }
 
-    void PackageKitInstaller::onRepoSignatureRequired(const QString &packageId, const QString &repositoryName,
-                                                      const QString &keyUrl, const QString &keyUserId,
-                                                      const QString &keyId, const QString &keyFingerprint,
-                                                      const QString &keyTimestamp, const uint type) {
-        Q_UNUSED(packageId)
-        Q_UNUSED(keyUrl)
-        Q_UNUSED(keyUserId)
-        Q_UNUSED(keyId)
-        Q_UNUSED(keyFingerprint)
-        Q_UNUSED(keyTimestamp)
-        Q_UNUSED(type)
+    void PackageKitInstaller::onRepoSignatureRequired(const QString & /*packageId*/, const QString &repositoryName,
+                                                      const QString & /*keyUrl*/, const QString & /*keyUserId*/,
+                                                      const QString & /*keyId*/, const QString & /*keyFingerprint*/,
+                                                      const QString & /*keyTimestamp*/, uint /*type*/) {
         m_unsignedRepository = repositoryName;
     }
 
-    void PackageKitInstaller::onFinished(const uint exit, const uint runtime) {
-        Q_UNUSED(runtime)
+    void PackageKitInstaller::onFinished(const uint exit, uint /*runtime*/) {
         if (m_step == Step::Idle) {
             return;
         }

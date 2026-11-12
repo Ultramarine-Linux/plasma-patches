@@ -39,28 +39,28 @@ using namespace std::chrono_literals;
 namespace UltramarineUpdates {
 
     namespace {
-        constexpr auto knsrc = "plasmoids.knsrc";
-        constexpr auto knsrcSuffix = ".knsrc"_L1;
+        const auto knsrc = u"plasmoids.knsrc"_s;
 
         constexpr auto listTimeout = 2min;
         constexpr auto installTimeoutPerWidget = 10min;
 
-        void keepEventLoopsRunningWhenKNewStuffJobsFinish() { QCoreApplication::setQuitLockEnabled(false); }
-
-        void declineKNewStuffQuestionsSinceNobodyCanAnswer() {
+        void prepareKNewStuff() {
+            static bool prepared = false;
+            if (std::exchange(prepared, true)) {
+                return;
+            }
+            QCoreApplication::setQuitLockEnabled(false);
             QObject::connect(
                 KNSCore::QuestionManager::instance(), &KNSCore::QuestionManager::askQuestion,
                 [](KNSCore::Question *question) { question->setResponse(KNSCore::Question::CancelResponse); });
         }
 
-        void prepareKNewStuffForCommandLine() {
-            static bool prepared = false;
-            if (prepared) {
-                return;
-            }
-            prepared = true;
-            keepEventLoopsRunningWhenKNewStuffJobsFinish();
-            declineKNewStuffQuestionsSinceNobodyCanAnswer();
+        void quitOnError(const KNSCore::EngineBase &engine, QEventLoop &loop, QString &failure) {
+            QObject::connect(&engine, &KNSCore::EngineBase::signalErrorCode, &loop,
+                             [&loop, &failure](const KNSCore::ErrorCode::ErrorCode, const QString &message) {
+                                 failure = message;
+                                 loop.quit();
+                             });
         }
 
         bool runLoop(QEventLoop &loop, const std::chrono::milliseconds timeout) {
@@ -76,24 +76,9 @@ namespace UltramarineUpdates {
             return !timedOut;
         }
 
-        bool initEngine(KNSCore::EngineBase &engine, QString *error) {
-            prepareKNewStuffForCommandLine();
-            QEventLoop loop;
-            QString failure;
-            QObject::connect(&engine, &KNSCore::EngineBase::signalProvidersLoaded, &loop, &QEventLoop::quit);
-            QObject::connect(&engine, &KNSCore::EngineBase::signalErrorCode, &loop,
-                             [&loop, &failure](const KNSCore::ErrorCode::ErrorCode, const QString &message) {
-                                 failure = message;
-                                 loop.quit();
-                             });
-            if (!engine.init(QString::fromLatin1(knsrc))) {
-                *error = failure.isEmpty()
-                    ? i18nc("@info:status %1 is a file name", "Could not load %1", QString::fromLatin1(knsrc))
-                    : failure;
-                return false;
-            }
+        bool runLoopWithoutError(QEventLoop &loop, QString &failure, const QString &timeoutMessage, QString *error) {
             if (!runLoop(loop, listTimeout)) {
-                *error = i18nc("@info:status", "Timed out loading the KDE Store");
+                *error = timeoutMessage;
                 return false;
             }
             if (!failure.isEmpty()) {
@@ -101,6 +86,20 @@ namespace UltramarineUpdates {
                 return false;
             }
             return true;
+        }
+
+        bool initEngine(KNSCore::EngineBase &engine, QString *error) {
+            prepareKNewStuff();
+            QEventLoop loop;
+            QString failure;
+            QObject::connect(&engine, &KNSCore::EngineBase::signalProvidersLoaded, &loop, &QEventLoop::quit);
+            quitOnError(engine, loop, failure);
+            if (!engine.init(knsrc)) {
+                *error =
+                    failure.isEmpty() ? i18nc("@info:status %1 is a file name", "Could not load %1", knsrc) : failure;
+                return false;
+            }
+            return runLoopWithoutError(loop, failure, i18nc("@info:status", "Timed out loading the KDE Store"), error);
         }
 
         std::optional<KNSCore::Entry::List> updateableEntries(KNSCore::EngineBase &engine, QString *error) {
@@ -118,18 +117,10 @@ namespace UltramarineUpdates {
                                  }
                              });
             QObject::connect(stream, &KNSCore::ResultsStream::finished, &loop, &QEventLoop::quit);
-            QObject::connect(&engine, &KNSCore::EngineBase::signalErrorCode, &loop,
-                             [&loop, &failure](const KNSCore::ErrorCode::ErrorCode, const QString &message) {
-                                 failure = message;
-                                 loop.quit();
-                             });
+            quitOnError(engine, loop, failure);
             stream->fetch();
-            if (!runLoop(loop, listTimeout)) {
-                *error = i18nc("@info:status", "Timed out checking the KDE Store for updates");
-                return std::nullopt;
-            }
-            if (!failure.isEmpty()) {
-                *error = std::move(failure);
+            if (!runLoopWithoutError(loop, failure,
+                                     i18nc("@info:status", "Timed out checking the KDE Store for updates"), error)) {
                 return std::nullopt;
             }
             return found.values();
@@ -152,8 +143,8 @@ namespace UltramarineUpdates {
     } // namespace
 
     QString plasmoidRegistryPath() {
-        return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/knewstuff3/"_L1 +
-            QString::fromLatin1(knsrc).chopped(knsrcSuffix.size()) + ".knsregistry"_L1;
+        return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+            "/knewstuff3/plasmoids.knsregistry"_L1;
     }
 
     bool registryHasInstalledEntries(const QByteArray &registry) {
@@ -251,8 +242,8 @@ namespace UltramarineUpdates {
                                  }
                              });
             QObject::connect(transaction, &KNSCore::Transaction::finished, &loop, &QEventLoop::quit);
-            const bool transactionStillRunning = !runLoop(loop, installTimeoutPerWidget);
-            if (transactionStillRunning) {
+            const bool timedOut = !runLoop(loop, installTimeoutPerWidget);
+            if (timedOut) {
                 failure = i18nc("@info:status", "timed out");
             }
             if (!failure.isEmpty()) {
@@ -261,10 +252,8 @@ namespace UltramarineUpdates {
                                               "Warning: could not update %1: %2", entry.name(), failure)));
                 failed.append(entry.name());
             }
-            if (transactionStillRunning) {
-                for (qsizetype i = index + 1; i < entries->size(); ++i) {
-                    failed.append(entries->at(i).name());
-                }
+            if (timedOut) {
+                std::ranges::transform(entries->sliced(index + 1), std::back_inserter(failed), &KNSCore::Entry::name);
                 break;
             }
         }

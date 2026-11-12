@@ -17,6 +17,7 @@
 
 #include <unistd.h>
 
+#include "apps.h"
 #include "process.h"
 
 using namespace Qt::StringLiterals;
@@ -78,6 +79,29 @@ map resolve elements
 
         bool sameStorePaths(const QStringList &a, const QStringList &b) {
             return a.size() == b.size() && QSet(a.cbegin(), a.cend()) == QSet(b.cbegin(), b.cend());
+        }
+
+        AppFiles nixAppFiles(const QStringList &storePaths) {
+            AppFiles files;
+            const auto glob = [](const QString &dir, const QString &pattern) {
+                QStringList paths;
+                for (const QStringList names = QDir(dir).entryList({pattern}, QDir::Files, QDir::Name);
+                     const QString &name: names) {
+                    paths.append(dir + u'/' + name);
+                }
+                return paths;
+            };
+            for (const QString &storePath: storePaths) {
+                const QString share = storePath + "/share"_L1;
+                files.metainfo += glob(share + "/metainfo"_L1, u"*.xml"_s);
+                files.metainfo += glob(share + "/appdata"_L1, u"*.xml"_s);
+                const QStringList desktop = glob(share + "/applications"_L1, u"*.desktop"_s);
+                files.desktop += desktop;
+                if (files.applicationsDir.isEmpty() && !desktop.isEmpty()) {
+                    files.applicationsDir = share + "/applications"_L1;
+                }
+            }
+            return files;
         }
     } // namespace
 
@@ -156,29 +180,6 @@ map resolve elements
         }
         update.newVersion = result.version.isEmpty() ? drvVersion(result.name) : result.version;
         return update;
-    }
-
-    AppFiles nixAppFiles(const QStringList &storePaths) {
-        AppFiles files;
-        const auto glob = [](const QString &dir, const QString &pattern) {
-            QStringList paths;
-            for (const QStringList names = QDir(dir).entryList({pattern}, QDir::Files, QDir::Name);
-                 const QString &name: names) {
-                paths.append(dir + u'/' + name);
-            }
-            return paths;
-        };
-        for (const QString &storePath: storePaths) {
-            const QString share = storePath + "/share"_L1;
-            files.metainfo += glob(share + "/metainfo"_L1, u"*.xml"_s);
-            files.metainfo += glob(share + "/appdata"_L1, u"*.xml"_s);
-            const QStringList desktop = glob(share + "/applications"_L1, u"*.desktop"_s);
-            files.desktop += desktop;
-            if (files.applicationsDir.isEmpty() && !desktop.isEmpty()) {
-                files.applicationsDir = share + "/applications"_L1;
-            }
-        }
-        return files;
     }
 
     std::pair<QString, QString> determinateNixVersions(const QString &output) {

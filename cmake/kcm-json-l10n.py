@@ -18,6 +18,7 @@ class TranslatableField(NamedTuple):
     parent_path: tuple
     key: str
     translator_comment: str
+    context: str | None = None
 
 
 FIELDS = [
@@ -28,6 +29,7 @@ FIELDS = [
         "X-KDE-Keywords",
         "comma-separated search keywords for the page in System Settings. "
         "Keep the English keywords and add translated ones, separated by commas",
+        context="X-KDE-Keywords",
     ),
 ]
 
@@ -39,7 +41,7 @@ def strings(data):
             parent = parent.get(part, {})
         value = parent.get(field.key)
         if isinstance(value, str) and value:
-            yield parent, field.key, value, field.translator_comment
+            yield parent, field, value
 
 
 def po_quote(text):
@@ -55,11 +57,11 @@ def extract(output, sources):
     ]
     for source in sources:
         data = json.loads(Path(source).read_text(encoding="utf-8"))
-        for _obj, key, value, comment in strings(data):
+        for _parent, field, value in strings(data):
             lines += [
-                f"#. {comment}",
+                f"#. {field.translator_comment}",
                 f"#: {source}",
-                f"msgctxt {po_quote(key)}" if key == "X-KDE-Keywords" else None,
+                f"msgctxt {po_quote(field.context)}" if field.context else None,
                 f"msgid {po_quote(value)}",
                 'msgstr ""',
                 "",
@@ -78,14 +80,13 @@ def merge(source, output, podir):
     for lang in sorted(languages):
         with open(podir / f"{lang}.mo", "rb") as mo:
             catalog = gettext.GNUTranslations(mo)
-        for obj, key, value, _comment in strings(data):
-            if key == "X-KDE-Keywords":
-                translated = catalog.pgettext(key, value)
+        for parent, field, value in strings(data):
+            if field.context:
+                translated = catalog.pgettext(field.context, value)
             else:
                 translated = catalog.gettext(value)
-            is_translated = translated != value
-            if is_translated:
-                obj[f"{key}[{lang}]"] = translated
+            if translated != value:
+                parent[f"{field.key}[{lang}]"] = translated
 
     text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
     Path(output).write_text(text, encoding="utf-8")

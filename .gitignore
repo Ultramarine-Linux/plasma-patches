@@ -85,3 +85,5 @@ Testing/
 
 # CLion build directories
 cmake-build-*/
+
+__pycache__/
