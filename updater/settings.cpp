@@ -223,8 +223,7 @@ namespace UltramarineUpdates {
         if (created) {
             QFile::setPermissions(directory, worldReadableDirectory);
         }
-        QSaveFile file(path);
-        if (!file.open(QIODevice::WriteOnly) ||
+        if (QSaveFile file(path); !file.open(QIODevice::WriteOnly) ||
             file.write(QJsonDocument(settings.toJson()).toJson(QJsonDocument::Indented)) < 0 || !file.commit()) {
             *error = u"%1: %2"_s.arg(path, file.errorString());
             return false;

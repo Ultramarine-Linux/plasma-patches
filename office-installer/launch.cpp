@@ -63,9 +63,9 @@ namespace OfficeInstaller {
             job->setUrls(serviceUrls);
             // the delegate's message box would only show after the installer quit, so errors go through done()
             job->setUiDelegate(KIO::createDefaultJobUiDelegate(KJobUiDelegate::AutoHandlingDisabled, nullptr));
-            QObject::connect(job, &KJob::result, context, [pending, done, serviceUrls](KJob *job) {
-                if (job->error() != 0 && job->error() != KJob::KilledJobError) {
-                    pending->errors.append(job->errorString());
+            QObject::connect(job, &KJob::result, context, [pending, done, serviceUrls](const KJob *job1) {
+                if (job1->error() != 0 && job1->error() != KJob::KilledJobError) {
+                    pending->errors.append(job1->errorString());
                     pending->failed.append(serviceUrls);
                 }
                 if (--pending->remaining == 0) {
@@ -83,13 +83,13 @@ namespace OfficeInstaller {
     }
 
     KService::Ptr findInstalledSuite() {
-        const QMimeDatabase db;
         for (const auto type: {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"_L1,
                                "application/vnd.oasis.opendocument.text"_L1,
                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"_L1,
                                "application/vnd.oasis.opendocument.spreadsheet"_L1,
                                "application/vnd.openxmlformats-officedocument.presentationml.presentation"_L1,
                                "application/vnd.oasis.opendocument.presentation"_L1}) {
+            const QMimeDatabase db;
             if (KService::Ptr service = handlerListingExactMimeType(db.mimeTypeForName(type))) {
                 return service;
             }

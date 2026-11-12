@@ -64,7 +64,7 @@ namespace UltramarineUpdates {
             return 0;
         }
         bool ok = false;
-        const double value = size.left(space).toDouble(&ok);
+        const double value = QStringView(size).first(space).toDouble(&ok);
         if (!ok) {
             return 0;
         }

@@ -80,7 +80,7 @@ namespace UltramarineUpdates {
     class ActivityTracker {
     public:
         ActivityTracker(QString sincePath, QString lastPollPath,
-                        std::chrono::seconds maxGapBetweenPolls = UltramarineUpdates::maxPollGap) :
+                        const std::chrono::seconds maxGapBetweenPolls = maxPollGap) :
             m_sincePath(std::move(sincePath)), m_lastPollPath(std::move(lastPollPath)),
             m_maxPollGap(maxGapBetweenPolls) {}
 

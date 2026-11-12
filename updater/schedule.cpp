@@ -226,11 +226,10 @@ namespace UltramarineUpdates {
         *installed = false;
         InstallLock lock(lockPath);
         if (QString lockError; lock.tryLock(&lockError) != InstallLock::Result::Acquired) {
-            const bool anotherInstallRunning = lockError.isEmpty();
-            if (anotherInstallRunning) {
+            if (lockError.isEmpty()) {
                 return true;
             }
-            *error = lockError;
+            *error = std::move(lockError);
             return false;
         }
         const QString lastFailurePath = stateDir + "/last-failed-update"_L1;
@@ -390,8 +389,8 @@ namespace UltramarineUpdates {
             const std::chrono::seconds inactive =
                 ActivityTracker(stateDir + "/inactive-since"_L1, stateDir + "/last-poll"_L1)
                     .inactiveFor(inUse, now, idleSince);
-            const bool installedRecently = within(installedPath, minTimeBetweenInstalls, now);
-            if (!readyToInstall(settings, tonight, inUse, inactive, installedRecently, now) || !onACPower()) {
+            if (const bool installedRecently = within(installedPath, minTimeBetweenInstalls, now);
+                !readyToInstall(settings, tonight, inUse, inactive, installedRecently, now) || !onACPower()) {
                 return true;
             }
             bool installed = false;
@@ -466,7 +465,7 @@ namespace UltramarineUpdates {
             return true;
         }
         if (!sessionsKnown) {
-            *error = sessionsError;
+            *error = std::move(sessionsError);
             return false;
         }
         const bool inUse = sessionInUse(sessions, userName).has_value() ||

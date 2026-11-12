@@ -8,18 +8,16 @@
 #include <utility>
 
 #include <QDBusConnection>
-#include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
 #include <QDebug>
-#include <QFile>
-#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QStringList>
 #include <QTime>
 
 #include "detachedprocess.h"
 #include "updates.h"
+
+#include "pkexec.h"
 #include "updateshelper.h"
 
 K_PLUGIN_CLASS_WITH_JSON(Updates, "kcm_ultramarine_updates.json")
@@ -59,7 +57,7 @@ int UpdatesModel::rowCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : static_cast<int>(m_updates.size());
 }
 
-QVariant UpdatesModel::data(const QModelIndex &index, int role) const {
+QVariant UpdatesModel::data(const QModelIndex &index, const int role) const {
     if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_updates.size())) {
         return {};
     }
@@ -140,7 +138,7 @@ void UpdatesModel::addUpdate(UpdateItem item) {
 
 UpdatesPreviewModel::UpdatesPreviewModel(QAbstractItemModel *source, const int limit, QObject *parent) :
     QSortFilterProxyModel(parent), m_limit(limit) {
-    setSourceModel(source);
+    QSortFilterProxyModel::setSourceModel(source);
 }
 
 int UpdatesPreviewModel::limit() const { return m_limit; }
@@ -192,7 +190,7 @@ QString Updates::distributionVersion() {
     if (!osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};
     }
-    const QLatin1String versionIdKey("VERSION_ID=");
+    constexpr QLatin1String versionIdKey("VERSION_ID=");
     for (const QStringList entries = QString::fromUtf8(osRelease.readAll()).split(QLatin1Char('\n'));
          const QString &entry: entries) {
         if (entry.startsWith(versionIdKey)) {
@@ -608,8 +606,7 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
             setActionError(message);
             finishOperation(message);
         }
-        const bool systemMayHaveChanged = !normalExit || !Pkexec::isAuthenticationFailure(exitCode);
-        if (systemMayHaveChanged) {
+        if (!normalExit || !Pkexec::isAuthenticationFailure(exitCode)) {
             refresh();
             refreshSchedule();
         }
@@ -663,7 +660,7 @@ void Updates::parseListing(const QString &output) {
     }
     setTechnicalInformation(technical);
     if (restartState != m_restartState) {
-        m_restartState = restartState;
+        m_restartState = std::move(restartState);
         Q_EMIT restartStateChanged();
         Q_EMIT updateCountChanged();
     }
@@ -705,9 +702,8 @@ QString installErrorMessage(const int exitCode, const QProcess::ExitStatus exitS
     if (Pkexec::isAuthenticationFailure(exitCode)) {
         return i18n("Authentication was canceled or failed. No updates were installed.");
     }
-    constexpr qsizetype shownStderrLines = 10;
     QStringList lines = helperText(stdErr).split(QLatin1Char('\n'));
-    if (lines.size() > shownStderrLines) {
+    if (constexpr qsizetype shownStderrLines = 10; lines.size() > shownStderrLines) {
         lines = lines.sliced(lines.size() - shownStderrLines);
     }
     const QString detail = lines.join(QLatin1Char('\n')).trimmed();

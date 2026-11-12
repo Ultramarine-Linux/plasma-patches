@@ -120,8 +120,8 @@ namespace UltramarineUpdates {
         const QString stagedDigest = stagedImage.value("imageDigest"_L1).toString();
 
         ImageState state;
-        const bool stageAppliesOnRestart = !staged.isEmpty() && !staged.value("downloadOnly"_L1).toBool();
-        if (stageAppliesOnRestart && stagedDigest != bootedDigest) {
+        if (const bool stageAppliesOnRestart = !staged.isEmpty() && !staged.value("downloadOnly"_L1).toBool();
+            stageAppliesOnRestart && stagedDigest != bootedDigest) {
             state.staged = true;
             state.stagedVersion = versionOf(stagedImage, u"imageDigest"_s);
         }
@@ -182,8 +182,8 @@ namespace UltramarineUpdates {
     std::optional<QByteArray> parseBootcStatusCache(const QByteArray &cache, const QString &bootId) {
         const QJsonObject object = QJsonDocument::fromJson(cache).object();
         const QJsonValue status = object.value("status"_L1);
-        const bool fromCurrentBoot = !bootId.isEmpty() && object.value("boot_id"_L1).toString() == bootId;
-        if (!fromCurrentBoot || !status.isObject()) {
+        if (const bool fromCurrentBoot = !bootId.isEmpty() && object.value("boot_id"_L1).toString() == bootId;
+            !fromCurrentBoot || !status.isObject()) {
             return std::nullopt;
         }
         return QJsonDocument(status.toObject()).toJson(QJsonDocument::Compact);
@@ -254,8 +254,7 @@ namespace UltramarineUpdates {
                 if (isUmEnvImage(status->image)) {
                     return true;
                 }
-                const CommandResult result = capture(bootc, {u"upgrade"_s, u"--check"_s});
-                if (!result.succeeded()) {
+                if (const CommandResult result = capture(bootc, {u"upgrade"_s, u"--check"_s}); !result.succeeded()) {
                     *error = imageCheckError(result);
                     return false;
                 }

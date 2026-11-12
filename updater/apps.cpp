@@ -219,8 +219,7 @@ namespace UltramarineUpdates {
             }
             return app;
         }
-        const bool hasMetainfoButNoApp = !files->metainfo.isEmpty();
-        if (hasMetainfoButNoApp) {
+        if (!files->metainfo.isEmpty()) {
             return std::nullopt;
         }
 

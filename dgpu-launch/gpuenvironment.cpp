@@ -4,9 +4,7 @@
 
 #include "gpuenvironment.h"
 
-#include <QDBusArgument>
 #include <QDBusConnection>
-#include <QDBusMessage>
 #include <QDBusReply>
 #include <QDBusVariant>
 #include <QFileInfo>

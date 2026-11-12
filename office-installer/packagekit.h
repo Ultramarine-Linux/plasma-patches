@@ -37,7 +37,7 @@ namespace OfficeInstaller {
         Q_OBJECT
 
     public:
-        explicit PackageKitInstaller(const QStringList &packages, QObject *parent = nullptr);
+        explicit PackageKitInstaller(QStringList packages, QObject *parent = nullptr);
 
         void start() override;
         void cancel() override;

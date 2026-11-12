@@ -7,9 +7,7 @@
 #include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QJsonObject>
 #include <QRegularExpression>
-#include <QStandardPaths>
 #include <QUuid>
 
 #include <algorithm>

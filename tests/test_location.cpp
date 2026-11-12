@@ -43,8 +43,7 @@ void LocationTest::reportsHelperResults() {
     QVERIFY(helperErrorMessage(0, QProcess::NormalExit, u"Created symlink"_s).isEmpty());
 
     constexpr int PkexecDismissed = 126;
-    constexpr int PkexecNotAuthorized = 127;
-    for (const int code: {PkexecDismissed, PkexecNotAuthorized}) {
+    for (constexpr int PkexecNotAuthorized = 127; const int code: {PkexecDismissed, PkexecNotAuthorized}) {
         const QString message = helperErrorMessage(code, QProcess::NormalExit, {});
         QVERIFY(message.contains("No changes were made"_L1));
     }

@@ -6,7 +6,6 @@
 
 #include <KQuickManagedConfigModule>
 
-#include <QAbstractListModel>
 #include <QSortFilterProxyModel>
 #include <QUrl>
 

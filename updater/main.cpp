@@ -224,8 +224,8 @@ namespace {
         const bool changing = parser.isSet(u"automatic"_s) || parser.isSet(u"offline"_s) ||
             parser.isSet(u"inactive-minutes"_s) || parser.isSet(u"window"_s);
         if (changing) {
-            const bool usingDevelopmentSettings = !qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG");
-            if (geteuid() != 0 && !usingDevelopmentSettings) {
+            if (const bool usingDevelopmentSettings = !qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG");
+                geteuid() != 0 && !usingDevelopmentSettings) {
                 return runAsRoot(escalatedCommandLine(command, parser));
             }
             if (const QString error = changeSettings(parser); !error.isEmpty()) {

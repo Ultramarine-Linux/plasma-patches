@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -104,8 +105,8 @@ namespace OfficeInstaller {
         return {.canceled = false, .error = failureReason(exit, error, unsignedRepository)};
     }
 
-    PackageKitInstaller::PackageKitInstaller(const QStringList &packages, QObject *parent) :
-        Installer(parent), m_packages(packages) {}
+    PackageKitInstaller::PackageKitInstaller(QStringList packages, QObject *parent) :
+        Installer(parent), m_packages(std::move(packages)) {}
 
     void PackageKitInstaller::start() {
         if (m_step != Step::Idle) {
@@ -120,8 +121,8 @@ namespace OfficeInstaller {
         versionQueryThatStartsDaemon << Service << u"VersionMajor"_s;
         handleReplyIfCurrent(
             QDBusConnection::systemBus().asyncCall(versionQueryThatStartsDaemon), [this](const QDBusMessage &reply) {
-                const uint major = reply.arguments().value(0).value<QDBusVariant>().variant().toUInt();
-                if (major != SupportedVersionMajor) {
+                if (const uint major = reply.arguments().value(0).value<QDBusVariant>().variant().toUInt();
+                    major != SupportedVersionMajor) {
                     fail(i18nc("@info %1 is a version number", "PackageKit %1 isn't supported. Only PackageKit 1 is.",
                                major));
                     return;
@@ -150,7 +151,7 @@ namespace OfficeInstaller {
                                                    const std::function<void(const QDBusMessage &reply)> &handle) {
         auto *watcher = new QDBusPendingCallWatcher(call, this);
         connect(watcher, &QDBusPendingCallWatcher::finished, this,
-                [this, handle, generation = m_callGeneration](QDBusPendingCallWatcher *watcher) {
+                [this, watcher, handle, generation = m_callGeneration] {
                     watcher->deleteLater();
                     if (generation != m_callGeneration || m_step == Step::Idle) {
                         return;
@@ -182,10 +183,9 @@ namespace OfficeInstaller {
         m_error.clear();
         m_unsignedRepository.clear();
 
-        QDBusConnection bus = QDBusConnection::systemBus();
         handleReplyIfCurrent(
-            bus.asyncCall(QDBusMessage::createMethodCall(Service, u"/org/freedesktop/PackageKit"_s, Service,
-                                                         u"CreateTransaction"_s)),
+            QDBusConnection::systemBus().asyncCall(QDBusMessage::createMethodCall(
+                Service, u"/org/freedesktop/PackageKit"_s, Service, u"CreateTransaction"_s)),
             [this, method, arguments](const QDBusMessage &reply) {
                 QDBusConnection bus = QDBusConnection::systemBus();
                 m_transaction = reply.arguments().value(0).value<QDBusObjectPath>();

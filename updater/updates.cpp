@@ -74,7 +74,7 @@ namespace UltramarineUpdates {
         };
 
         template<typename Query>
-        SourceResult querySource(QString source, Query query) {
+        SourceResult querySource(QString source, const Query &query) {
             SourceResult result;
             result.source = std::move(source);
             result.updates = query(&result.error);
@@ -84,7 +84,7 @@ namespace UltramarineUpdates {
         template<typename Query>
         std::future<SourceResult> querySourceAsync(QString source, Query query) {
             return std::async(std::launch::async, [source = std::move(source), query = std::move(query)]() mutable {
-                return querySource(std::move(source), std::move(query));
+                return querySource(std::move(source), query);
             });
         }
     } // namespace

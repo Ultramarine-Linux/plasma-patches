@@ -84,9 +84,9 @@ int main(int argc, char **argv) {
         job->setStartupId(startupId);
     }
     int exitCode = 0;
-    QObject::connect(job, &KJob::result, &app, [&exitCode](const KJob *job) {
-        if (job->error() != 0) {
-            exitCode = fail(job->errorString());
+    QObject::connect(job, &KJob::result, &app, [&exitCode](const KJob *job1) {
+        if (job1->error() != 0) {
+            exitCode = fail(job1->errorString());
         }
         QApplication::quit();
     });

@@ -112,10 +112,10 @@ namespace UltramarineUpdates {
     } // namespace
 
     QList<PackageUpdate> rpmPackageUpdates(QString *error) {
-        constexpr int dnfUpdatesAvailableExitCode = 100;
         QString output;
         // no --refresh, or every unprivileged listing re-downloads all metadata
-        if (!commandOutput(QStandardPaths::findExecutable(u"dnf"_s), {u"check-update"_s}, &output, error,
+        if (constexpr int dnfUpdatesAvailableExitCode = 100;
+            !commandOutput(QStandardPaths::findExecutable(u"dnf"_s), {u"check-update"_s}, &output, error,
                            {dnfUpdatesAvailableExitCode})) {
             return {};
         }

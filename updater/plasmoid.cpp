@@ -184,8 +184,8 @@ namespace UltramarineUpdates {
                 directory.chop(directoryWildcard.size());
             }
             if (const std::optional<QByteArray> json = read(QDir::cleanPath(directory) + "/metadata.json"_L1)) {
-                if (const PlasmoidMetadata metadata = parsePlasmoidMetadata(*json); !metadata.icon.isEmpty()) {
-                    update.icon = metadata.icon;
+                if (const auto [id, icon] = parsePlasmoidMetadata(*json); !icon.isEmpty()) {
+                    update.icon = icon;
                 }
                 break;
             }

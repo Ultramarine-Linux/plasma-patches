@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
+#include <utility>
 
 #include "flatpakinstaller.h"
 #include "launch.h"
@@ -143,7 +144,7 @@ namespace OfficeInstaller {
                 painter->save();
                 painter->setRenderHint(QPainter::Antialiasing);
 
-                const auto translucentAccent = [&accentEvenWhenUnfocused](const qreal alpha) {
+                const auto translucentAccent = [&accentEvenWhenUnfocused](const float alpha) {
                     QColor color = accentEvenWhenUnfocused;
                     color.setAlphaF(alpha);
                     return color;
@@ -153,11 +154,11 @@ namespace OfficeInstaller {
                 const qreal cardRadius = opt.fontMetrics.height() / 3.0;
                 if (opt.state & QStyle::State_Selected) {
                     painter->setPen(QPen(accentEvenWhenUnfocused, 1));
-                    painter->setBrush(translucentAccent(0.12));
+                    painter->setBrush(translucentAccent(0.12F));
                     painter->drawRoundedRect(card, cardRadius, cardRadius);
                 } else if (opt.state & QStyle::State_MouseOver) {
                     painter->setPen(Qt::NoPen);
-                    painter->setBrush(translucentAccent(0.06));
+                    painter->setBrush(translucentAccent(0.06F));
                     painter->drawRoundedRect(card, cardRadius, cardRadius);
                 }
 
@@ -172,7 +173,7 @@ namespace OfficeInstaller {
                 if (geometry.badge.isValid()) {
                     const QRectF badge = QRectF(geometry.badge.translated(origin)).adjusted(0.5, 0.5, -0.5, -0.5);
                     painter->setPen(QPen(accentEvenWhenUnfocused, 1));
-                    painter->setBrush(translucentAccent(0.15));
+                    painter->setBrush(translucentAccent(0.15F));
                     const qreal radius = badge.height() / 2.0;
                     painter->drawRoundedRect(badge, radius, radius);
                     painter->setPen(opt.palette.color(group, QPalette::Text));
@@ -307,8 +308,8 @@ namespace OfficeInstaller {
     } // namespace
 
     InstallerDialog::InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered,
-                                     const QString &incapableInstalledSuite, QWidget *parent) :
-        QDialog(parent), m_urls(urls), m_incapableInstalledSuite(incapableInstalledSuite), m_suites(offered),
+                                     QString incapableInstalledSuite, QWidget *parent) :
+        QDialog(parent), m_urls(urls), m_incapableInstalledSuite(std::move(incapableInstalledSuite)), m_suites(offered),
         m_imageBased(isBootedFromOstree()), m_pages(new QStackedWidget(this)), m_error(new KMessageWidget(this)),
         m_suiteList(new SuiteList(this)), m_sourceRow(new QWidget(this)), m_sourceLabel(new QLabel(this)),
         m_sourceBox(new QComboBox(this)), m_progressIcon(new QLabel(this)), m_progressTitle(titleLabel({}, this)),

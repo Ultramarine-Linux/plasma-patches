@@ -330,8 +330,9 @@ namespace UltramarineUpdates {
             QFile::remove(m_sincePath);
             return std::chrono::seconds(0);
         }
-        const bool pollsWereContinuous = lastPoll && *lastPoll <= now && lastPoll->secsTo(now) <= m_maxPollGap.count();
-        if (!pollsWereContinuous) {
+        if (const bool pollsWereContinuous =
+                lastPoll && *lastPoll <= now && lastPoll->secsTo(now) <= m_maxPollGap.count();
+            !pollsWereContinuous) {
             writeTimestamp(m_sincePath, now, nullptr);
             return std::chrono::seconds(0);
         }

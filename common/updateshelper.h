@@ -8,8 +8,6 @@
 #include <QStandardPaths>
 #include <QString>
 
-#include "pkexec.h"
-
 #ifndef ULTRAMARINE_UPDATES_EXECUTABLE
 #define ULTRAMARINE_UPDATES_EXECUTABLE "/usr/libexec/ultramarine-updates"
 #endif

@@ -54,17 +54,17 @@ namespace {
         static void rejectsUnrecognizedVersions();
         void init();
         void cleanup();
-        void listsTweaks();
-        void listFailures_data();
-        void listFailures();
+        static void listsTweaks();
+        static void listFailures_data();
+        static void listFailures();
         void changeSucceeds();
-        void changeFails();
-        void showsChangeProgress();
+        static void changeFails();
+        static void showsChangeProgress();
         void destroyingWhileListingIsSafe();
-        void destroyingWhileChangingLetsItFinish();
+        void destroyingWhileChangingLetsItFinish() const;
 
     private:
-        std::unique_ptr<Tweaks> loadedTweaks();
+        static std::unique_ptr<Tweaks> loadedTweaks();
 
         std::unique_ptr<QTemporaryDir> m_dir;
     };
@@ -155,7 +155,7 @@ void TweaksTest::modelExposesRoles() {
 void TweaksTest::modelTracksBusyTweak() {
     TweaksModel model;
     model.setTweaks({tweakWithId(u"a"_s), tweakWithId(u"b"_s)});
-    QSignalSpy dataChanged(&model, &TweaksModel::dataChanged);
+    const QSignalSpy dataChanged(&model, &TweaksModel::dataChanged);
 
     model.setBusyId(u"b"_s);
     QCOMPARE(dataChanged.count(), 1);
@@ -273,8 +273,8 @@ void TweaksTest::listFailures_data() {
 }
 
 void TweaksTest::listFailures() {
-    QFETCH(QByteArray, mode);
-    QFETCH(QString, error);
+    QFETCH(const QByteArray, mode);
+    QFETCH(const QString, error);
     qputenv("FAKE_UM_LIST", mode);
     const auto tweaks = loadedTweaks();
     QVERIFY(tweaks);
@@ -287,7 +287,7 @@ void TweaksTest::listFailures() {
 void TweaksTest::changeSucceeds() {
     const auto tweaks = loadedTweaks();
     QVERIFY(tweaks);
-    QSignalSpy running(tweaks.get(), &Tweaks::runningChanged);
+    const QSignalSpy running(tweaks.get(), &Tweaks::runningChanged);
     tweaks->setTweakEnabled(u"nix"_s, true);
     QVERIFY(tweaks->running());
     QVERIFY(tweaks->tweaks()->data(tweaks->tweaks()->index(0, 0), TweaksModel::BusyRole).toBool());
@@ -351,7 +351,7 @@ void TweaksTest::destroyingWhileListingIsSafe() {
     QTRY_VERIFY(isProcessGoneOrZombie(umChildCheckScriptPid));
 }
 
-void TweaksTest::destroyingWhileChangingLetsItFinish() {
+void TweaksTest::destroyingWhileChangingLetsItFinish() const {
     qputenv("FAKE_UM_CHANGE", "slow");
     auto tweaks = loadedTweaks();
     QVERIFY(tweaks);

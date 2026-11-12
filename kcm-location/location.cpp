@@ -5,7 +5,6 @@
 #include <KLocalizedString>
 
 #include <QDBusConnection>
-#include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -136,7 +135,7 @@ void Location::setLocationEnabled(const bool enabled) {
     }
     setErrorMessage({});
 
-    const QString helper = QStringLiteral(ULTRAMARINE_LOCATION_HELPER);
+    const auto helper = QStringLiteral(ULTRAMARINE_LOCATION_HELPER);
     if (!QFileInfo(helper).isExecutable()) {
         setErrorMessage(i18n("Could not change location services: %1 is not installed.", helper));
         return;

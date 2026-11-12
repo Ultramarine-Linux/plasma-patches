@@ -15,6 +15,7 @@
 #include <QThread>
 
 #include <memory>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -148,7 +149,7 @@ namespace OfficeInstaller {
         g_clear_object(&m_cancellable);
     }
 
-    void CancellableThread::start(QObject *context, const std::function<void(GCancellable *)> &work,
+    void CancellableThread::start(const QObject *context, const std::function<void(GCancellable *)> &work,
                                   const std::function<void()> &finished) {
         if (m_thread) {
             return;
@@ -170,8 +171,8 @@ namespace OfficeInstaller {
         }
     }
 
-    FlatpakInstaller::FlatpakInstaller(const QString &remote, const QString &fullRef, QObject *parent) :
-        Installer(parent), m_remote(remote), m_ref(fullRef) {}
+    FlatpakInstaller::FlatpakInstaller(QString remote, QString fullRef, QObject *parent) :
+        Installer(parent), m_remote(std::move(remote)), m_ref(std::move(fullRef)) {}
 
     void FlatpakInstaller::start() {
         auto result = std::make_shared<Result>();
@@ -185,7 +186,8 @@ namespace OfficeInstaller {
 
     void FlatpakInstaller::cancel() { m_thread.cancel(); }
 
-    AppstreamUpdater::AppstreamUpdater(const QString &remote, QObject *parent) : QObject(parent), m_remote(remote) {}
+    AppstreamUpdater::AppstreamUpdater(QString remote, QObject *parent) :
+        QObject(parent), m_remote(std::move(remote)) {}
 
     void AppstreamUpdater::start() {
         auto success = std::make_shared<bool>(false);

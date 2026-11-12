@@ -508,7 +508,7 @@ void UpdaterTest::evaluatesNixUpgradesPerElement() {
 }
 
 void UpdaterTest::resolvesNixApps() {
-    const QString store = u"/nix/store/h-warp-7.2"_s;
+    const auto store = u"/nix/store/h-warp-7.2"_s;
     const FileReader read = fakeFiles({
         {store + "/share/metainfo/dev.warp.Warp.metainfo.xml"_L1,
          uR"(<component type="desktop-application"><id>dev.warp.Warp</id><name>Warp</name><launchable type="desktop-id">dev.warp.Warp.desktop</launchable></component>)"_s},
@@ -593,7 +593,7 @@ void UpdaterTest::parsesBootcState() {
                 "cachedUpdate":%2,"downloadOnly":false},"rollback":null}})"_s.arg(staged, cachedUpdate)
             .toUtf8();
     };
-    const QString newer = uR"({"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"},
+    const auto newer = uR"({"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"},
         "version":"44.20261020.0","imageDigest":"sha256:bbbb"})"_s;
     const auto stagedEntry = [&newer](const bool downloadOnly) {
         return uR"({"image":%1,"cachedUpdate":null,"downloadOnly":%2})"_s.arg(newer,
@@ -683,9 +683,9 @@ void UpdaterTest::plasmoidUpdate() {
     update = plasmoidPackageUpdate(entry, fakeFiles({}));
     QCOMPARE(update.icon, u"plasma"_s);
 
-    const PlasmoidMetadata metadata = parsePlasmoidMetadata(R"({"KPlugin":{"Id":"org.example.clock"}})");
-    QCOMPARE(metadata.id, u"org.example.clock"_s);
-    QVERIFY(metadata.icon.isEmpty());
+    const auto [id, icon] = parsePlasmoidMetadata(R"({"KPlugin":{"Id":"org.example.clock"}})");
+    QCOMPARE(id, u"org.example.clock"_s);
+    QVERIFY(icon.isEmpty());
 }
 
 void UpdaterTest::settingsRoundTrip() {
@@ -726,7 +726,7 @@ void UpdaterTest::brokenSettingsFallBackToDefaults() {
     const QString path = dir.path() + "/settings.json"_L1;
     qputenv("ULTRAMARINE_UPDATES_CONFIG", path.toLocal8Bit());
 
-    QString warning = u"stale"_s;
+    auto warning = u"stale"_s;
     QCOMPARE(loadSettingsOrDefaults(&warning), Settings{});
     QVERIFY(warning.isEmpty());
 
@@ -787,9 +787,9 @@ void UpdaterTest::parsesTimerShow() {
 }
 
 void UpdaterTest::combinesTonightStatus() {
-    const ScheduleStatus system{.scheduled = true, .next = 1761181200};
-    const ScheduleStatus user{.scheduled = true, .next = 1761181260};
-    const ScheduleStatus none;
+    constexpr ScheduleStatus system{.scheduled = true, .next = 1761181200};
+    constexpr ScheduleStatus user{.scheduled = true, .next = 1761181260};
+    constexpr ScheduleStatus none;
     QCOMPARE(combineTonightStatus(system, std::nullopt), system);
     QCOMPARE(combineTonightStatus(system, user), (ScheduleStatus{.scheduled = true, .next = 1761181200}));
     QCOMPARE(combineTonightStatus(system, none), (ScheduleStatus{.partial = true}));
@@ -846,17 +846,94 @@ void UpdaterTest::readyToInstall() {
         bool want = false;
     };
     const QList<Case> cases{
-        {"idle long enough", automatic, false, false, idle, false, noon, true},
-        {"in use", automatic, false, true, 0s, false, noon, false},
-        {"in use with no wait", settings(true, 0), false, true, 0s, false, noon, false},
-        {"no wait", settings(true, 0), false, false, 0s, false, noon, true},
-        {"used recently", automatic, false, false, 2min, false, noon, false},
-        {"already installed", automatic, false, false, idle, true, noon, false},
-        {"automatic off", settings(false, 30), false, false, idle, false, noon, false},
-        {"outside window", settings(true, 30, u"01:00"_s, u"05:00"_s), false, false, idle, false, noon, false},
-        {"tonight ignores automatic and recent installs", settings(false, 30), true, false, idle, true, night, true},
-        {"tonight waits for the night", automatic, true, false, idle, false, noon, false},
-        {"tonight uses the window", settings(false, 30, u"11:00"_s, u"13:00"_s), true, false, idle, false, noon, true},
+        {.name = "idle long enough",
+         .settings = automatic,
+         .tonight = false,
+         .inUse = false,
+         .inactive = idle,
+         .installed = false,
+         .now = noon,
+         .want = true},
+        {.name = "in use",
+         .settings = automatic,
+         .tonight = false,
+         .inUse = true,
+         .inactive = 0s,
+         .installed = false,
+         .now = noon,
+         .want = false},
+        {.name = "in use with no wait",
+         .settings = settings(true, 0),
+         .tonight = false,
+         .inUse = true,
+         .inactive = 0s,
+         .installed = false,
+         .now = noon,
+         .want = false},
+        {.name = "no wait",
+         .settings = settings(true, 0),
+         .tonight = false,
+         .inUse = false,
+         .inactive = 0s,
+         .installed = false,
+         .now = noon,
+         .want = true},
+        {.name = "used recently",
+         .settings = automatic,
+         .tonight = false,
+         .inUse = false,
+         .inactive = 2min,
+         .installed = false,
+         .now = noon,
+         .want = false},
+        {.name = "already installed",
+         .settings = automatic,
+         .tonight = false,
+         .inUse = false,
+         .inactive = idle,
+         .installed = true,
+         .now = noon,
+         .want = false},
+        {.name = "automatic off",
+         .settings = settings(false, 30),
+         .tonight = false,
+         .inUse = false,
+         .inactive = idle,
+         .installed = false,
+         .now = noon,
+         .want = false},
+        {.name = "outside window",
+         .settings = settings(true, 30, u"01:00"_s, u"05:00"_s),
+         .tonight = false,
+         .inUse = false,
+         .inactive = idle,
+         .installed = false,
+         .now = noon,
+         .want = false},
+        {.name = "tonight ignores automatic and recent installs",
+         .settings = settings(false, 30),
+         .tonight = true,
+         .inUse = false,
+         .inactive = idle,
+         .installed = true,
+         .now = night,
+         .want = true},
+        {.name = "tonight waits for the night",
+         .settings = automatic,
+         .tonight = true,
+         .inUse = false,
+         .inactive = idle,
+         .installed = false,
+         .now = noon,
+         .want = false},
+        {.name = "tonight uses the window",
+         .settings = settings(false, 30, u"11:00"_s, u"13:00"_s),
+         .tonight = true,
+         .inUse = false,
+         .inactive = idle,
+         .installed = false,
+         .now = noon,
+         .want = true},
     };
     for (const Case &c: cases) {
         QString reason;
@@ -1134,7 +1211,7 @@ void UpdaterTest::checksOptions() {
 }
 
 void UpdaterTest::applyResultCountsAsInstalled() {
-    ApplyResult nothing;
+    const ApplyResult nothing;
     QVERIFY(nothing.ok());
     QVERIFY(nothing.countsAsInstalled());
 

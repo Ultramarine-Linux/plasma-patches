@@ -26,7 +26,7 @@ namespace OfficeInstaller {
         Q_CLASSINFO("D-Bus Interface", "org.ultramarine.OfficeInstaller")
 
     public:
-        InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered, const QString &incapableInstalledSuite,
+        InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered, QString incapableInstalledSuite,
                         QWidget *parent = nullptr);
 
         void reject() override;

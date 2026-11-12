@@ -25,7 +25,7 @@ namespace {
         QStringList arguments;
         arguments.reserve(urls.size());
         std::ranges::transform(urls, std::back_inserter(arguments), [](const QUrl &url) { return url.toString(); });
-        const auto service = QLatin1StringView(InstallerDialog::DBusService);
+        constexpr auto service = QLatin1StringView(InstallerDialog::DBusService);
         QDBusMessage message = QDBusMessage::createMethodCall(service, u"/"_s, service, u"addDocuments"_s);
         message << arguments;
         return QDBusConnection::sessionBus().call(message).type() != QDBusMessage::ErrorMessage;

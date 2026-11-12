@@ -15,7 +15,7 @@ namespace UltramarineUpdates {
         QString preparedUpdate = QStringLiteral("/var/lib/PackageKit/prepared-update");
         QString preparedUpgrade = QStringLiteral("/var/lib/PackageKit/prepared-upgrade");
         QString trigger = QStringLiteral("/system-update");
-        // sic, PackageKit's spelling
+        // PackageKit's spelling lol
         QString results = QStringLiteral("/var/lib/PackageKit/offline-update-competed");
         QString osRelease = QStringLiteral("/etc/os-release");
         QString rpmDatabase = QStringLiteral("/usr/lib/sysimage/rpm/rpmdb.sqlite");

@@ -7,7 +7,6 @@
 #include <KLocalizedString>
 
 #include <QDBusConnection>
-#include <QDBusMessage>
 #include <QDBusReply>
 #include <QDBusUnixFileDescriptor>
 
@@ -21,7 +20,7 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     ShutdownInhibitor::ShutdownInhibitor(const QString &why) {
-        QDBusConnection bus = QDBusConnection::systemBus();
+        const QDBusConnection bus = QDBusConnection::systemBus();
         if (!bus.isConnected()) {
             std::fprintf(stderr, "%s\n",
                          qPrintable(i18nc("@info:status", "Warning: could not keep the device awake: no system bus")));

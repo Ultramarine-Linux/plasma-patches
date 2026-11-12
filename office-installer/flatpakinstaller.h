@@ -27,7 +27,7 @@ namespace OfficeInstaller {
         CancellableThread(CancellableThread &&) = delete;
         CancellableThread &operator=(CancellableThread &&) = delete;
 
-        void start(QObject *context, const std::function<void(GCancellable *)> &work,
+        void start(const QObject *context, const std::function<void(GCancellable *)> &work,
                    const std::function<void()> &finished);
         void cancel() const;
 
@@ -40,7 +40,7 @@ namespace OfficeInstaller {
         Q_OBJECT
 
     public:
-        FlatpakInstaller(const QString &remote, const QString &fullRef, QObject *parent = nullptr);
+        FlatpakInstaller(QString remote, QString fullRef, QObject *parent = nullptr);
 
         void start() override;
         void cancel() override;
@@ -57,7 +57,7 @@ namespace OfficeInstaller {
         Q_OBJECT
 
     public:
-        explicit AppstreamUpdater(const QString &remote, QObject *parent = nullptr);
+        explicit AppstreamUpdater(QString remote, QObject *parent = nullptr);
 
         void start();
 
