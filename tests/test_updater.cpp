@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// tests for the update helper's parsers and decisions (updater/)
-
 #include <QCommandLineParser>
 #include <QDir>
 #include <QElapsedTimer>
@@ -198,7 +196,6 @@ void UpdaterTest::parsesMetainfo() {
                        .icon = u"firefox"_s,
                        .desktopIds = {u"org.mozilla.firefox.desktop"_s}}));
 
-    // legacy: type="desktop", no <launchable>, ID already ends in .desktop
     info =
         parseMetainfo(R"(<component type="desktop"><id>org.kde.dolphin.desktop</id><name>Dolphin</name></component>)");
     QVERIFY(info);
@@ -248,7 +245,6 @@ void UpdaterTest::resolvesAppsFromMetainfo() {
         {u"/usr/share/applications/sbctl-helper.desktop"_s, u"[Desktop Entry]\nType=Application\nName=Helper"_s},
     });
 
-    // name and ID from metainfo, icon from the launchable desktop file
     const AppFiles dolphin{.metainfo = {u"/usr/share/metainfo/org.kde.dolphin.plugin.xml"_s,
                                         u"/usr/share/metainfo/org.kde.dolphin.appdata.xml"_s},
                            .desktop = {},
@@ -258,7 +254,6 @@ void UpdaterTest::resolvesAppsFromMetainfo() {
     QCOMPARE(*app,
              (AppInfo{.id = u"org.kde.dolphin.desktop"_s, .name = u"Dolphin"_s, .icon = u"system-file-manager"_s}));
 
-    // metainfo that isn't a desktop application wins over a stray launcher
     const AppFiles sbctl{.metainfo = {u"/usr/share/metainfo/dev.linderud.sbctl.metainfo.xml"_s},
                          .desktop = {u"/usr/share/applications/sbctl-helper.desktop"_s},
                          .applicationsDir = {}};
@@ -382,7 +377,6 @@ void UpdaterTest::parsesNixProfileListV3() {
     },"version":3})",
                                                                             nullptr);
     QVERIFY(got);
-    // store-path installs and inactive entries can't be upgraded
     QCOMPARE(got->size(), 2);
     QCOMPARE(got->at(0).name, u"btop"_s);
     QCOMPARE(got->at(1).name, u"flox"_s);
@@ -444,10 +438,8 @@ void UpdaterTest::nixUpdateFor() {
     want.newVersion = u"1.19.0-ga6a3147"_s;
     QCOMPARE(*update, want);
 
-    // same store paths: nothing to upgrade
     QVERIFY(!UltramarineUpdates::nixUpdateFor(
         element, {.error = false, .name = {}, .version = {}, .outPaths = {u"/nix/store/a-flox-1.17.0-g486737b"_s}}));
-    // a rebuild without a version bump still counts, and the version falls back to the name
     update = UltramarineUpdates::nixUpdateFor(element,
                                               {.error = false,
                                                .name = u"flox-1.17.0-g486737b"_s,
@@ -462,14 +454,12 @@ void UpdaterTest::evaluatesNixUpgradesPerElement() {
     if (nixBinary().isEmpty()) {
         QSKIP("nix isn't installed");
     }
-    // a flake without inputs, so nothing is fetched. Nothing is built either.
     const QTemporaryDir dir;
     QFile flake(dir.path() + "/flake.nix"_L1);
     QVERIFY(flake.open(QIODevice::WriteOnly));
     flake.write(R"nix({
   outputs = { self }: {
     good = derivation { name = "good-1.0"; system = "x86_64-linux"; builder = "/bin/sh"; outputs = [ "out" "dev" ]; };
-    # like nixpkgs' unfree or insecure check, which throws once the output is used
     unfree = { type = "derivation"; name = "unfree-1.0"; out = throw "unfree"; };
   };
 })nix");
@@ -484,7 +474,6 @@ void UpdaterTest::evaluatesNixUpgradesPerElement() {
     };
 
     QString error;
-    // without flakes (or a store to evaluate in), this can't work at all
     const std::optional<QList<NixEvalResult>> probe = evaluateNixUpgrades({element(u"good"_s)}, &error);
     if (!probe) {
         QSKIP(qPrintable(u"nix can't evaluate flakes here: "_s + error));
@@ -494,8 +483,6 @@ void UpdaterTest::evaluatesNixUpgradesPerElement() {
     QCOMPARE(probe->at(0).name, u"good-1.0"_s);
     QCOMPARE(probe->at(0).outPaths.size(), 1);
 
-    // the unfree and the missing package only fail their own entries, and an output
-    // the package doesn't have (anymore) is skipped
     const std::optional<QList<NixEvalResult>> results =
         evaluateNixUpgrades({element(u"good"_s, QStringList{u"out"_s, u"man"_s}), element(u"unfree"_s),
                              element(u"missing"_s), element(u"good"_s, QStringList{u"out"_s, u"dev"_s})},
@@ -538,7 +525,6 @@ void UpdaterTest::parsesDeterminateNixVersions() {
 
     QVERIFY(determinateNixUpgradable(u"3.22.5"_s, u"3.23.3"_s));
     QVERIFY(determinateNixUpgradable(u"3.9.0"_s, u"3.10.0"_s));
-    // an install newer than the advised version, the same version, or nothing to compare
     QVERIFY(!determinateNixUpgradable(u"3.23.3"_s, u"3.22.5"_s));
     QVERIFY(!determinateNixUpgradable(u"3.22.5"_s, u"3.22.5"_s));
     QVERIFY(!determinateNixUpgradable(u"3.22.5"_s, {}));
@@ -568,7 +554,6 @@ void UpdaterTest::parsesImageStatus() {
     QCOMPARE(state.update->backend, u"bootc"_s);
     QCOMPARE(state.update->source, u"Image (ostree-image-signed:docker://ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
 
-    // no cached update, or it's what's booted: nothing to install
     QVERIFY(!parseRpmOstreeState(R"({"deployments":[{"booted":true,"checksum":"abc"}],"cached-update":null})", {},
                                  u"bootc"_s)
                  .update);
@@ -577,7 +562,6 @@ void UpdaterTest::parsesImageStatus() {
                              {}, u"bootc"_s)
              .update);
 
-    // the cached update is already the pending deployment: restart to finish
     state = parseRpmOstreeState(R"({"deployments":[
         {"booted":false,"staged":true,"checksum":"def","version":"44.20261020.0"},
         {"booted":true,"checksum":"abc","version":"44.20261001.0"}],
@@ -589,7 +573,7 @@ void UpdaterTest::parsesImageStatus() {
 }
 
 void UpdaterTest::parsesBootcState() {
-    // abridged `bootc status --format=json`: cachedUpdate is per boot entry
+    // abridged `bootc status --format=json`, where cachedUpdate is per boot entry
     const auto host = [](const QString &staged, const QString &cachedUpdate) {
         return uR"({"apiVersion":"org.containers.bootc/v1","kind":"BootcHost",
             "spec":{"image":{"image":"ghcr.io/ultramarine-linux/plasma-bootc:44","transport":"registry"}},
@@ -615,23 +599,19 @@ void UpdaterTest::parsesBootcState() {
     QCOMPARE(state.update->newVersion, u"44.20261020.0"_s);
     QCOMPARE(state.update->source, u"Image (ghcr.io/ultramarine-linux/plasma-bootc:44)"_s);
 
-    // nothing found yet
     state = parseBootcState(host(u"null"_s, u"null"_s), {});
     QVERIFY(!state.update);
     QVERIFY(!state.staged);
 
-    // staged: no longer an update, but needs a restart
     state = parseBootcState(host(stagedEntry(false), newer), {});
     QVERIFY(!state.update);
     QVERIFY(state.staged);
     QCOMPARE(state.stagedVersion, u"44.20261020.0"_s);
 
-    // download-only stages aren't applied when restarting
     state = parseBootcState(host(stagedEntry(true), newer), {});
     QVERIFY(state.update);
     QVERIFY(!state.staged);
 
-    // a newer image than the staged one
     state = parseBootcState(host(stagedEntry(false), uR"({"image":{"image":"x","transport":"registry"},
         "version":"44.20261030.0","imageDigest":"sha256:cccc"})"_s),
                             {});
@@ -639,7 +619,6 @@ void UpdaterTest::parsesBootcState() {
     QCOMPARE(state.update->newVersion, u"44.20261030.0"_s);
     QVERIFY(state.staged);
 
-    // images without a version are shown by digest
     state = parseBootcState(host(u"null"_s, uR"({"image":{"image":"localhost/um-env","transport":"containers-storage"},
         "imageDigest":"sha256:0123456789abcdef"})"_s),
                             {});
@@ -691,7 +670,6 @@ void UpdaterTest::plasmoidUpdate() {
     QCOMPARE(update.newVersion, u"v8.0.0"_s);
     QCOMPARE(update.icon, u"desktop"_s);
 
-    // without a readable package (or an icon in it), a generic Plasma icon
     update = plasmoidPackageUpdate(entry, fakeFiles({}));
     QCOMPARE(update.icon, u"plasma"_s);
 
@@ -707,7 +685,6 @@ void UpdaterTest::settingsRoundTrip() {
 
     Settings got;
     QString error;
-    // a missing file gives the defaults
     QVERIFY(loadSettings(&got, &error));
     QCOMPARE(got, Settings{});
 
@@ -718,7 +695,6 @@ void UpdaterTest::settingsRoundTrip() {
     QCOMPARE(got, want);
     QVERIFY(QFile::permissions(path) & QFile::ReadOther);
 
-    // missing keys keep their defaults
     QFile file(path);
     QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
     file.write(R"({"offline": true})");
@@ -756,7 +732,6 @@ void UpdaterTest::brokenSettingsFallBackToDefaults() {
     QCOMPARE(loadSettingsOrDefaults(&warning).inactiveMinutes, 30);
     QVERIFY(warning.isEmpty());
 
-    // the timers keep going with the defaults (automatic updates on), and say what's wrong
     for (const QByteArray &broken: {QByteArray("{\"automatic\": tru"), QByteArray(R"({"automatic": "no"})")}) {
         QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
         file.write(broken);
@@ -815,10 +790,8 @@ void UpdaterTest::combinesTonightStatus() {
     const ScheduleStatus system{.scheduled = true, .next = 1761181200};
     const ScheduleStatus user{.scheduled = true, .next = 1761181260};
     const ScheduleStatus none;
-    // as root, only the system's timer counts
     QCOMPARE(combineTonightStatus(system, std::nullopt), system);
     QCOMPARE(combineTonightStatus(system, user), (ScheduleStatus{.scheduled = true, .next = 1761181200}));
-    // logging out stopped the user's timer
     QCOMPARE(combineTonightStatus(system, none), (ScheduleStatus{.partial = true}));
     QCOMPARE(combineTonightStatus(none, user), (ScheduleStatus{.partial = true}));
     QCOMPARE(combineTonightStatus(none, none), ScheduleStatus{});
@@ -832,10 +805,8 @@ void UpdaterTest::combinesTonightStatus() {
 void UpdaterTest::tonightAlreadyInstalled() {
     const QDateTime scheduled(QDate(2026, 10, 22), QTime(14, 0));
     QVERIFY(UltramarineUpdates::tonightAlreadyInstalled(scheduled.addSecs(9LL * 3600), scheduled));
-    // installed before it was scheduled, so there may be new updates
     QVERIFY(!UltramarineUpdates::tonightAlreadyInstalled(scheduled.addSecs(-3600), scheduled));
     QVERIFY(!UltramarineUpdates::tonightAlreadyInstalled(std::nullopt, scheduled));
-    // scheduled by an older helper that didn't record it
     QVERIFY(!UltramarineUpdates::tonightAlreadyInstalled(scheduled, std::nullopt));
 }
 
@@ -844,7 +815,6 @@ void UpdaterTest::listFailsOnlyIfEverySourceFailed() {
     QVERIFY(!response.allFailed());
     response.queriedSources = 3;
     QVERIFY(!response.allFailed());
-    // no updates, and one source failed: the others still answered
     response.errors = {u"flatpak user: no network"_s};
     QVERIFY(!response.allFailed());
     response.errors << u"rpm: no network"_s << u"flatpak system: no network"_s;
@@ -906,7 +876,6 @@ void UpdaterTest::sessionInUse() {
                                                            u"Id=7\nName=admin\nClass=user\nType=tty\nActive=yes\n"
                                                            u"IdleHint=no\nLockedHint=no\n"_s);
     QCOMPARE(sessions.size(), 4);
-    // a locked graphical session, a user manager and an inactive session don't count
     QVERIFY(!UltramarineUpdates::sessionInUse(sessions, u"cypress"_s));
     const std::optional<LoginSession> admin = UltramarineUpdates::sessionInUse(sessions);
     QVERIFY(admin);
@@ -928,10 +897,8 @@ void UpdaterTest::timestamps() {
     QVERIFY(writeTimestamp(stamp, now.addSecs(-30 * 60LL), nullptr));
     QVERIFY(within(stamp, 1h, now));
     QVERIFY(!within(stamp, 10min, now));
-    // a stamp from the future (clock changes) doesn't block forever
     QVERIFY(writeTimestamp(stamp, now.addSecs(60 * 60LL), nullptr));
     QVERIFY(!within(stamp, 24h, now));
-    // out of QDateTime's range
     QFile file(stamp);
     QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
     file.write("9223372036854775807\n");
@@ -952,7 +919,6 @@ void UpdaterTest::activityTracker() {
         QCOMPARE(tracker.inactiveFor(false, minutesLater(minutes)),
                  std::chrono::seconds(std::chrono::minutes(minutes)));
     }
-    // using the device resets the count
     QCOMPARE(tracker.inactiveFor(true, minutesLater(30)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(35)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(40)), std::chrono::seconds(5min));
@@ -965,15 +931,11 @@ void UpdaterTest::activityTrackerRestartsAfterGaps() {
     const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
     QCOMPARE(tracker.inactiveFor(false, start), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(5)), std::chrono::seconds(5min));
-    // a late poll (timer accuracy, a slow run) still counts
     QCOMPARE(tracker.inactiveFor(false, minutesLater(15)), std::chrono::seconds(15min));
-    // suspended for 8 hours: no one watched, so that time doesn't count
     QCOMPARE(tracker.inactiveFor(false, minutesLater(15 + 8 * 60)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(20 + 8 * 60)), std::chrono::seconds(5min));
-    // so does the clock going back
     QCOMPARE(tracker.inactiveFor(false, minutesLater(10)), 0s);
 
-    // upgrading from a version without last-poll starts over once
     const QTemporaryDir upgraded;
     QVERIFY(writeTimestamp(upgraded.path() + "/inactive-since"_L1, start, nullptr));
     const ActivityTracker fresh(upgraded.path() + "/inactive-since"_L1, upgraded.path() + "/last-poll"_L1);
@@ -987,19 +949,14 @@ void UpdaterTest::activityTrackerCountsFromIdleHint() {
     const QDateTime start = QDateTime::fromSecsSinceEpoch(1'800'000'000);
     const auto minutesLater = [&start](const int minutes) { return start.addSecs(minutes * 60LL); };
     QCOMPARE(tracker.inactiveFor(true, start), 0s);
-    // idle since minute 2, first seen idle at minute 5
     QCOMPARE(tracker.inactiveFor(false, minutesLater(5), minutesLater(2)), std::chrono::seconds(3min));
-    // only used when inactivity starts
     QCOMPARE(tracker.inactiveFor(false, minutesLater(10), minutesLater(9)), std::chrono::seconds(8min));
 
-    // never from before the last poll, which saw the device in use (e.g. a video kept it on)
     QCOMPARE(tracker.inactiveFor(true, minutesLater(15)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(20), minutesLater(1)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(25)), std::chrono::seconds(5min));
-    // or from the future
     QCOMPARE(tracker.inactiveFor(true, minutesLater(30)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(35), minutesLater(40)), 0s);
-    // or after a gap no one watched
     QCOMPARE(tracker.inactiveFor(true, minutesLater(40)), 0s);
     QCOMPARE(tracker.inactiveFor(false, minutesLater(120), minutesLater(100)), 0s);
 }
@@ -1017,13 +974,11 @@ void UpdaterTest::sessionsIdleSince() {
     QCOMPARE(sessions.at(0).uid, 1000U);
     QCOMPARE(sessions.at(0).idleSince, QDateTime::fromSecsSinceEpoch(1'800'000'000));
     QVERIFY(!sessions.at(1).idleSince);
-    // the latest of them, and the user manager doesn't count
     QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions), QDateTime::fromSecsSinceEpoch(1'800'000'600));
     QCOMPARE(UltramarineUpdates::sessionsIdleSince(sessions, u"cypress"_s),
              QDateTime::fromSecsSinceEpoch(1'800'000'000));
     QVERIFY(!UltramarineUpdates::sessionsIdleSince(sessions, u"guest"_s));
 
-    // a session that's only locked doesn't say since when
     QList<LoginSession> locked = sessions;
     locked[2].idle = false;
     locked[2].locked = true;
@@ -1061,7 +1016,6 @@ void UpdaterTest::idleInhibited() {
     QVERIFY(UltramarineUpdates::idleInhibited({inhibitor(u"idle"_s, u"mpv"_s, 1000)}, sessions, u"cypress"_s));
     QVERIFY(!UltramarineUpdates::idleInhibited({inhibitor(u"idle"_s, u"mpv"_s, 1000)}, sessions, u"admin"_s));
     const QList<Inhibitor> ignored{
-        // not about idle, only delaying, root, PowerDevil's and ours, or a user without a session
         inhibitor(u"sleep"_s, u"mpv"_s, 1000),
         inhibitor(u"idle"_s, u"mpv"_s, 1000, u"delay"_s),
         inhibitor(u"idle"_s, u"daemon"_s, 0),
@@ -1072,7 +1026,7 @@ void UpdaterTest::idleInhibited() {
     };
     QVERIFY(!UltramarineUpdates::idleInhibited(ignored, sessions));
 
-    // only a foreground session counts: PowerDevil says everything is inhibited in the others
+    // PowerDevil reports everything as inhibited in background sessions
     QVERIFY(hasActiveSession(sessions, u"cypress"_s));
     QVERIFY(!hasActiveSession(sessions, u"sddm"_s));
     QVERIFY(!hasActiveSession(sessions, u"guest"_s));
@@ -1086,22 +1040,18 @@ void UpdaterTest::screenInhibitedMarker() {
     QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now));
     QVERIFY(writeTimestamp(path, now.addSecs(-60), nullptr));
     QVERIFY(freshScreenInhibitedMarker(path, uid, maxPollGap, now));
-    // stale, from the future, someone else's, or not a plain file
     QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now.addSecs(3600)));
     QVERIFY(!freshScreenInhibitedMarker(path, uid, maxPollGap, now.addSecs(-120)));
     QVERIFY(!freshScreenInhibitedMarker(path, uid + 1, maxPollGap, now));
     const QString link = dir.path() + "/link"_L1;
     QVERIFY(QFile::link(path, link));
     QVERIFY(!freshScreenInhibitedMarker(link, uid, maxPollGap, now));
-    // a symlinked directory
     const QString linkedDir = dir.path() + "/linked"_L1;
     QVERIFY(QFile::link(dir.path(), linkedDir));
     QVERIFY(!freshScreenInhibitedMarker(linkedDir + "/screen-inhibited"_L1, uid, maxPollGap, now));
-    // a FIFO is rejected without blocking on it
     const QString fifo = dir.path() + "/fifo"_L1;
     QCOMPARE(mkfifo(QFile::encodeName(fifo).constData(), 0600), 0);
     QVERIFY(!freshScreenInhibitedMarker(fifo, uid, maxPollGap, now));
-    // a timestamp QDateTime can't represent isn't fresh forever
     QFile huge(path);
     QVERIFY(huge.open(QIODevice::WriteOnly | QIODevice::Truncate));
     huge.write("9223372036854775807\n");
@@ -1118,7 +1068,6 @@ void UpdaterTest::installLock() {
         InstallLock second(path);
         QCOMPARE(second.tryLock(), InstallLock::Result::Busy);
     }
-    // released when the holder goes away
     InstallLock again(path);
     QCOMPARE(again.tryLock(), InstallLock::Result::Acquired);
 
@@ -1133,7 +1082,6 @@ void UpdaterTest::installLockWaits() {
     const QString path = dir.path() + "/updates.lock"_L1;
     InstallLock holder(path);
     QCOMPARE(holder.tryLock(), InstallLock::Result::Acquired);
-    // a holder that doesn't let go is still busy after waiting
     InstallLock waiting(path);
     QElapsedTimer timer;
     timer.start();
@@ -1142,7 +1090,6 @@ void UpdaterTest::installLockWaits() {
 }
 
 namespace {
-    /// parses @p arguments (without the program name) like the helper does
     bool parseCommandLine(QCommandLineParser &parser, const QStringList &arguments) {
         setUpParser(parser);
         return parser.parse(QStringList{u"ultramarine-updates"_s} + arguments);
@@ -1166,14 +1113,12 @@ namespace {
 } // namespace
 
 void UpdaterTest::escalatedCommandLine() {
-    // the command comes first, whatever the order given: polkit matches argv[1]
+    // polkit rules match argv[1], so the command must come first
     QCOMPARE(escalated({u"--yes"_s, u"apply"_s}), (QStringList{u"apply"_s, u"--yes"_s}));
     QCOMPARE(escalated({u"apply"_s, u"-y"_s}), (QStringList{u"apply"_s, u"--yes"_s}));
     QCOMPARE(escalated({u"settings"_s, u"--automatic"_s, u"false"_s, u"--window=01:00-05:00"_s}),
              (QStringList{u"settings"_s, u"--automatic=false"_s, u"--window=01:00-05:00"_s}));
-    // an empty window (any time) survives as an empty value
     QCOMPARE(escalated({u"settings"_s, u"--window="_s}), (QStringList{u"settings"_s, u"--window="_s}));
-    // values stay one argument, whatever they contain
     QCOMPARE(escalated({u"settings"_s, u"--inactive-minutes"_s, u"5 --offline=true"_s}),
              (QStringList{u"settings"_s, u"--inactive-minutes=5 --offline=true"_s}));
     QCOMPARE(escalated({u"schedule"_s, u"--cancel"_s}), (QStringList{u"schedule"_s, u"--cancel"_s}));
@@ -1186,13 +1131,11 @@ void UpdaterTest::checksOptions() {
     QVERIFY(optionError({u"settings"_s, u"--json"_s, u"--offline=true"_s}).isEmpty());
     QVERIFY(optionError({u"schedule"_s, u"--status"_s, u"--json"_s}).isEmpty());
     QVERIFY(optionError({u"run-user"_s, u"--tonight"_s}).isEmpty());
-    // every escalated command only takes its own options
     QVERIFY(!optionError({u"apply"_s, u"--window=01:00-02:00"_s}).isEmpty());
     QVERIFY(!optionError({u"apply"_s, u"--tonight"_s}).isEmpty());
     QVERIFY(!optionError({u"schedule"_s, u"--automatic=false"_s}).isEmpty());
     QVERIFY(!optionError({u"settings"_s, u"--yes"_s}).isEmpty());
     QVERIFY(!optionError({u"upgrade"_s}).isEmpty());
-    // --status only reports, and --json only changes how it reports
     QVERIFY(optionError({u"schedule"_s}).isEmpty());
     QVERIFY(optionError({u"schedule"_s, u"--cancel"_s}).isEmpty());
     QVERIFY(optionError({u"schedule"_s, u"--status"_s}).isEmpty());
@@ -1206,23 +1149,23 @@ void UpdaterTest::checksOptions() {
 void UpdaterTest::applyResultCountsAsInstalled() {
     ApplyResult nothing;
     QVERIFY(nothing.ok());
-    QVERIFY(nothing.installed());
+    QVERIFY(nothing.countsAsInstalled());
 
     ApplyResult partial;
     partial.succeed();
     partial.fail(u"Updating system Flatpaks failed (exit code 1)."_s);
     QVERIFY(!partial.ok());
-    QVERIFY(partial.installed());
+    QVERIFY(partial.countsAsInstalled());
 
     ApplyResult primary;
     primary.succeed();
     primary.fail(u"Updating RPM packages failed (exit code 1)."_s, true);
-    QVERIFY(!primary.installed());
+    QVERIFY(!primary.countsAsInstalled());
 
     ApplyResult allFailed;
     allFailed.fail(u"a"_s);
     allFailed.fail(u"b"_s);
-    QVERIFY(!allFailed.installed());
+    QVERIFY(!allFailed.countsAsInstalled());
     QCOMPARE(allFailed.error(), u"a\nb"_s);
 }
 
@@ -1279,13 +1222,11 @@ void UpdaterTest::installFromTimerRetriesAfterAnHour() {
     QVERIFY(!QFile::exists(fixture.installed));
     QCOMPARE(readTimestamp(fixture.failed), now);
 
-    // tonight's timers poll every 5 minutes, but a failure isn't retried within the hour
     error.clear();
     QVERIFY(fixture.run(now.addSecs(5LL * 60), succeeded(), &installedNow, &error));
     QVERIFY(!installedNow);
     QCOMPARE(fixture.runs, 1);
 
-    // and is afterwards, which clears the failure
     QVERIFY(fixture.run(now.addSecs(61LL * 60), succeeded(), &installedNow, &error));
     QVERIFY(installedNow);
     QCOMPARE(fixture.runs, 2);
@@ -1295,17 +1236,14 @@ void UpdaterTest::installFromTimerRetriesAfterAnHour() {
 void UpdaterTest::installFromTimerKeepsPartialInstalls() {
     TimerFixture fixture;
     const QDateTime now = QDateTime::fromSecsSinceEpoch(1'800'000'000);
-    // the system update worked, one Flatpak remote didn't
     ApplyResult partial = succeeded();
     partial.fail(u"Updating system Flatpaks failed (exit code 1)."_s);
     bool installedNow = false;
     QString error;
-    // reported as a failure, but counts as installed, so tonight's timer stops
     QVERIFY(!fixture.run(now, partial, &installedNow, &error));
     QVERIFY(installedNow);
     QCOMPARE(error, u"Updating system Flatpaks failed (exit code 1)."_s);
     QCOMPARE(readTimestamp(fixture.installed), now);
-    // nothing is retried within the hour either: the next regular run gets it
     QVERIFY(!QFile::exists(fixture.failed));
     QVERIFY(within(fixture.installed, 20h, now.addSecs(2LL * 60 * 60)));
 }
@@ -1321,7 +1259,6 @@ void UpdaterTest::installFromTimerSkipsWhileBusy() {
     QVERIFY(error.isEmpty());
     QCOMPARE(fixture.runs, 0);
 
-    // a lock that can't be opened is an error
     QVERIFY(!installFromTimer(fixture.dir.path() + "/missing/updates.lock"_L1, fixture.dir.path(), fixture.installed,
                               QDateTime::fromSecsSinceEpoch(1'800'000'000), succeeded, &installedNow, &error));
     QVERIFY(!error.isEmpty());
@@ -1340,7 +1277,6 @@ void UpdaterTest::notifiesOnlyAfterASuccessfulListing() {
     };
     const auto notify = [&notified](const qsizetype count) { notified.append(count); };
 
-    // no network yet: every source failed, so the next run tries again
     response.queriedSources = 2;
     response.errors = {u"rpm: no network"_s, u"flatpak system: no network"_s};
     notifyPendingUpdates(checked, now, list, notify);
@@ -1349,7 +1285,6 @@ void UpdaterTest::notifiesOnlyAfterASuccessfulListing() {
     notifyPendingUpdates(checked, now.addSecs(5LL * 60), list, notify);
     QCOMPARE(listings, 2);
 
-    // one source is enough
     response.errors = {u"flatpak system: no network"_s};
     PackageUpdate update;
     update.id = u"tree.x86_64"_s;
@@ -1358,14 +1293,12 @@ void UpdaterTest::notifiesOnlyAfterASuccessfulListing() {
     QCOMPARE(notified, (QList<qsizetype>{1}));
     QCOMPARE(readTimestamp(checked), now.addSecs(10LL * 60));
 
-    // then not again for a day
     notifyPendingUpdates(checked, now.addSecs(60LL * 60), list, notify);
     QCOMPARE(listings, 3);
     notifyPendingUpdates(checked, now.addSecs(10LL * 60 + 24LL * 60 * 60), list, notify);
     QCOMPARE(listings, 4);
     QCOMPARE(notified.size(), 2);
 
-    // no updates: remembered, but nothing to show
     response.updates.clear();
     notifyPendingUpdates(checked, now.addSecs(3LL * 24 * 60 * 60), list, notify);
     QCOMPARE(notified.size(), 2);
@@ -1378,14 +1311,12 @@ void UpdaterTest::parsesBootcStatusCache() {
     const std::optional<QByteArray> parsed = parseBootcStatusCache(cache, u"boot-a"_s);
     QVERIFY(parsed);
     QCOMPARE(QJsonDocument::fromJson(*parsed), QJsonDocument::fromJson(status));
-    // after restarting, the copy describes the previous boot
     QVERIFY(!parseBootcStatusCache(cache, u"boot-b"_s));
     QVERIFY(!parseBootcStatusCache(cache, {}));
     QVERIFY(!parseBootcStatusCache("nope", u"boot-a"_s));
 }
 
 namespace {
-    /// PackageKit's offline update files and /system-update in a temporary directory
     PackageKitPaths fakePackageKitPaths(const QTemporaryDir &dir) {
         const QString lib = dir.path() + "/var/lib/PackageKit"_L1;
         QDir().mkpath(lib);
@@ -1402,7 +1333,7 @@ namespace {
         return file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size();
     }
 
-    /// as pk-offline-update writes them after a failed update (PackageKit 1.4)
+    // as pk-offline-update writes them after a failed update in PackageKit 1.4
     const QByteArray failedResults = R"([PackageKit Offline Update Results]
 Success=false
 ErrorCode=failed-initialization
@@ -1417,7 +1348,6 @@ void UpdaterTest::classifiesSystemUpdateTarget() {
              SystemUpdateTrigger::PackageKitUpdate);
     QCOMPARE(classifySystemUpdateTarget(u"/var/lib/PackageKit/prepared-upgrade"_s),
              SystemUpdateTrigger::PackageKitUpgrade);
-    // dnf5's offline transactions, and anything else
     QCOMPARE(classifySystemUpdateTarget(u"/usr/lib/sysimage/libdnf5/offline"_s), SystemUpdateTrigger::Other);
     QCOMPARE(classifySystemUpdateTarget(u"var/lib/PackageKit/prepared-update"_s), SystemUpdateTrigger::Other);
     QCOMPARE(classifySystemUpdateTarget(u"/var/lib/PackageKit"_s), SystemUpdateTrigger::Other);
@@ -1429,7 +1359,6 @@ void UpdaterTest::detectsPendingOfflineUpdate() {
     QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::None);
     QVERIFY(!offlineUpdatePending(paths));
 
-    // triggered, but the prepared update is gone (dangling link)
     QVERIFY(QFile::link(paths.preparedUpdate, paths.trigger));
     QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::PackageKitUpdate);
     QVERIFY(!offlineUpdatePending(paths));
@@ -1437,7 +1366,6 @@ void UpdaterTest::detectsPendingOfflineUpdate() {
     QVERIFY(writeFile(paths.preparedUpdate, "[update]\nprepared_ids=tree;2.2.1-1.fc45;x86_64;fedora,\n"));
     QVERIFY(offlineUpdatePending(paths));
 
-    // prepared, but not triggered (plain Restart cancels the trigger)
     QVERIFY(QFile::remove(paths.trigger));
     QVERIFY(!offlineUpdatePending(paths));
 
@@ -1446,7 +1374,6 @@ void UpdaterTest::detectsPendingOfflineUpdate() {
     QVERIFY(!offlineUpdatePending(paths));
     QVERIFY(QFile::remove(paths.trigger));
 
-    // not a link at all
     QVERIFY(writeFile(paths.trigger, {}));
     QCOMPARE(systemUpdateTrigger(paths), SystemUpdateTrigger::Other);
     QVERIFY(!offlineUpdatePending(paths));
@@ -1458,14 +1385,12 @@ void UpdaterTest::parsesOfflineResults() {
     QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=true\nRole=update-packages\n"
                                       "Packages=tree;2.2.1-1.fc45;x86_64;updates,\n"),
              QString());
-    // GKeyFile escapes, and the error code without details
     QCOMPARE(
         parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\nErrorDetails=\\sa\\\\b\\tc\n"),
         u"a\\b\tc"_s);
     QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\nErrorCode=no-network\n"),
              u"no-network"_s);
     QCOMPARE(parseOfflineResultsError("[PackageKit Offline Update Results]\nSuccess=false\n"), u"unknown error"_s);
-    // other groups, or nothing to go by
     QCOMPARE(parseOfflineResultsError("[Something Else]\nSuccess=false\nErrorDetails=nope\n"), QString());
     QCOMPARE(parseOfflineResultsError({}), QString());
     QCOMPARE(parseOfflineResultsError("garbage"), QString());
@@ -1479,7 +1404,6 @@ void UpdaterTest::reportsLastOfflineUpdateError() {
     QVERIFY(writeFile(paths.results, failedResults));
     QVERIFY(lastOfflineUpdateError(paths).startsWith("Transaction failed"_L1));
 
-    // packages changed since: the failure is old news
     QVERIFY(writeFile(paths.rpmDatabase, "rpmdb"));
     const QDateTime failed = QDateTime::currentDateTime().addSecs(-3600);
     QFile results(paths.results);
@@ -1488,7 +1412,6 @@ void UpdaterTest::reportsLastOfflineUpdateError() {
     results.close();
     QCOMPARE(lastOfflineUpdateError(paths), QString());
 
-    // the rpm database didn't change after the failure
     QFile rpmDatabase(paths.rpmDatabase);
     QVERIFY(rpmDatabase.open(QIODevice::ReadWrite));
     QVERIFY(rpmDatabase.setFileTime(failed.addSecs(-60), QFileDevice::FileModificationTime));
@@ -1497,14 +1420,12 @@ void UpdaterTest::reportsLastOfflineUpdateError() {
 }
 
 void UpdaterTest::parsesOsReleaseVersionId() {
-    // quoted values and other keys around it
     QCOMPARE(parseOsReleaseVersionId("NAME=\"Ultramarine Linux\"\nVERSION=\"45\"\nID=ultramarine\n"
                                      "ID_LIKE=fedora\nVERSION_ID=45\nPLATFORM_ID=\"platform:f45\"\n"),
              u"45"_s);
     QCOMPARE(parseOsReleaseVersionId("VERSION_ID=\"45\"\n"), u"45"_s);
     QCOMPARE(parseOsReleaseVersionId("VERSION_ID='24.04'\n"), u"24.04"_s);
     QCOMPARE(parseOsReleaseVersionId("  VERSION_ID = 45 \n"), u"45"_s);
-    // missing, or not something to put in a path
     QCOMPARE(parseOsReleaseVersionId("ID=fedora\n"), QString());
     QCOMPARE(parseOsReleaseVersionId("VERSION_ID=\"\"\n"), QString());
     QCOMPARE(parseOsReleaseVersionId("VERSION_ID=../../etc\n"), QString());

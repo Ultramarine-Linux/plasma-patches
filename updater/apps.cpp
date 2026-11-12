@@ -21,7 +21,6 @@ namespace UltramarineUpdates {
     namespace {
         const auto applicationsDir = u"/usr/share/applications"_s;
 
-        /// where packages install AppStream metainfo. /usr/share/appdata is the legacy location.
         bool isMetainfoDir(const QString &dir) {
             return dir == "/usr/share/metainfo"_L1 || dir == "/usr/share/appdata"_L1;
         }
@@ -36,10 +35,7 @@ namespace UltramarineUpdates {
 
         QString fileNameOf(const QString &path) { return path.mid(path.lastIndexOf(u'/') + 1); }
 
-        /// reports whether a file named after an app ID belongs to the package's
-        /// "main" app: "firefox" matches "firefox.desktop" and
-        /// "org.mozilla.firefox.appdata.xml"
-        bool matchesPackage(const QString &packageName, const QString &path) {
+        bool isNamedAfterPackage(const QString &packageName, const QString &path) {
             QString base = fileNameOf(path);
             for (const auto suffix: {".desktop"_L1, ".metainfo.xml"_L1, ".appdata.xml"_L1, ".xml"_L1}) {
                 if (base.endsWith(suffix)) {
@@ -50,24 +46,21 @@ namespace UltramarineUpdates {
             return base == packageName || base.endsWith(u'.' + packageName);
         }
 
-        /// moves paths named after the package to the front
         QStringList preferPackageMatch(const QString &packageName, QStringList paths) {
             std::ranges::stable_sort(paths, [&packageName](const QString &a, const QString &b) {
-                return matchesPackage(packageName, a) && !matchesPackage(packageName, b);
+                return isNamedAfterPackage(packageName, a) && !isNamedAfterPackage(packageName, b);
             });
             return paths;
         }
 
-        /// looks up the app files of the given packages ("name.arch") with a single rpm query
         QHash<QString, AppFiles> rpmAppFilesFor(const QStringList &nameArchs) {
             if (nameArchs.isEmpty()) {
                 return {};
             }
             const QStringList arguments =
                 QStringList{u"-q"_s, u"--qf"_s, u"[%{=NAME}.%{=ARCH}\t%{FILENAMES}\n]"_s} + nameArchs;
-            // rpm exits with the number of packages that aren't installed (e.g. new
-            // dependencies). The output for the others is still valid.
-            return parseRpmAppFiles(QString::fromUtf8(capture(u"rpm"_s, arguments).out));
+            const QByteArray outputIgnoringPackagesNotInstalled = capture(u"rpm"_s, arguments).out;
+            return parseRpmAppFiles(QString::fromUtf8(outputIgnoringPackagesNotInstalled));
         }
     } // namespace
 
@@ -95,17 +88,18 @@ namespace UltramarineUpdates {
                 info.id = xml.readElementText(QXmlStreamReader::SkipChildElements).trimmed();
             } else if (element == "name"_L1) {
                 const QString name = xml.readElementText(QXmlStreamReader::SkipChildElements).trimmed();
-                // the untranslated name has no xml:lang
-                if (!hasName && !attributes.hasAttribute(u"http://www.w3.org/XML/1998/namespace"_s, u"lang"_s)) {
+                const bool untranslated =
+                    !attributes.hasAttribute(u"http://www.w3.org/XML/1998/namespace"_s, u"lang"_s);
+                if (!hasName && untranslated) {
                     info.name = name;
                     hasName = true;
                 }
             } else if (element == "icon"_L1) {
                 const QString iconType = attributes.value("type"_L1).toString();
-                // "cached" and "remote" icons refer to an AppStream catalog or a URL
-                if (const QString value = xml.readElementText(QXmlStreamReader::SkipChildElements).trimmed();
-                    info.icon.isEmpty() && !value.isEmpty() &&
-                    (iconType == "stock"_L1 || (iconType == "local"_L1 && QDir::isAbsolutePath(value)))) {
+                const QString value = xml.readElementText(QXmlStreamReader::SkipChildElements).trimmed();
+                const bool usableWithoutCatalog =
+                    iconType == "stock"_L1 || (iconType == "local"_L1 && QDir::isAbsolutePath(value));
+                if (info.icon.isEmpty() && !value.isEmpty() && usableWithoutCatalog) {
                     info.icon = value;
                 }
             } else if (element == "launchable"_L1) {
@@ -124,8 +118,7 @@ namespace UltramarineUpdates {
         if (xml.hasError() || (type != "desktop-application"_L1 && type != "desktop"_L1)) {
             return std::nullopt;
         }
-        // legacy metainfo has no <launchable>, so its ID is (or names) the desktop ID
-        if (info.desktopIds.isEmpty() && !info.id.isEmpty()) {
+        if (const bool legacyIdNamesLauncher = info.desktopIds.isEmpty() && !info.id.isEmpty(); legacyIdNamesLauncher) {
             info.desktopIds.append(info.id.endsWith(".desktop"_L1) ? info.id : info.id + ".desktop"_L1);
         }
         if (info.id.isEmpty() || info.name.isEmpty()) {
@@ -139,7 +132,6 @@ namespace UltramarineUpdates {
         bool visible = true;
         bool isApplication = false;
         const QStringList lines = content.split(u'\n');
-        // only the [Desktop Entry] group describes the app, since actions have their own Name and Icon
         auto line = std::ranges::find_if(lines, [](const QString &l) { return l.trimmed() == "[Desktop Entry]"_L1; });
         if (line != lines.cend()) {
             ++line;
@@ -153,7 +145,6 @@ namespace UltramarineUpdates {
             if (trimmed.startsWith(u'#') || equals < 0) {
                 continue;
             }
-            // localized keys (Name[de]=...) are skipped: the listing is not localized
             const QString key = trimmed.left(equals).trimmed();
             const QString value = trimmed.mid(equals + 1).trimmed();
             if (key == "Name"_L1) {
@@ -229,7 +220,7 @@ namespace UltramarineUpdates {
             }
             return app;
         }
-        if (!files->metainfo.isEmpty()) {
+        if (const bool metainfoSaysNotAnApp = !files->metainfo.isEmpty(); metainfoSaysNotAnApp) {
             return std::nullopt;
         }
 

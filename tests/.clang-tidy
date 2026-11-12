@@ -1,4 +1,3 @@
-# QVERIFY(optional) returns early on failure, but clang-tidy can't see through
-# QTest::qVerify, so it reports every following access as unchecked.
+# clang-tidy can't see QVERIFY returning early, so it flags every later optional access
 InheritParentConfig: true
 Checks: -bugprone-unchecked-optional-access

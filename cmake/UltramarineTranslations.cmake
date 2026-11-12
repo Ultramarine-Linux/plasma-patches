@@ -2,20 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# translations come from one Weblate catalog, po/<lang>.po (template:
-# po/ultramarine-plasma-settings.pot, written by Messages.sh). The build turns it into:
-#
-# - a .mo file installed once per runtime translation domain. KCMs have to use their
-#   plugin id as the domain (KQuickConfigModule sets it for the QML), so the catalog
-#   is installed as each KCM's domain and as ultramarine-plasma-settings for the helpers
-# - translated desktop files, polkit policies and KCM JSON metadata, merged from the
-#   same catalog
-#
-# With no po/<lang>.po yet, everything is installed untranslated.
-
 find_program(MSGFMT_EXECUTABLE msgfmt REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-# msgfmt --xml finds these on its own, this only gives a clear error when they're missing
+# msgfmt --xml finds these itself, but without a clear error when they're missing
 find_file(POLKIT_ITS_RULES polkit.its
         PATHS ${CMAKE_INSTALL_PREFIX}/share /usr/local/share /usr/share ENV XDG_DATA_DIRS
         PATH_SUFFIXES gettext/its
@@ -23,8 +12,7 @@ find_file(POLKIT_ITS_RULES polkit.its
         DOC "polkit's gettext ITS rules (polkit-devel)")
 
 set(UM_TRANSLATION_DOMAIN ultramarine-plasma-settings)
-# msgfmt --desktop and --xml read <lang>.po and LINGUAS from one directory. Copy the
-# catalogs here so LINGUAS doesn't have to be kept in po/ by hand.
+# msgfmt reads LINGUAS next to the catalogs, so copying them here avoids keeping LINGUAS in po/
 set(UM_PO_DIR ${CMAKE_BINARY_DIR}/po)
 set(_kcm_json_l10n ${CMAKE_CURRENT_LIST_DIR}/kcm-json-l10n.py)
 
@@ -47,18 +35,13 @@ foreach (_po ${_catalogs})
     list(APPEND UM_MO_FILES ${UM_PO_DIR}/${_lang}.mo)
 endforeach ()
 list(JOIN UM_LANGUAGES "\n" _linguas)
-# only rewritten when the language list changes
 file(CONFIGURE OUTPUT ${UM_PO_DIR}/LINGUAS CONTENT "${_linguas}\n" @ONLY)
 
 add_custom_target(um_translations ALL DEPENDS ${UM_PO_FILES} ${UM_MO_FILES})
 
-# um_install_translations(<domain> [COMPONENTS <component>...])
-# install the catalog as <domain>.mo for every language. A domain shared by several
-# install components is installed once per component, so each one works on its own
-# with cmake --install --component.
+# a shared domain is installed once per component so cmake --install --component works alone
 function(um_install_translations domain)
     cmake_parse_arguments(ARG "" "" "COMPONENTS" ${ARGN})
-    # without COMPONENTS, install once into CMake's default (Unspecified) component
     set(_components ${ARG_COMPONENTS})
     if (NOT _components)
         set(_components Unspecified)
@@ -74,9 +57,7 @@ function(um_install_translations domain)
     endforeach ()
 endfunction()
 
-# merges the translations into <output> with msgfmt --desktop or --xml. <template> is
-# the untranslated file after configure_file. For --xml its name has to end in .policy
-# so msgfmt finds polkit's ITS rules.
+# msgfmt --xml only finds polkit's ITS rules when the template's name ends in .policy
 function(_um_msgfmt_merge mode template output)
     cmake_path(GET output FILENAME _name)
     # Ninja creates output directories, Make doesn't
@@ -92,8 +73,6 @@ function(_um_msgfmt_merge mode template output)
     add_dependencies(${_target} um_translations)
 endfunction()
 
-# um_translate_desktop_file(<input.desktop.in> <output.desktop>)
-# configure_file()s the input, then adds the translated Name, Comment and Keywords
 function(um_translate_desktop_file input output)
     cmake_path(GET output FILENAME _name)
     set(_template ${CMAKE_CURRENT_BINARY_DIR}/untranslated/${_name})
@@ -101,8 +80,6 @@ function(um_translate_desktop_file input output)
     _um_msgfmt_merge(--desktop ${_template} ${output})
 endfunction()
 
-# um_translate_policy(<input.policy.in> <output.policy>)
-# configure_file()s the input, then adds the translated descriptions and messages
 function(um_translate_policy input output)
     cmake_path(GET output FILENAME _name)
     set(_template ${CMAKE_CURRENT_BINARY_DIR}/untranslated/${_name})
@@ -110,10 +87,7 @@ function(um_translate_policy input output)
     _um_msgfmt_merge(--xml ${_template} ${output})
 endfunction()
 
-# um_depend_on_kcm_metadata(<target> <kcm target>)
-# recompile <target>'s C++ sources when the KCM's generated JSON changes. For targets
-# that build a KCM's source themselves, like the tests. Call it from the directory
-# that creates <target>, source file properties are per directory.
+# source file properties are per directory, so call this from the directory that creates <target>
 function(um_depend_on_kcm_metadata target kcm_target)
     get_target_property(_kcm_binary_dir ${kcm_target} BINARY_DIR)
     get_target_property(_sources ${target} SOURCES)
@@ -122,12 +96,7 @@ function(um_depend_on_kcm_metadata target kcm_target)
     set_property(TARGET ${target} APPEND PROPERTY AUTOGEN_TARGET_DEPENDS ${kcm_target}_metadata)
 endfunction()
 
-# um_translate_kcm_metadata(<kcm target>)
-# writes <target>.json, with translated Name, Description and keywords, from
-# <target>.json.in into the binary dir, where moc finds it for K_PLUGIN_CLASS_WITH_JSON.
-# Also generates and installs the KCM's desktop file from it, so pass
-# DISABLE_DESKTOP_FILE_GENERATION to kcmutils_add_qml_kcm (that macro only reads the
-# JSON from the source dir).
+# generates the KCM's desktop file too, so pass DISABLE_DESKTOP_FILE_GENERATION to kcmutils_add_qml_kcm
 function(um_translate_kcm_metadata target)
     set(_input ${CMAKE_CURRENT_SOURCE_DIR}/${target}.json.in)
     set(_json ${CMAKE_CURRENT_BINARY_DIR}/${target}.json)
@@ -145,12 +114,9 @@ function(um_translate_kcm_metadata target)
     add_dependencies(${target}_metadata um_translations)
 
     add_dependencies(${target} ${target}_metadata)
-    # moc embeds the JSON, so it has to exist before moc runs
     set_property(TARGET ${target} APPEND PROPERTY AUTOGEN_TARGET_DEPENDS ${target}_metadata)
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-    # the plugin's .moc is #included by its source, and Ninja decides that source is
-    # clean before autogen rewrites the .moc. Without this, new translations only reach
-    # the plugin on the build after
+    # Ninja decides the source including the .moc is clean before autogen rewrites the .moc
     um_depend_on_kcm_metadata(${target} ${target})
 
     install(FILES ${_desktop} DESTINATION ${KDE_INSTALL_APPDIR})

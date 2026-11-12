@@ -2,13 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// ultramarine-updates: the backend of the Ultramarine Updates KCM.
-//
-// the KCM runs it as the logged-in user. Commands that need root run their
-// system part as a child through pkexec (no terminal: a polkit prompt) or sudo
-// (from a terminal), and only then the user's own part (user Flatpaks, Nix
-// profile, Plasma widgets) as the user.
-
 #include <KLocalizedString>
 
 #include <QCommandLineParser>
@@ -35,19 +28,13 @@ using namespace UltramarineUpdates;
 
 namespace {
 
-    /// pkexec's exit codes when the prompt is dismissed and when authorization fails
     constexpr int pkexecDismissed = 126;
     constexpr int pkexecNotAuthorized = 127;
-    /**
-     * what the root part of `apply` exits with when it fails. sudo exits with 1
-     * when authentication fails, so 1 can't also mean that the helper failed.
-     */
+    constexpr int sudoAuthenticationFailed = 1;
     constexpr int systemApplyFailed = 2;
-    /// how long a manual install waits for the system timer's check for a new image
     constexpr std::chrono::minutes imageCheckWait{15};
 
-    /// environment forwarded through sudo (pkexec always clears it)
-    const QStringList forwardedEnvironment{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
+    const QStringList environmentForwardedThroughSudo{u"ULTRAMARINE_UPDATES_CONFIG"_s, u"ULTRAMARINE_UPDATES_STATE"_s};
 
     void print(const QString &text) {
         std::fputs(qPrintable(text), stdout);
@@ -63,15 +50,7 @@ namespace {
         return exitCode;
     }
 
-    /**
-     * runs `<this helper> @p arguments` as root and returns its exit code: pkexec
-     * exits with 126 if the prompt is dismissed and 127 if authorization fails,
-     * which the KCM checks for. The polkit actions match our exact path and the
-     * command (argv[1]), so @p arguments must start with the command. pkexec runs
-     * it with a clean environment, so wrapping the helper in `env` would stop the
-     * actions from applying. Sets @p sudo if it ran through sudo instead.
-     */
-    int runAsRoot(const QStringList &arguments, bool *sudo = nullptr) {
+    int runAsRoot(const QStringList &escalatedArguments, bool *ranThroughSudo = nullptr) {
         const QString self = QCoreApplication::applicationFilePath();
         QString program;
         QStringList argv;
@@ -80,16 +59,16 @@ namespace {
             program = pkexec;
         } else {
             program = u"/usr/bin/sudo"_s;
-            for (const QString &name: forwardedEnvironment) {
+            for (const QString &name: environmentForwardedThroughSudo) {
                 if (qEnvironmentVariableIsSet(name.toLatin1().constData())) {
                     argv << name + u'=' + qEnvironmentVariable(name.toLatin1().constData());
                 }
             }
         }
-        if (sudo) {
-            *sudo = !program.endsWith("/pkexec"_L1);
+        if (ranThroughSudo) {
+            *ranThroughSudo = !program.endsWith("/pkexec"_L1);
         }
-        argv << self << arguments;
+        argv << self << escalatedArguments;
         std::fflush(stdout);
         std::fflush(stderr);
         const int exitCode = runForwarded(program, argv);
@@ -132,7 +111,6 @@ namespace {
                                               response.offlineError)));
             }
         }
-        // only fail when nothing could be queried at all
         return response.allFailed() ? 1 : 0;
     }
 
@@ -144,24 +122,18 @@ namespace {
             if (const InstallLock::Result locked = userLock.tryLock(&error); locked != InstallLock::Result::Acquired) {
                 return fail(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
             }
-            // system updates first: if authentication is canceled, nothing is
-            // installed, and pkexec's exit codes are passed on
-            bool sudo = false;
-            int systemExitCode = runAsRoot(escalatedCommandLine(command, parser), &sudo);
-            // sudo exits with 1 if authentication failed (or it couldn't run us at
-            // all), while our root part exits with systemApplyFailed
-            if (sudo && systemExitCode == 1) {
+            bool ranThroughSudo = false;
+            int systemExitCode = runAsRoot(escalatedCommandLine(command, parser), &ranThroughSudo);
+            if (ranThroughSudo && systemExitCode == sudoAuthenticationFailed) {
                 systemExitCode = pkexecNotAuthorized;
             }
             if (systemExitCode == pkexecDismissed || systemExitCode == pkexecNotAuthorized) {
                 return fail(i18nc("@info:status", "Authentication was canceled or failed. Nothing was installed."),
                             systemExitCode);
             }
-            // user-level updates must run as the invoking user. They're installed
-            // even if some system updates failed, which the root part already reported.
             const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing your updates"));
             const ApplyResult result = applyUser(assumeYes);
-            if (result.updated && result.installed()) {
+            if (result.updated && result.countsAsInstalled()) {
                 recordManualInstall(true, QDateTime::currentDateTime());
             }
             if (!result.ok()) {
@@ -172,20 +144,19 @@ namespace {
         }
 
         const auto failSystem = [](const QString &message) { return fail(message, systemApplyFailed); };
-        // the system timer holds the lock for a moment before it checks for a new image,
-        // so wait that long. If it's checking, wait for the check, which can take a while.
-        constexpr std::chrono::seconds probeWait{2};
+        constexpr std::chrono::seconds briefLockHolderWait{2};
         InstallLock systemLock(systemLockPath());
-        InstallLock::Result locked = systemLock.tryLock(&error, probeWait);
-        if (locked == InstallLock::Result::Busy &&
-            InstallLock(imageCheckLockPath()).tryLock() == InstallLock::Result::Busy) {
+        InstallLock::Result locked = systemLock.tryLock(&error, briefLockHolderWait);
+        const auto imageCheckRunning = [] {
+            return InstallLock(imageCheckLockPath()).tryLock() == InstallLock::Result::Busy;
+        };
+        if (locked == InstallLock::Result::Busy && imageCheckRunning()) {
             print(i18nc("@info:progress", "Waiting for the check for a new system image to finish…") + u'\n');
             locked = systemLock.tryLock(&error, imageCheckWait);
         }
         if (locked != InstallLock::Result::Acquired) {
             return failSystem(locked == InstallLock::Result::Busy ? installBusyMessage() : error);
         }
-        // read as root: pkexec cleared any development override, sudo forwards it
         QString settingsWarning;
         const Settings settings = loadSettingsOrDefaults(&settingsWarning);
         if (!settingsWarning.isEmpty()) {
@@ -194,7 +165,7 @@ namespace {
         }
         const ShutdownInhibitor inhibitor(i18nc("@info the reason shutting down waits", "Installing system updates"));
         const ApplyResult result = applySystem(assumeYes, settings.offline);
-        if (result.updated && result.installed()) {
+        if (result.updated && result.countsAsInstalled()) {
             recordManualInstall(false, QDateTime::currentDateTime());
         }
         if (!result.ok()) {
@@ -214,13 +185,11 @@ namespace {
             parser.isSet(u"inactive-minutes"_s) || parser.isSet(u"window"_s);
         QString error;
         if (changing) {
-            // ULTRAMARINE_UPDATES_CONFIG points at a development file, and escalating
-            // would drop it (pkexec clears the environment) and change the real settings
-            if (geteuid() != 0 && qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG")) {
+            const bool usingDevelopmentSettings = !qEnvironmentVariableIsEmpty("ULTRAMARINE_UPDATES_CONFIG");
+            if (geteuid() != 0 && !usingDevelopmentSettings) {
                 return runAsRoot(escalatedCommandLine(command, parser));
             }
             Settings settings;
-            // broken settings are replaced instead of getting stuck on them
             loadSettings(&settings, &error);
             const auto readBool = [&parser](const QString &name, bool *value) {
                 if (!parser.isSet(name)) {
@@ -286,7 +255,6 @@ namespace {
                 if (status.scheduled) {
                     print(i18nc("@info:status", "Updates are scheduled to install tonight.") + u'\n');
                 } else if (status.partial) {
-                    // usually the user's timer, which logging out stops
                     print(i18nc("@info:status",
                                 "Only some of tonight's updates are still scheduled. Schedule them "
                                 "again to install all of them.") +
@@ -301,8 +269,6 @@ namespace {
         const bool cancel = parser.isSet(u"cancel"_s);
         QString error;
         if (geteuid() != 0) {
-            // the system's timer first: if authentication is canceled, nothing
-            // changes. Then the user's own updates, in their user manager.
             if (const int exitCode = runAsRoot(escalatedCommandLine(command, parser)); exitCode != 0) {
                 return exitCode;
             }
@@ -312,7 +278,6 @@ namespace {
                         i18nc("@info:status %1 is an error message", "Failed to cancel your updates: %1", error));
                 }
             } else if (!scheduleTonight(true, &error)) {
-                // don't leave only the system's half scheduled
                 runAsRoot({command, u"--cancel"_s});
                 return fail(i18nc("@info:status %1 is an error message", "Failed to schedule your updates: %1", error));
             }
@@ -332,16 +297,14 @@ namespace {
         return 0;
     }
 
+    void keepInstallingWhenTheKcmCloses() { std::signal(SIGPIPE, SIG_IGN); }
+
 } // namespace
 
 int main(int argc, char *argv[]) {
-    // if the KCM goes away mid-install, writing progress to its pipe fails with
-    // EPIPE instead of killing the helper. Children keep this (see runForwarded()),
-    // so dnf and flatpak finish too.
-    std::signal(SIGPIPE, SIG_IGN);
+    keepInstallingWhenTheKcmCloses();
     const QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(u"ultramarine-updates"_s);
-    // i18n() uses TRANSLATION_DOMAIN (ultramarine-plasma-settings), set at build time
 
     QCommandLineParser parser;
     setUpParser(parser);

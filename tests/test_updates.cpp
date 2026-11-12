@@ -7,7 +7,6 @@
 
 #include "updates.h"
 
-// the helper's (updater/), to check the KCM's arguments against
 #include "cli.h"
 #include "settings.h"
 
@@ -149,9 +148,7 @@ void UpdatesTest::listsAppsFirst() {
     QCOMPARE(updates.at(2).icon, QStringLiteral("desktop"));
     QCOMPARE(updates.at(0).appId, QStringLiteral("org.mozilla.firefox"));
     QCOMPARE(updateSourceLabel(updates.at(1)), QStringLiteral("Flatpak"));
-    // runtimes never get their own icon, even if the helper reports one
     QCOMPARE(updates.at(6).icon, QStringLiteral("package-x-generic"));
-    // no icon reported: fall back to the generic one
     QCOMPARE(updates.at(4).icon, QStringLiteral("package-x-generic"));
 }
 
@@ -167,7 +164,6 @@ void UpdatesTest::parsesRestartState() {
     QVERIFY(restart.required);
     QCOMPARE(restart.stagedVersion, QStringLiteral("44.20261020.0"));
 
-    // image updates are labeled as system updates
     const auto updates = parseUpdateListing(QStringLiteral(
         R"({"updates":[{"id":"image:system","name":"Ultramarine Linux","backend":"bootc","kind":"package"}]})"));
     QCOMPARE(updateSourceLabel(updates.at(0)), QStringLiteral("System"));
@@ -181,11 +177,9 @@ void UpdatesTest::parsesOfflinePending() {
     QVERIFY(restart.offlinePending);
     QVERIFY(restart.stagedVersion.isEmpty());
 
-    // pending offline updates always need a restart
     parseUpdateListing(QStringLiteral(R"({"updates":[],"offline_pending":true})"), nullptr, nullptr, &restart);
     QVERIFY(restart.required);
 
-    // image staging keeps its version and isn't an offline update
     parseUpdateListing(
         QStringLiteral(R"({"updates":[],"restart_required":true,"offline_pending":false,"staged_version":"45.1"})"),
         nullptr, nullptr, &restart);
@@ -197,21 +191,17 @@ void UpdatesTest::parsesOfflinePending() {
 }
 
 void UpdatesTest::refreshErrorMessages() {
-    // every source failed: `list` exits 1 but still prints a listing
     QCOMPARE(refreshErrorMessage(1, R"json({"updates":[],"errors":["RPM","Flatpak (system)"]})json", "warning\n"),
              QStringLiteral("Could not check for updates from: RPM, Flatpak (system)"));
-    // some sources failed
     QCOMPARE(refreshErrorMessage(0, R"({"updates":[{"name":"foo"}],"errors":["Nix"]})", {}),
              QStringLiteral("Could not check for updates from: Nix"));
     QVERIFY(refreshErrorMessage(0, R"({"updates":[],"errors":[]})", {}).isEmpty());
-    // a failed offline update isn't a source that couldn't be checked
     QCOMPARE(refreshErrorMessage(0, R"({"updates":[],"errors":[],"offline_error":"Transaction failed"})", {}),
              QStringLiteral("The updates could not be installed while restarting: Transaction failed"));
     QCOMPARE(refreshErrorMessage(0, R"({"updates":[],"errors":["Nix"],"offline_error":"Transaction failed"})", {}),
              QStringLiteral("The updates could not be installed while restarting: Transaction failed\n"
                             "Could not check for updates from: Nix"));
 
-    // no listing: stdout is never shown
     QCOMPARE(refreshErrorMessage(2, "{\"updates\":", "Unknown option 'json'.\n"),
              QStringLiteral("Checking for updates failed (exit code 2). Unknown option 'json'."));
     QCOMPARE(refreshErrorMessage(1, {}, {}), QStringLiteral("Checking for updates failed (exit code 1)."));
@@ -232,9 +222,7 @@ void UpdatesTest::upgradeSettingsDefaults() {
     UpgradeSettings changed = defaults;
     QVERIFY(changed == defaults);
     changed.windowEnd = changed.windowStart;
-    // the times aren't stored while the window is off, so they don't make it a change
     QVERIFY(changed == defaults);
-    // an equal start and end only matters once the window is used, since the helper rejects it then
     QVERIFY(changed.isValid());
     changed.windowEnabled = true;
     QVERIFY(changed != defaults);
@@ -261,12 +249,10 @@ void UpdatesTest::parsesUpgradeSettings() {
         QStringList({QStringLiteral("settings"), QStringLiteral("--automatic=true"), QStringLiteral("--offline=false"),
                      QStringLiteral("--inactive-minutes=15"), QStringLiteral("--window=22:00-06:30")}));
 
-    // an empty window means any time
     QVERIFY(parseUpgradeSettings(R"({"window_start":"","window_end":""})", &settings));
     QVERIFY(!settings.windowEnabled);
     QCOMPARE(upgradeSettingsArguments(settings).constLast(), QStringLiteral("--window="));
 
-    // missing keys keep the defaults
     QVERIFY(parseUpgradeSettings("{}", &settings));
     QVERIFY(settings == UpgradeSettings{});
     QVERIFY(!parseUpgradeSettings("Automatic updates: true", &settings));
@@ -305,7 +291,6 @@ void UpdatesTest::helperAcceptsUpgradeSettingsArguments() {
     settings.windowStart = 22 * 60;
     settings.windowEnd = 6 * 60 + 30;
     check(settings);
-    // midnight and the last minute of the day, which need their leading zeros
     settings.windowStart = 0;
     settings.windowEnd = 24 * 60 - 1;
     check(settings);
@@ -319,7 +304,6 @@ void UpdatesTest::parsesScheduleStatus() {
     QVERIFY(!partial);
     QVERIFY(parseScheduleStatus(R"({"scheduled":false})", &scheduled));
     QVERIFY(!scheduled);
-    // only the system or the user part is still scheduled
     QVERIFY(parseScheduleStatus(R"({"scheduled":false,"partial":true})", &scheduled, &partial));
     QVERIFY(!scheduled);
     QVERIFY(partial);
@@ -333,7 +317,6 @@ void UpdatesTest::upgradeSettingsIgnoreUnusedWindow() {
     edited.windowEnd = 6 * 60;
     QVERIFY(edited == saved);
 
-    // once the window is used, its times matter
     edited.windowEnabled = true;
     saved.windowEnabled = true;
     QVERIFY(edited != saved);
@@ -355,7 +338,6 @@ void UpdatesTest::installErrorMessages() {
     QCOMPARE(installErrorMessage(0, QProcess::CrashExit, "partial log\n"),
              QStringLiteral("Updating failed: the update helper stopped unexpectedly."));
     QCOMPARE(installErrorMessage(1, QProcess::NormalExit, {}), QStringLiteral("Updating failed (exit code 1)."));
-    // stdout (the package manager's log) is never passed, and only stderr's last lines are shown
     QByteArray stdErr;
     for (int line = 1; line <= 15; ++line) {
         stdErr += "line " + QByteArray::number(line) + '\n';
@@ -364,10 +346,8 @@ void UpdatesTest::installErrorMessages() {
     QVERIFY(message.startsWith(QStringLiteral("Updating failed (exit code 1). line 6\n")));
     QVERIFY(message.endsWith(QStringLiteral("\nline 15")));
     QVERIFY(!message.contains(QStringLiteral("line 5\n")));
-    // no special case for messages that mention updates
     QCOMPARE(installErrorMessage(1, QProcess::NormalExit, "Error: no updates could be downloaded\n"),
              QStringLiteral("Updating failed (exit code 1). Error: no updates could be downloaded"));
-    // helper output is UTF-8 whatever the locale
     QCOMPARE(installErrorMessage(1, QProcess::NormalExit, "Fehler: ungültig"),
              QStringLiteral("Updating failed (exit code 1). Fehler: ungültig"));
     QVERIFY(installErrorMessage(126, QProcess::NormalExit, {}).startsWith(QStringLiteral("Authentication")));
@@ -393,7 +373,6 @@ void UpdatesTest::composesErrorMessages() {
     QVERIFY(composeErrorMessage({}, {}).isEmpty());
     QCOMPARE(composeErrorMessage(QStringLiteral("install"), {}), QStringLiteral("install"));
     QCOMPARE(composeErrorMessage({}, QStringLiteral("check")), QStringLiteral("check"));
-    // the install error comes first and the check's error below it, each shown once
     QCOMPARE(composeErrorMessage(QStringLiteral("install"), QStringLiteral("check")), QStringLiteral("install\ncheck"));
 }
 
@@ -402,7 +381,6 @@ void UpdatesTest::findsLastOutputLine() {
     QVERIFY(lastOutputLine(" \n\t\r\n").isEmpty());
     QCOMPARE(lastOutputLine("only"), QStringLiteral("only"));
     QCOMPARE(lastOutputLine("first\nsecond\n"), QStringLiteral("second"));
-    // trailing blank lines and padding are skipped
     QCOMPARE(lastOutputLine("first\n  Downloading foo  \r\n\n \n"), QStringLiteral("Downloading foo"));
     QCOMPARE(lastOutputLine("\nlast"), QStringLiteral("last"));
     QCOMPARE(lastOutputLine("a\nWird ausgeführt\n"), QStringLiteral("Wird ausgeführt"));

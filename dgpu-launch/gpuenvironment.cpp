@@ -17,6 +17,16 @@ using namespace Qt::StringLiterals;
 
 namespace DgpuLaunch {
 
+    namespace {
+        QProcessEnvironment environmentFromNameValuePairs(const QStringList &pairs) {
+            QProcessEnvironment environment;
+            for (qsizetype i = 0; i + 1 < pairs.size(); i += 2) {
+                environment.insert(pairs.at(i), pairs.at(i + 1));
+            }
+            return environment;
+        }
+    } // namespace
+
     QProcessEnvironment gpuEnvironment(const QList<QVariantMap> &gpus) {
         const auto isDefault = [](const QVariantMap &gpu) { return gpu.value(u"Default"_s).toBool(); };
         auto gpu = std::ranges::find_if(
@@ -25,16 +35,10 @@ namespace DgpuLaunch {
             gpu = std::ranges::find_if(gpus, [&](const QVariantMap &gpu) { return !isDefault(gpu); });
         }
 
-        QProcessEnvironment environment;
         if (gpu == gpus.end()) {
-            return environment;
+            return {};
         }
-        // name, value, name, value...
-        const QStringList pairs = gpu->value(u"Environment"_s).toStringList();
-        for (qsizetype i = 0; i + 1 < pairs.size(); i += 2) {
-            environment.insert(pairs.at(i), pairs.at(i + 1));
-        }
-        return environment;
+        return environmentFromNameValuePairs(gpu->value(u"Environment"_s).toStringList());
     }
 
     std::optional<QList<QVariantMap>> switcherooGpus() {
@@ -52,8 +56,6 @@ namespace DgpuLaunch {
     }
 
     QProcessEnvironment fallbackEnvironment(const bool nvidiaLoaded) {
-        // the same as switcheroo-control: the PRIME offload variables for the nvidia
-        // driver, DRI_PRIME for everything else, never both
         QProcessEnvironment environment;
         if (nvidiaLoaded) {
             environment.insert(u"__GLX_VENDOR_LIBRARY_NAME"_s, u"nvidia"_s);

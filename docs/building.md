@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-On Fedora or Ultramarine, install the Qt 6 and KDE Frameworks 6 development packages, CMake, Extra CMake Modules, a C++ compiler, gettext and Python:
+The project needs Qt 6.6 and KDE Frameworks 6.0 or newer. On Fedora or Ultramarine:
 
 ```bash
 sudo dnf install \
@@ -13,8 +13,6 @@ sudo dnf install \
     kf6-kirigami-addons lld
 ```
 
-The project requires Qt 6.6 and KDE Frameworks 6.0 or newer.
-
 - `flatpak-devel` (libflatpak) lets the office suite installer install from Flathub
   with a polkit prompt. KIO and KService start apps from the office suite installer
   and the dGPU launcher.
@@ -23,9 +21,9 @@ The project requires Qt 6.6 and KDE Frameworks 6.0 or newer.
   `msgfmt` and `xgettext` which strings in a polkit policy are translatable.
 - `kf6-kirigami-addons` is only needed at runtime. KCM pages built with
   `org.kde.kirigamiaddons.formcard` (Location Services) fail to load without it.
-- `lld` is optional but recommended. CMake links with it when it finds `ld.lld`,
-  and falls back to the compiler's default linker otherwise. Pick a linker
-  explicitly with `-DCMAKE_LINKER_TYPE=` (for example `BFD` or `MOLD`).
+- `lld` is optional. CMake links with it when it finds `ld.lld` and falls back to
+  the compiler's default linker otherwise. Pick one explicitly with
+  `-DCMAKE_LINKER_TYPE=` (for example `BFD` or `MOLD`).
 
 ## Configure, build and test
 
@@ -44,20 +42,20 @@ the location helper and the office suite installer follow `CMAKE_INSTALL_PREFIX`
 The systemd unit and udev rules directories come from `systemd.pc` and `udev.pc`
 with `/usr` swapped for the prefix (falling back to `lib/systemd/{system,user}` and
 `lib/udev/rules.d` under it), and can be set with `-DSYSTEMD_SYSTEM_UNIT_DIR=`,
-`-DSYSTEMD_USER_UNIT_DIR=` and `-DUDEV_RULES_DIR=`. Build directories configured before they did still have the old paths cached,
-so reconfigure those with `cmake --fresh` (or `just clean`) before changing the
-prefix.
+`-DSYSTEMD_USER_UNIT_DIR=` and `-DUDEV_RULES_DIR=`. These paths are cached, so
+reconfigure with `cmake --fresh` (or `just clean`) before changing the prefix of an
+existing build directory.
 
-The `justfile` also provides `just build`, `just test`, `just install`, and
-`just install-user`. `just configure` generates `compile_commands.json` for
-clangd, and passes any extra arguments to CMake
+The `justfile` wraps these as `just build`, `just test`, `just install` and
+`just install-user`. `just configure` generates `compile_commands.json` for clangd
+and passes extra arguments to CMake
 (`just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror`).
 
 `just install-user` builds the Updates and Tweaks KCMs in `build-user` and installs
-only them under `~/.local`. The update helper, the location helper, their polkit
-actions, the systemd units, the udev rule and the autostart entry are only read from
-system locations, and polkit only matches the helpers' system paths, so it builds the
-Updates KCM to run `/usr/libexec/ultramarine-updates`. Install that with
+only them under `~/.local`. The helpers, their polkit actions, the systemd units, the
+udev rule and the autostart entry are only read from system locations, and polkit only
+matches the helpers' system paths, so the Updates KCM is built to run
+`/usr/libexec/ultramarine-updates`. Install that with
 `just dev-updates-install` (or the RPM). The Location Services KCM isn't installed:
 its switch needs `/usr/libexec/ultramarine-location-helper` and its polkit policy
 installed system-wide, so use `just install` for it.
@@ -84,7 +82,7 @@ just run location
 
 ## Test the update helper
 
-The helper can list updates and show settings straight from the build:
+The helper runs straight from the build:
 
 ```bash
 just helper list --json
@@ -102,10 +100,10 @@ just dev-updates-uninstall
 
 `dev-updates-install` installs only the `ultramarine-updates` CMake component:
 the helper, its polkit action, systemd units and autostart entry. The automatic
-update timer is not enabled; to try automatic updates, run
+update timer isn't enabled. To try automatic updates, run
 `sudo systemctl enable --now ultramarine-updates-automatic.timer` (with the
 default settings, they install once the device has been unused for 5 minutes).
-The page's Apply button actually installs updates. See
+The page's Apply button installs real updates. See
 [Update helper](updates-backend.md) for behavior.
 
 ## Test with a development umcli
@@ -120,9 +118,8 @@ just dev-um-uninstall
 ```
 
 `dev-um-install` builds `../umcli` and installs the CLI, its data and its polkit
-action for local testing. It uses `sudo` to change system files.
-`dev-um-uninstall` removes those files. See [umcli backend](umcli-backend.md)
-for behavior and limitations.
+action with `sudo`, and `dev-um-uninstall` removes them. See
+[umcli backend](umcli-backend.md) for behavior and limitations.
 
-When testing the Tweaks page, enabling or running a tweak executes its Ansible
-playbook/script with administrator privileges.
+Enabling or running a tweak from the page runs its Ansible playbook or script as
+root on the test machine.

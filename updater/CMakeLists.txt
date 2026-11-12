@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# the update backend: listing, installing, automatic updates and Apply Tonight.
-# The library is shared by the helper and the tests.
 add_library(ultramarine_updates_core STATIC
         cli.cpp
         process.cpp
@@ -37,8 +35,6 @@ add_executable(ultramarine-updates main.cpp)
 target_compile_definitions(ultramarine-updates PRIVATE TRANSLATION_DOMAIN="${UM_TRANSLATION_DOMAIN}")
 target_link_libraries(ultramarine-updates PRIVATE ultramarine_updates_core)
 
-# everything the helper needs at runtime is in this component, so a development
-# build can install just the backend: cmake --install build --component ultramarine-updates
 set(_component COMPONENT ultramarine-updates)
 
 cmake_path(GET ULTRAMARINE_UPDATES_EXECUTABLE PARENT_PATH _helper_dir)
@@ -54,11 +50,9 @@ endforeach ()
 um_translate_policy(${_data}/org.ultramarine.updates.policy.in ${_generated}/org.ultramarine.updates.policy)
 um_translate_desktop_file(${_data}/ultramarine-updates-user.desktop.in ${_generated}/ultramarine-updates-user.desktop)
 
-# polkit only reads actions from /usr/share/polkit-1/actions
 install(FILES ${_generated}/org.ultramarine.updates.policy
         DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/actions ${_component})
 
-# the system timer has an [Install] section, and Ultramarine's presets enable it
 install(FILES ${_generated}/ultramarine-updates-automatic.service ${_data}/ultramarine-updates-automatic.timer
         DESTINATION ${SYSTEMD_SYSTEM_UNIT_DIR} ${_component})
 

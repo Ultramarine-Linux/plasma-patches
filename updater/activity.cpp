@@ -32,15 +32,11 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// logind and PowerDevil answer right away. Don't hang a timer run if they don't.
         constexpr int dbusTimeoutMs = 10'000;
         const auto screenInhibitedMarker = u"/ultramarine-updates/screen-inhibited"_s;
-        /// a timestamp and a newline
         constexpr qint64 maxMarkerSize = 32;
-        /// more than any timestamp we write, so a broken file isn't read whole
         constexpr qint64 maxTimestampSize = 64;
 
-        /// closes a file descriptor when it goes out of scope
         struct FileDescriptor {
             explicit FileDescriptor(const int descriptor) : fd(descriptor) {}
             ~FileDescriptor() {
@@ -103,10 +99,9 @@ namespace UltramarineUpdates {
             } else if (key == "User"_L1) {
                 current->uid = value.toUInt();
             } else if (key == "IdleSinceHint"_L1) {
-                // microseconds since the epoch, 0 if never set. loginctl doesn't format it.
                 bool ok = false;
-                if (const qint64 usec = value.toLongLong(&ok); ok && usec > 0) {
-                    current->idleSince = QDateTime::fromMSecsSinceEpoch(usec / 1000);
+                if (const qint64 microsecondsSinceEpoch = value.toLongLong(&ok); ok && microsecondsSinceEpoch > 0) {
+                    current->idleSince = QDateTime::fromMSecsSinceEpoch(microsecondsSinceEpoch / 1000);
                 }
             }
         }
@@ -184,7 +179,6 @@ namespace UltramarineUpdates {
             }
         }
         return std::ranges::any_of(inhibitors, [&owners](const Inhibitor &inhibitor) {
-            // PowerDevil blocks logind's handling of power keys and the lid, which isn't about the screen
             return inhibitor.mode == "block"_L1 && inhibitor.uid != 0 && owners.contains(inhibitor.uid) &&
                 inhibitor.who != "PowerDevil"_L1 && inhibitor.who != QLatin1StringView(inhibitorName) &&
                 inhibitor.what.split(u':').contains("idle"_L1);
@@ -199,7 +193,6 @@ namespace UltramarineUpdates {
         if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) {
             return {};
         }
-        // a(ssssuu), read by hand rather than registering a metatype for it
         QList<Inhibitor> inhibitors;
         const auto argument = reply.arguments().constFirst().value<QDBusArgument>();
         argument.beginArray();
@@ -216,13 +209,11 @@ namespace UltramarineUpdates {
     }
 
     bool screenInhibitedInSession() {
-        // kscreenlocker's org.freedesktop.ScreenSaver.Inhibit adds a ChangeScreenSettings
-        // inhibition here (PowerDevil::PolicyAgent::RequiredPolicy)
-        constexpr uint changeScreenSettings = 4;
+        constexpr uint policyAgentChangeScreenSettings = 4;
         QDBusMessage call = QDBusMessage::createMethodCall(
             u"org.kde.Solid.PowerManagement.PolicyAgent"_s, u"/org/kde/Solid/PowerManagement/PolicyAgent"_s,
             u"org.kde.Solid.PowerManagement.PolicyAgent"_s, u"HasInhibition"_s);
-        call << changeScreenSettings;
+        call << policyAgentChangeScreenSettings;
         const QDBusReply<bool> reply = QDBusConnection::sessionBus().call(call, QDBus::Block, dbusTimeoutMs);
         return reply.isValid() && reply.value();
     }
@@ -255,8 +246,7 @@ namespace UltramarineUpdates {
             return fstat(fd, &info) == 0 && info.st_uid == uid &&
                 (directory ? S_ISDIR(info.st_mode) : S_ISREG(info.st_mode) && info.st_size <= maxMarkerSize);
         };
-        // the user could swap in symlinks (for the file or its directory), FIFOs or
-        // devices, so only open what's checked, by descriptor, without following links
+        // the user can swap in symlinks, FIFOs or devices, so only open by descriptor without following links
         const QFileInfo info(path);
         const FileDescriptor directory(
             open(QFile::encodeName(info.path()).constData(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
@@ -283,9 +273,9 @@ namespace UltramarineUpdates {
     }
 
     bool onACPower() {
-        // treat a missing systemd-ac-power as AC power rather than never updating
         const CommandResult result = capture(QStandardPaths::findExecutable(u"systemd-ac-power"_s), {});
-        return !result.started || result.exitCode == 0;
+        const bool powerSourceUnknown = !result.started;
+        return powerSourceUnknown || result.exitCode == 0;
     }
 
     std::optional<QDateTime> parseTimestamp(const QByteArray &text) {
@@ -294,7 +284,6 @@ namespace UltramarineUpdates {
         if (!ok) {
             return std::nullopt;
         }
-        // out of QDateTime's range, which would compare as long ago and never expire
         QDateTime time = QDateTime::fromSecsSinceEpoch(seconds);
         if (!time.isValid()) {
             return std::nullopt;
@@ -317,7 +306,6 @@ namespace UltramarineUpdates {
             }
             return false;
         }
-        // replaced atomically, so a crash or full disk never leaves a truncated timestamp
         if (QSaveFile file(path); !file.open(QIODevice::WriteOnly) ||
             file.write(QByteArray::number(time.toSecsSinceEpoch()) + '\n') < 0 || !file.commit()) {
             if (error) {
@@ -344,18 +332,15 @@ namespace UltramarineUpdates {
             QFile::remove(m_sincePath);
             return std::chrono::seconds(0);
         }
-        // wall-clock time also passes while suspended or switched off. Only time
-        // the polls saw counts, so a missed poll starts over.
-        const bool watched = lastPoll && *lastPoll <= now && lastPoll->secsTo(now) <= m_maxPollGap.count();
-        if (!watched) {
+        const bool pollsWereContinuous = lastPoll && *lastPoll <= now && lastPoll->secsTo(now) <= m_maxPollGap.count();
+        if (!pollsWereContinuous) {
             writeTimestamp(m_sincePath, now, nullptr);
             return std::chrono::seconds(0);
         }
         std::optional<QDateTime> since = readTimestamp(m_sincePath);
         if (!since || *since > now) {
-            // it started since the last poll. Count from when the session went
-            // idle if it says, which can only be later, since that poll saw it in use.
-            since = idleSince && *idleSince > *lastPoll && *idleSince <= now ? *idleSince : now;
+            const bool wentIdleSinceLastPoll = idleSince && *idleSince > *lastPoll && *idleSince <= now;
+            since = wentIdleSinceLastPoll ? *idleSince : now;
             writeTimestamp(m_sincePath, *since, nullptr);
         }
         return std::chrono::seconds(since->secsTo(now));

@@ -20,12 +20,12 @@ namespace UltramarineUpdates {
     QList<RpmUpdate> parseDnfCheckUpdate(const QString &output) {
         QList<RpmUpdate> updates;
         for (const QStringList lines = output.split(u'\n'); const QString &line: lines) {
-            if (line.trimmed().startsWith("Obsoleting"_L1)) {
-                // everything after this header lists obsoleted packages, not upgrades
+            if (const bool obsoletesSectionStarts = line.trimmed().startsWith("Obsoleting"_L1);
+                obsoletesSectionStarts) {
                 break;
             }
-            // continuation lines (wrapped or obsoleted entries) are indented
-            if (line.isEmpty() || line.front() == u' ' || line.front() == u'\t') {
+            if (const bool isContinuationLine = !line.isEmpty() && (line.front() == u' ' || line.front() == u'\t');
+                line.isEmpty() || isContinuationLine) {
                 continue;
             }
             const QStringList fields = line.simplified().split(u' ', Qt::SkipEmptyParts);
@@ -91,27 +91,25 @@ namespace UltramarineUpdates {
         }
 
         struct RpmSizes {
-            /// download size and install size of each upgrade, from dnf
             QHash<QString, UpgradeSize> upgrades;
-            /// size of each installed package, in UpgradeSize::download
-            QHash<QString, UpgradeSize> installed;
+            QHash<QString, UpgradeSize> installedSizeColumns;
+
+            [[nodiscard]] qint64 installedSize(const QString &nameArch) const {
+                return installedSizeColumns.value(nameArch).download;
+            }
         };
 
         RpmSizes rpmSizes(const QStringList &nameArchs) {
             RpmSizes sizes;
-            // dnf5's --queryformat doesn't interpret escapes, so pass real tabs/newlines
             sizes.upgrades = parseTabSizes(
                 localeIndependentOutput(u"dnf"_s,
                                         {u"repoquery"_s, u"--upgrades"_s, u"--latest-limit=1"_s, u"--queryformat"_s,
                                          u"%{name}.%{arch}\t%{downloadsize}\t%{installsize}\n"_s}));
-            // install-only packages (kernels) can be installed several times. The
-            // line for the last one wins, which is close enough for an estimate.
-            sizes.installed = parseTabSizes(localeIndependentOutput(
+            sizes.installedSizeColumns = parseTabSizes(localeIndependentOutput(
                 u"rpm"_s, QStringList{u"-q"_s, u"--qf"_s, u"%{NAME}.%{ARCH}\t%{SIZE}\n"_s} + nameArchs));
             return sizes;
         }
 
-        /// the size of the new package from dnf, minus the size of the installed one
         void applyRpmSizes(QList<PackageUpdate> &updates, const RpmSizes &sizes) {
             for (PackageUpdate &update: updates) {
                 const auto size = sizes.upgrades.constFind(update.id);
@@ -120,18 +118,18 @@ namespace UltramarineUpdates {
                 }
                 update.downloadSize = size->download;
                 if (size->installed > 0) {
-                    update.installedSizeChange = size->installed - sizes.installed.value(update.id).download;
+                    update.installedSizeChange = size->installed - sizes.installedSize(update.id);
                 }
             }
         }
     } // namespace
 
     QList<PackageUpdate> rpmPackageUpdates(QString *error) {
-        // dnf check-update exits with 100 when updates are available. No
-        // --refresh: let dnf decide when metadata has expired, otherwise every
-        // (unprivileged, separately cached) listing re-downloads all metadata.
+        constexpr int dnfUpdatesAvailableExitCode = 100;
         QString output;
-        if (!commandOutput(QStandardPaths::findExecutable(u"dnf"_s), {u"check-update"_s}, &output, error, {100})) {
+        // no --refresh, or every unprivileged listing re-downloads all metadata
+        if (!commandOutput(QStandardPaths::findExecutable(u"dnf"_s), {u"check-update"_s}, &output, error,
+                           {dnfUpdatesAvailableExitCode})) {
             return {};
         }
         const QList<RpmUpdate> updates = parseDnfCheckUpdate(output);

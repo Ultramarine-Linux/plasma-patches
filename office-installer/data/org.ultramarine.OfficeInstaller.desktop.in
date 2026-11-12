@@ -1,15 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com>
 # SPDX-License-Identifier: GPL-3.0-only
 
-# claims the office formats, so documents open here while no office suite is
-# installed. Formats that are also plain text (CSV, RTF, flat ODF) are left to
-# text editors. When a suite is installed, this sorts after it: KDE breaks ties
-# by desktop file name, and org.ultramarine comes after com.collaboraoffice,
-# libreoffice-*, org.libreoffice and org.onlyoffice.
-# NoDisplay hides it from the launchers, but not from file managers' "Open With"
-# menus, which list every handler. So the name has to make sense there too, even
-# with a suite installed. Name and Comment are translated through the gettext catalog
-# and merged in at build time (see docs/translations.md).
+# KDE breaks ties between handlers by desktop file name, so this file name must sort
+# after com.collaboraoffice, libreoffice-*, org.libreoffice and org.onlyoffice
 [Desktop Entry]
 Type=Application
 Name=Office Suite Installer

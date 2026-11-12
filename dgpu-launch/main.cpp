@@ -2,13 +2,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// ultramarine-dgpu-launch: runs an app on the discrete GPU. The launchers'
-// "Launch Using Dedicated Graphics Card" action passes the app's desktop file.
-//
-// It runs the desktop file's Exec line itself, with the discrete GPU's
-// environment added. KIO's ApplicationLauncherJob (and so kioclient exec and
-// PrefersNonDefaultGPU) starts DBusActivatable apps over D-Bus instead, which
-// drops the environment, so they'd silently run on the integrated GPU.
+// runs the Exec line directly because KIO starts DBusActivatable apps over D-Bus,
+// which drops the GPU environment
 
 #include <KDesktopFile>
 #include <KIO/CommandLauncherJob>
@@ -31,14 +26,18 @@ namespace {
         KMessageBox::error(nullptr, message, i18nc("@title:window", "Launch Using Dedicated Graphics Card"));
         return 1;
     }
+
+    QByteArray takeStartupIdBeforeQtConsumesIt() {
+        const QByteArray startupId = qEnvironmentVariableIsSet("XDG_ACTIVATION_TOKEN") ? qgetenv("XDG_ACTIVATION_TOKEN")
+                                                                                       : qgetenv("DESKTOP_STARTUP_ID");
+        qunsetenv("XDG_ACTIVATION_TOKEN");
+        qunsetenv("DESKTOP_STARTUP_ID");
+        return startupId;
+    }
 } // namespace
 
 int main(int argc, char **argv) {
-    // the launcher's startup notification, read before Qt's Wayland plugin uses up the token
-    const QByteArray startupId = qEnvironmentVariableIsSet("XDG_ACTIVATION_TOKEN") ? qgetenv("XDG_ACTIVATION_TOKEN")
-                                                                                   : qgetenv("DESKTOP_STARTUP_ID");
-    qunsetenv("XDG_ACTIVATION_TOKEN");
-    qunsetenv("DESKTOP_STARTUP_ID");
+    const QByteArray startupId = takeStartupIdBeforeQtConsumesIt();
 
     const QApplication app(argc, argv);
     KLocalizedString::setApplicationDomain(TRANSLATION_DOMAIN);
@@ -60,15 +59,12 @@ int main(int argc, char **argv) {
     if (!url.isLocalFile() || !service->isValid() || !service->isApplication()) {
         return fail(i18n("“%1” isn't an app.", url.toDisplayString(QUrl::PreferLocalFile)));
     }
-    // running the Exec line directly skips KIO's prompt for untrusted desktop files, so only
-    // run ones it would run without asking: installed apps, or executable or root-owned files
     if (!KDesktopFile::isAuthorizedDesktopFile(url.toLocalFile())) {
         return fail(i18n("“%1” isn't a trusted app. Only installed apps, or desktop files marked as executable, "
                          "can be launched on the dedicated graphics card.",
                          url.toDisplayString(QUrl::PreferLocalFile)));
     }
 
-    // handles field codes, Terminal=true and the like, the same way KIO does
     const KIO::DesktopExecParser execParser(*service, {});
     QStringList arguments = execParser.resultingArguments();
     if (arguments.isEmpty()) {
@@ -81,7 +77,6 @@ int main(int argc, char **argv) {
 
     const QString program = arguments.takeFirst();
     auto *job = new KIO::CommandLauncherJob(program, arguments);
-    // starts it in its own app-*.service unit with the app's name and icon, like the launchers do
     job->setDesktopName(service->desktopEntryName());
     job->setWorkingDirectory(service->workingDirectory());
     job->setProcessEnvironment(environment);

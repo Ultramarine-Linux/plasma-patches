@@ -12,7 +12,6 @@ import org.kde.kirigami as Kirigami
 import org.kde.kirigami.delegates as KD
 import org.kde.kcmutils as KCMUtils
 
-// every pending update with its full source and versions
 KCMUtils.ScrollViewKCM {
     id: page
 
@@ -28,7 +27,6 @@ KCMUtils.ScrollViewKCM {
         }
     }
 
-    // Qt Quick has no clipboard API, so copy through a hidden text field
     TextEdit {
         id: clipboardHelper
         visible: false
@@ -56,10 +54,8 @@ KCMUtils.ScrollViewKCM {
             required property var model
 
             width: ListView.view.width
-            // read by screen readers. The content item below shows it.
             text: delegate.model.name
             Accessible.description: details.subtitle
-            // rows only show information, so they do nothing when clicked and aren't tab stops
             down: false
             hoverEnabled: false
             focusPolicy: Qt.NoFocus

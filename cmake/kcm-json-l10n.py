@@ -3,29 +3,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Translate the user-visible strings in KCM JSON metadata through gettext.
-
-gettext can merge desktop files and polkit policies itself (msgfmt --desktop and
---xml), but not KPlugin JSON. This does the same job for JSON:
-
-  kcm-json-l10n.py extract <output.pot> <kcm.json.in>...
-      writes a POT with the translatable strings, for Messages.sh
-
-  kcm-json-l10n.py merge <kcm.json.in> <output.json> <podir>
-      writes the JSON with "Name[de]"-style keys added, from the compiled
-      <podir>/<lang>.mo catalogs of the languages listed in <podir>/LINGUAS
-"""
-
 import gettext
 import json
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
-# (path to the object holding the key, key, comment for translators)
+USAGE = """usage:
+  kcm-json-l10n.py extract <output.pot> <kcm.json.in>...
+  kcm-json-l10n.py merge <kcm.json.in> <output.json> <podir>"""
+
+
+class TranslatableField(NamedTuple):
+    parent_path: tuple
+    key: str
+    translator_comment: str
+
+
 FIELDS = [
-    (("KPlugin",), "Name", "name of the page in System Settings"),
-    (("KPlugin",), "Description", "description of the page in System Settings"),
-    (
+    TranslatableField(("KPlugin",), "Name", "name of the page in System Settings"),
+    TranslatableField(("KPlugin",), "Description", "description of the page in System Settings"),
+    TranslatableField(
         (),
         "X-KDE-Keywords",
         "comma-separated search keywords for the page in System Settings. "
@@ -35,13 +33,13 @@ FIELDS = [
 
 
 def strings(data):
-    for path, key, comment in FIELDS:
-        obj = data
-        for part in path:
-            obj = obj.get(part, {})
-        value = obj.get(key)
+    for field in FIELDS:
+        parent = data
+        for part in field.parent_path:
+            parent = parent.get(part, {})
+        value = parent.get(field.key)
         if isinstance(value, str) and value:
-            yield obj, key, value, comment
+            yield parent, field.key, value, field.translator_comment
 
 
 def po_quote(text):
@@ -49,7 +47,6 @@ def po_quote(text):
 
 
 def extract(output, sources):
-    # xgettext merges the duplicates when Messages.sh runs msgcat
     lines = [
         'msgid ""',
         'msgstr ""',
@@ -86,8 +83,8 @@ def merge(source, output, podir):
                 translated = catalog.pgettext(key, value)
             else:
                 translated = catalog.gettext(value)
-            # gettext returns the msgid itself when the string is untranslated
-            if translated != value:
+            is_translated = translated != value
+            if is_translated:
                 obj[f"{key}[{lang}]"] = translated
 
     text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
@@ -100,7 +97,7 @@ def main(argv):
     elif len(argv) == 5 and argv[1] == "merge":
         merge(argv[2], argv[3], argv[4])
     else:
-        print(__doc__, file=sys.stderr)
+        print(USAGE, file=sys.stderr)
         return 2
     return 0
 

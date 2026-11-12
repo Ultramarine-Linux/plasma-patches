@@ -22,8 +22,8 @@ sources by type among the tracked files, so new files are picked up without edit
 | `*.json.in` | KCM `Name`, `Description` and `X-KDE-Keywords` |
 
 References in the template name the file but not the line, and `POT-Creation-Date` only
-changes along with the strings. The template therefore only changes when the strings do.
-CI regenerates it and fails when the committed copy is out of date.
+changes along with the strings, so the template only changes when the strings do. CI
+regenerates it and fails when the committed copy is out of date.
 
 `Messages.sh` needs `git`, `gettext`, `python3` and `polkit-devel` (for polkit's ITS
 rules, `/usr/share/gettext/its/polkit.its`, or set `POLKIT_ITS`).
@@ -48,8 +48,8 @@ There's no `LINGUAS` file to maintain. The build makes one from the `po/*.po` it
   the KCM's plugin ID as its domain (`KQuickConfigModule` sets it), so the KCMs keep
   `kcm_ultramarine_updates`, `kcm_ultramarine_tweaks` and `kcm_ultramarine_location`.
   The update helper, dGPU launcher and office suite installer share
-  `ultramarine-plasma-settings`. Every domain gets the whole catalog. It's small, and
-  this way nothing has to work out which strings belong to which domain.
+  `ultramarine-plasma-settings`. Every domain gets the whole catalog, which is small,
+  so nothing has to work out which strings belong to which domain.
 - **merges translations into the metadata.** Desktop files go through
   `msgfmt --desktop` and polkit policies through `msgfmt --xml`, which adds the
   `Name[de]=` keys and `xml:lang` elements. gettext has no JSON merge, so
@@ -69,5 +69,5 @@ and `um_translate_kcm_metadata` cover the current ones).
 
 The spec needs `BuildRequires: gettext`, `python3` and `polkit-devel`. All four domains
 come from the same catalog and are noarch data, so `-common` (which every subpackage
-requires) owns them through `%find_lang`. That way, for example, the update helper's
-notifications are translated even when the Updates KCM isn't installed.
+requires) owns them through `%find_lang`. The update helper's notifications are then
+translated even when the Updates KCM isn't installed.

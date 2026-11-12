@@ -4,8 +4,7 @@ prefix := "/usr"
 
 default: build
 
-# configure the cmake build directory. Extra arguments go to cmake, e.g.
-# just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror
+# configure the build directory, e.g. just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror
 configure type=build_type pfx=prefix *args:
     cmake -S . -B {{ build_dir }} \
         -DCMAKE_BUILD_TYPE={{ type }} \
@@ -17,20 +16,19 @@ build:
     @[ -f {{ build_dir }}/CMakeCache.txt ] || just build_dir={{ build_dir }} build_type={{ build_type }} prefix={{ prefix }} configure
     cmake --build {{ build_dir }} --parallel
 
-# regenerate po/ultramarine-plasma-settings.pot for Weblate (needs gettext, python3 and polkit-devel)
+# regenerate the translation template (needs gettext, python3 and polkit-devel)
 translations:
     ./Messages.sh
 
-# format every tracked C++ file in place with clang-format (uses .clang-format)
+# clang-format every tracked C++ file in place
 format:
     git ls-files -z '*.cpp' '*.h' | xargs -0 -r clang-format -i
 
-# fail if any tracked C++ file isn't clang-formatted, without changing anything
+# fail if any tracked C++ file isn't clang-formatted
 format-check:
     git ls-files -z '*.cpp' '*.h' | xargs -0 -r clang-format --dry-run --Werror
 
-# run cppcheck with the same checks as CI (.github/workflows/cpp-ci.yml plus the reusable
-# FyraLabs/actions cpp.yml), minus its SARIF output. Keep the flags in sync with both
+# run cppcheck like CI does (keep in sync with cpp-ci.yml and FyraLabs/actions cpp.yml)
 cppcheck: build
     cppcheck --project={{ build_dir }}/compile_commands.json \
         --enable=warning,style,performance,portability \
@@ -51,9 +49,7 @@ test: build
 install:
     cmake --install {{ build_dir }}
 
-# configure, build and install the Updates and Tweaks KCMs into ~/.local. They run the
-# system-wide helpers (polkit only matches those paths), so nothing else is installed.
-# Qt only finds the plugins with QT_PLUGIN_PATH, see docs/building.md
+# install the Updates and Tweaks KCMs into ~/.local (needs QT_PLUGIN_PATH, see docs/building.md)
 install-user:
     cmake -S . -B {{ build_dir }}-user \
         -DCMAKE_BUILD_TYPE={{ build_type }} \
@@ -69,13 +65,10 @@ clean:
     rm -rf {{ build_dir }} {{ build_dir }}-user compile_commands.json
 
 # --- testing the update helper ------------------------------------------------
-# the Updates KCM runs ultramarine-updates from its install path, and its polkit
-# action matches that exact path, so the helper must be installed system-wide.
-# The automatic update timer isn't enabled (Ultramarine's presets do that for the RPM):
-# sudo systemctl enable --now ultramarine-updates-automatic.timer. The user timer starts
-# with the next graphical session (or: systemctl --user start ultramarine-updates-user.timer).
+# polkit matches the helper's install path, so it has to be installed system-wide.
+# enable the timer by hand: sudo systemctl enable --now ultramarine-updates-automatic.timer
 
-# install just the update helper, its polkit action, systemd units and autostart entry (uses sudo)
+# install only the update helper component (uses sudo)
 dev-updates-install: build
     sudo cmake --install {{ build_dir }} --component ultramarine-updates
     sudo systemctl daemon-reload
@@ -96,9 +89,7 @@ helper *args: build
     {{ build_dir }}/bin/ultramarine-updates {{ args }}
 
 # --- testing against a development build of umcli ---------------------------
-# the Tweaks KCM needs a um with `--json` support at /usr/bin/um, its tweak data in
-# /usr/share/um, and umcli's polkit action. pkexec clears the environment, so
-# UM_DATA can't point the privileged half at a checkout. Install it like the RPM does.
+# pkexec clears the environment, so UM_DATA can't point at a checkout and um has to be installed
 
 umcli_dir := "../umcli"
 

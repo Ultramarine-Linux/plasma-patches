@@ -1,8 +1,7 @@
 # umcli backend (Tweaks)
 
-The Tweaks KCM is a frontend for `umcli`; it discovers available tweaks from the
-CLI rather than maintaining its own list. Updates are handled by
-[`ultramarine-updates`](updates-backend.md), not umcli.
+The Tweaks KCM is a frontend for `umcli` and gets the list of tweaks from it instead of
+keeping its own. Updates are handled by [`ultramarine-updates`](updates-backend.md).
 
 ## Runtime requirements
 
@@ -17,12 +16,10 @@ CLI rather than maintaining its own list. Updates are handled by
   elsewhere. If that path doesn't exist, the KCM falls back to the first `um` in `PATH`,
   which still works, but polkit then uses its generic `org.freedesktop.policykit.exec`
   action (generic prompt, no remembered authorization) instead of umcli's.
-- The `umcli` package must install
-  `polkit/org.ultramarine.um.policy` at
-  `/usr/share/polkit-1/actions/org.ultramarine.um.policy`. The KCM runs `um` as
-  the logged-in user; when it needs root, umcli re-executes through `pkexec`.
-- `pkexec` and an active polkit authentication agent are needed for privileged
-  actions. `pkexec` clears the environment, so um refuses to escalate through it while
+- The `umcli` package must install `polkit/org.ultramarine.um.policy` at
+  `/usr/share/polkit-1/actions/org.ultramarine.um.policy`. The KCM runs `um` as the
+  logged-in user, and umcli re-executes through `pkexec` when it needs root.
+- `pkexec` and a running polkit authentication agent. `pkexec` clears the environment, so um refuses to escalate through it while
   `UM_TWEAKS_PATH`, `UM_DATA` or `UM_STATE` is set rather than silently using the
   installed `/usr/share/um` data. The KCM shows that error.
 
@@ -30,12 +27,10 @@ CLI rather than maintaining its own list. Updates are handled by
 
 Whenever the page is shown, it runs `um tweaks list --json`. Each directory in umcli's tweak
 data becomes a row, so new tweaks with known types (`toggle`, `oneshot`,
-`script`) appear without KCM changes. Unknown types are displayed safely without
-an unsupported control.
+`script`) appear without KCM changes. Unknown types are listed without a control.
 
-Enabling, disabling or running a tweak invokes `um tweaks` through umcli's
-polkit-aware privilege escalation. Warnings are shown before risky or
-non-reversible operations. um is started without stdin and in a new session, so it
+Enabling, disabling or running a tweak runs `um tweaks`, which escalates through
+polkit. Risky or irreversible tweaks show a warning first. um is started without stdin and in a new session, so it
 never sees a terminal and escalates through pkexec (with Qt 6.6, which has no
 `CreateNewSession`, the KCM calls `setsid()` in the child itself). The exception is a
 `wheel` member for whom sudo needs no password (a `NOPASSWD` rule or cached credentials): um then uses

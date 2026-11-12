@@ -17,19 +17,12 @@ KCMUtils.SimpleKCM {
 
     title: i18nc("@title", "Updates")
 
-    // number of updates listed under "Software to Be Updated", see kcm.previewUpdates
     readonly property int shownUpdates: kcm.previewLimit
     readonly property bool hasUpdates: kcm.updateCount > 0
-    // RPM updates waiting for a restart are still listed, but Apply has nothing left to do for them
     readonly property bool canApply: kcm.installableCount > 0
     readonly property real labelColumnWidth: Kirigami.Units.gridUnit * 9
-    // part of Apply Tonight can still be pending after the other part ran or was
-    // canceled, and it can be canceled the same way
     readonly property bool tonightActive: kcm.scheduledTonight || kcm.tonightPartial
 
-    // every row of "Software to Be Updated" has the same height, and the list
-    // always reserves room for shownUpdates rows, so the page doesn't move
-    // while updates load or when there are only a few
     readonly property real updateRowHeight: Math.max(Kirigami.Units.iconSizes.medium,
                                                      defaultMetrics.height + smallMetrics.height)
 
@@ -43,7 +36,6 @@ KCMUtils.SimpleKCM {
         font: Kirigami.Theme.smallFont
     }
 
-    // "500 MB", like the design (SI units, as package managers report them)
     function formatSize(bytes) {
         return Qt.locale().formattedDataSize(Math.abs(bytes), 0, Locale.DataSizeSIFormat);
     }
@@ -52,7 +44,6 @@ KCMUtils.SimpleKCM {
         if (kcm.running) {
             return kcm.status;
         }
-        // the other part may have installed already, so this shows even when up to date
         if (kcm.tonightPartial) {
             return i18nc("@info", "Some updates are still scheduled to install tonight");
         }
@@ -84,7 +75,6 @@ KCMUtils.SimpleKCM {
                                   : i18ncp("@info", "%1 update available", "%1 updates available", kcm.updateCount);
     }
 
-    // updates are checked when the page opens, and F5 checks again
     Shortcut {
         sequences: [StandardKey.Refresh]
         enabled: !kcm.running
@@ -101,10 +91,7 @@ KCMUtils.SimpleKCM {
     headerPaddingEnabled: false
     header: ErrorMessage {}
 
-    // SimpleKCM stretches its content to the page width, so keep the design's
-    // narrow, centered column inside it
     Item {
-        // the same room above and below, so the last row doesn't touch the bottom when scrolled
         implicitHeight: content.implicitHeight + content.y * 2
 
         ColumnLayout {
@@ -115,10 +102,9 @@ KCMUtils.SimpleKCM {
             width: Math.min(parent.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 28)
             spacing: Kirigami.Units.largeSpacing * 2
 
-            // stays after the check that follows installing, until it's dismissed. The
-            // restart message below says the same when restarting finishes the updates.
             Kirigami.InlineMessage {
                 readonly property bool wanted: kcm.successMessage.length > 0 && !kcm.restartRequired
+                readonly property bool pageShown: parent !== null && parent.visible
 
                 Layout.fillWidth: true
                 type: Kirigami.MessageType.Positive
@@ -128,13 +114,9 @@ KCMUtils.SimpleKCM {
                 visible: false
                 onWantedChanged: visible = wanted
                 Component.onCompleted: visible = wanted
-                // only when the message itself was closed, not when the page is hidden
-                onVisibleChanged: if (!visible && wanted && parent && parent.visible) kcm.clearSuccess()
+                onVisibleChanged: if (!visible && wanted && pageShown) kcm.clearSuccess()
             }
 
-            // offline updates install while restarting (Plasma's logout screen offers
-            // "Install Updates and Restart"). In image mode, a new system image is
-            // staged and takes over when restarting.
             Kirigami.InlineMessage {
                 Layout.fillWidth: true
                 visible: kcm.restartRequired
@@ -152,7 +134,6 @@ KCMUtils.SimpleKCM {
                 }
             }
 
-            // --- pending updates -------------------------------------------------
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.gridUnit * 2
@@ -166,15 +147,12 @@ KCMUtils.SimpleKCM {
                     RowLayout {
                         spacing: Kirigami.Units.largeSpacing
 
-                        // release badge, e.g. "45", on the release's wallpaper. A plain circle
-                        // until it's loaded, or if it isn't installed.
                         Item {
                             id: badge
 
                             readonly property bool dark: Kirigami.ColorUtils.brightnessForColor(Kirigami.Theme.backgroundColor)
                                                          === Kirigami.ColorUtils.Dark
                             readonly property bool showsWallpaper: wallpaper.status === Image.Ready
-                            // the text is white on a dark crop of the wallpaper and dark on a light one
                             readonly property bool darkWallpaper: wallpaperColors.analyzed
                                 ? Kirigami.ColorUtils.brightnessForColor(wallpaperColors.average) === Kirigami.ColorUtils.Dark
                                 : dark
@@ -195,9 +173,7 @@ KCMUtils.SimpleKCM {
                                 anchors.fill: parent
                                 radius: width / 2
                                 source: badge.dark ? kcm.darkWallpaper : kcm.wallpaper
-                                // a square from the middle, where the artwork is
                                 fillMode: Image.PreserveAspectCrop
-                                // decoded at the badge's size, not the wallpaper's 4K
                                 sourceSize.height: height * Screen.devicePixelRatio
                                 asynchronous: true
                                 border.width: 1
@@ -205,7 +181,6 @@ KCMUtils.SimpleKCM {
                                 onStatusChanged: if (status === Image.Ready) wallpaperColors.update()
                             }
 
-                            // reads the circle as drawn, so only the part of the wallpaper behind the text counts
                             Kirigami.ImageColors {
                                 id: wallpaperColors
 
@@ -222,7 +197,6 @@ KCMUtils.SimpleKCM {
                                      : badge.darkWallpaper ? "white" : "#1b1e20"
                                 font.bold: true
                                 font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6
-                                // a soft shadow in the other tone, for busy parts of the wallpaper
                                 layer.enabled: badge.showsWallpaper
                                 layer.effect: MultiEffect {
                                     shadowEnabled: true
@@ -315,7 +289,6 @@ KCMUtils.SimpleKCM {
                             running: visible
                         }
 
-                        // kept small: a full PlaceholderMessage would dwarf the list
                         RowLayout {
                             anchors.centerIn: parent
                             visible: !kcm.running && !root.hasUpdates
@@ -343,8 +316,6 @@ KCMUtils.SimpleKCM {
                             anchors.right: parent.right
                             spacing: Kirigami.Units.largeSpacing
 
-                            // desktop apps and widgets come first, see parseUpdateListing().
-                            // Only the first few are listed, so there's a delegate for each of them only.
                             Repeater {
                                 model: kcm.previewUpdates
 
@@ -358,19 +329,16 @@ KCMUtils.SimpleKCM {
                                     required property string oldVersion
                                     required property string newVersion
 
-                                    // RPM versions are "epoch:version-release", but people care about the version
-                                    function shortVersion(v) {
-                                        if (backend !== "rpm") {
-                                            return v;
-                                        }
-                                        const noEpoch = v.includes(":") ? v.substring(v.indexOf(":") + 1) : v;
+                                    function withoutRpmEpochAndRelease(version) {
+                                        const noEpoch = version.includes(":") ? version.substring(version.indexOf(":") + 1) : version;
                                         return noEpoch.includes("-") ? noEpoch.substring(0, noEpoch.lastIndexOf("-")) : noEpoch;
                                     }
-                                    // image versions (44.20261030.0) are too long for both to fit.
-                                    // The new one matters. Technical Information has both.
-                                    readonly property string fromVersion: backend === "bootc" || backend === "rpm-ostree"
-                                        ? "" : shortVersion(oldVersion)
-                                    readonly property string toVersion: shortVersion(newVersion)
+                                    function displayVersion(version) {
+                                        return backend === "rpm" ? withoutRpmEpochAndRelease(version) : version;
+                                    }
+                                    readonly property bool systemImage: backend === "bootc" || backend === "rpm-ostree"
+                                    readonly property string fromVersion: systemImage ? "" : displayVersion(oldVersion)
+                                    readonly property string toVersion: displayVersion(newVersion)
 
                                     Layout.preferredHeight: root.updateRowHeight
                                     Layout.fillWidth: true
@@ -395,8 +363,6 @@ KCMUtils.SimpleKCM {
 
                                         QQC2.Label {
                                             Layout.fillWidth: true
-                                            // Flatpak doesn't always report versions, and release-only RPM
-                                            // updates (1.0-1 → 1.0-2) have the same short version
                                             text: updateRow.fromVersion.length > 0 && updateRow.fromVersion !== updateRow.toVersion
                                                 ? i18nc("@info %1 source, %2 old version, %3 new version", "%1 · %2 → %3",
                                                         updateRow.sourceLabel, updateRow.fromVersion, updateRow.toVersion)
@@ -416,7 +382,6 @@ KCMUtils.SimpleKCM {
                     QQC2.Label {
                         Layout.topMargin: Kirigami.Units.largeSpacing
                         Layout.bottomMargin: Kirigami.Units.smallSpacing
-                        // hidden with opacity so the space stays reserved
                         opacity: kcm.updateCount > root.shownUpdates ? 1 : 0
                         text: i18ncp("@info %1 is the number of updates not listed above", "and <b>%1</b> more update",
                                      "and <b>%1</b> more updates", Math.max(0, kcm.updateCount - root.shownUpdates))
@@ -427,7 +392,6 @@ KCMUtils.SimpleKCM {
                         id: technicalButton
 
                         Layout.fillWidth: true
-                        // the text and the arrow line up with the list, not the highlight
                         Layout.leftMargin: -leftPadding
                         Layout.rightMargin: -rightPadding
                         opacity: root.hasUpdates ? 1 : 0
@@ -460,7 +424,6 @@ KCMUtils.SimpleKCM {
                 Layout.bottomMargin: Kirigami.Units.largeSpacing
             }
 
-            // --- settings (saved with System Settings' Apply button) -------------
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2

@@ -2,11 +2,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-// tests for the office suite installer's suite list, commands and PackageKit package picking (office-installer/)
-
 #include <QTest>
 
 #include <algorithm>
+#include <cstdint>
 
 #include "packagekit.h"
 #include "suites.h"
@@ -15,8 +14,19 @@ using namespace Qt::StringLiterals;
 using namespace OfficeInstaller;
 
 namespace {
+    constexpr std::uint32_t PkInfoInstalled = 1;
+    constexpr std::uint32_t PkInfoAvailable = 2;
+    constexpr uint PkExitFailed = 2;
+    constexpr uint PkExitCancelled = 3;
+    constexpr uint PkExitKeyRequired = 4;
+    constexpr uint PkExitNeedUntrusted = 8;
+    constexpr uint PkExitCancelledPriority = 9;
+    constexpr uint PkErrorTransactionCancelled = 17;
+    constexpr uint PkErrorCannotCancel = 30;
+    constexpr uint UnrelatedPkError = 13;
+
     Suite suiteWithFlatpak(const QString &flatpakId) {
-        const QList<Suite> all = suites();
+        const QList<Suite> all = offeredSuites();
         const auto suite = std::ranges::find(all, flatpakId, &Suite::flatpakId);
         return suite == all.end() ? Suite{} : *suite;
     }
@@ -28,7 +38,7 @@ namespace {
         static void recommendsCollaboraFirst();
         static void defaultsToFlatpak();
         static void flatpakRefs();
-        static void launchCommands();
+        static void openFilesCommands();
         static void recognizesInstalledSuites();
         static void picksPackagesToInstall();
         static void explainsFailures();
@@ -37,7 +47,7 @@ namespace {
 } // namespace
 
 void OfficeInstallerTest::recommendsCollaboraFirst() {
-    const QList<Suite> all = suites();
+    const QList<Suite> all = offeredSuites();
     QVERIFY(!all.isEmpty());
     QCOMPARE(all.constFirst().flatpakId, u"com.collaboraoffice.Office"_s);
     QVERIFY(all.constFirst().recommended);
@@ -45,12 +55,14 @@ void OfficeInstallerTest::recommendsCollaboraFirst() {
 }
 
 void OfficeInstallerTest::defaultsToFlatpak() {
-    for (const Suite &suite: suites()) {
-        QCOMPARE(sources(suite, false).value(0), Source::Flatpak);
-        QCOMPARE(sources(suite, true), QList{Source::Flatpak});
+    for (const Suite &suite: offeredSuites()) {
+        QCOMPARE(installSources(suite, false).value(0), Source::Flatpak);
+        QCOMPARE(installSources(suite, true), QList{Source::Flatpak});
     }
-    QCOMPARE(sources(suiteWithFlatpak(u"com.collaboraoffice.Office"_s), false), (QList{Source::Flatpak, Source::Rpm}));
-    QCOMPARE(sources(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), false), (QList{Source::Flatpak, Source::Rpm}));
+    QCOMPARE(installSources(suiteWithFlatpak(u"com.collaboraoffice.Office"_s), false),
+             (QList{Source::Flatpak, Source::Rpm}));
+    QCOMPARE(installSources(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), false),
+             (QList{Source::Flatpak, Source::Rpm}));
 }
 
 void OfficeInstallerTest::flatpakRefs() {
@@ -60,17 +72,17 @@ void OfficeInstallerTest::flatpakRefs() {
              u"app/org.onlyoffice.desktopeditors/aarch64/stable"_s);
 }
 
-void OfficeInstallerTest::launchCommands() {
+void OfficeInstallerTest::openFilesCommands() {
     const Suite collabora = suiteWithFlatpak(u"com.collaboraoffice.Office"_s);
-    QCOMPARE(launchCommand(collabora, Source::Flatpak, {u"/home/a/b c.docx"_s}),
+    QCOMPARE(openFilesCommand(collabora, Source::Flatpak, {u"/home/a/b c.docx"_s}),
              (Command{.program = u"flatpak"_s,
                       .arguments = {u"run"_s, u"--file-forwarding"_s, u"com.collaboraoffice.Office"_s, u"@@"_s,
                                     u"/home/a/b c.docx"_s, u"@@"_s}}));
-    QCOMPARE(launchCommand(collabora, Source::Flatpak, {}),
+    QCOMPARE(openFilesCommand(collabora, Source::Flatpak, {}),
              (Command{.program = u"flatpak"_s, .arguments = {u"run"_s, u"com.collaboraoffice.Office"_s}}));
-    QCOMPARE(launchCommand(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), Source::Rpm, {u"/tmp/x.odt"_s}),
+    QCOMPARE(openFilesCommand(suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s), Source::Rpm, {u"/tmp/x.odt"_s}),
              (Command{.program = u"libreoffice"_s, .arguments = {u"/tmp/x.odt"_s}}));
-    QCOMPARE(launchCommand(collabora, Source::Rpm, {u"/tmp/x.odt"_s}),
+    QCOMPARE(openFilesCommand(collabora, Source::Rpm, {u"/tmp/x.odt"_s}),
              (Command{.program = u"coda-qt"_s, .arguments = {u"/tmp/x.odt"_s}}));
 }
 
@@ -78,27 +90,23 @@ void OfficeInstallerTest::recognizesInstalledSuites() {
     const Suite libreoffice = suiteWithFlatpak(u"org.libreoffice.LibreOffice"_s);
     const Suite collabora = suiteWithFlatpak(u"com.collaboraoffice.Office"_s);
     const Suite onlyoffice = suiteWithFlatpak(u"org.onlyoffice.desktopeditors"_s);
-    // Flatpaks, by desktop file name
     QVERIFY(isSuite(libreoffice, u"org.libreoffice.LibreOffice.writer"_s, u"flatpak"_s));
     QVERIFY(isSuite(onlyoffice, u"org.onlyoffice.desktopeditors"_s, u"flatpak"_s));
     QVERIFY(!isSuite(libreoffice, u"org.libreoffice.LibreOfficeX"_s, u"flatpak"_s));
     QVERIFY(!isSuite(onlyoffice, u"com.collaboraoffice.Office"_s, u"flatpak"_s));
-    // RPMs, by executable
     QVERIFY(isSuite(libreoffice, u"libreoffice-writer"_s, u"libreoffice"_s));
     QVERIFY(isSuite(collabora, u"coda"_s, u"coda-qt"_s));
     QVERIFY(!isSuite(collabora, u"libreoffice-writer"_s, u"libreoffice"_s));
-    // ONLYOFFICE has no RPM, so an empty executable mustn't match it
     QVERIFY(!isSuite(onlyoffice, u"something"_s, QString()));
 }
 
 void OfficeInstallerTest::picksPackagesToInstall() {
     const QList<ResolvedPackage> resolved{
-        {.info = 2, .id = u"libreoffice-writer;25.8.1-1.fc44;x86_64;updates"_s},
-        {.info = 1, .id = u"libreoffice-calc;25.8.1-1.fc44;x86_64;installed"_s},
-        {.info = 2, .id = u"libreoffice-calc;25.8.2-1.fc44;x86_64;updates"_s},
-        {.info = 1, .id = u"libreoffice-impress;25.8.1-1.fc44;x86_64;installed"_s},
-        // a prefix of another name doesn't count
-        {.info = 2, .id = u"libreoffice-writer-extras;1-1;x86_64;fedora"_s},
+        {.pkInfo = PkInfoAvailable, .packageId = u"libreoffice-writer;25.8.1-1.fc44;x86_64;updates"_s},
+        {.pkInfo = PkInfoInstalled, .packageId = u"libreoffice-calc;25.8.1-1.fc44;x86_64;installed"_s},
+        {.pkInfo = PkInfoAvailable, .packageId = u"libreoffice-calc;25.8.2-1.fc44;x86_64;updates"_s},
+        {.pkInfo = PkInfoInstalled, .packageId = u"libreoffice-impress;25.8.1-1.fc44;x86_64;installed"_s},
+        {.pkInfo = PkInfoAvailable, .packageId = u"libreoffice-writer-extras;1-1;x86_64;fedora"_s},
     };
     QStringList missing;
     QCOMPARE(packageIdsToInstall(resolved, {u"libreoffice-writer"_s, u"libreoffice-calc"_s, u"libreoffice-impress"_s},
@@ -112,43 +120,38 @@ void OfficeInstallerTest::picksPackagesToInstall() {
 }
 
 void OfficeInstallerTest::explainsFailures() {
-    // PkExitEnum: 2 failed, 4 key required, 8 need untrusted, 9 canceled priority
-    QCOMPARE(failureReason(2, u"Disk full"_s, {}), u"Disk full"_s);
-    QVERIFY(failureReason(2, {}, {}).isEmpty());
-    // these exits often come without an ErrorCode, so they get their own reason
-    QVERIFY(failureReason(4, {}, u"terra"_s).contains(u"terra"_s));
-    QVERIFY(!failureReason(4, {}, {}).isEmpty());
-    QVERIFY(!failureReason(8, {}, {}).isEmpty());
-    QVERIFY(!failureReason(9, {}, {}).isEmpty());
+    QCOMPARE(failureReason(PkExitFailed, u"Disk full"_s, {}), u"Disk full"_s);
+    QVERIFY(failureReason(PkExitFailed, {}, {}).isEmpty());
+    QVERIFY(failureReason(PkExitKeyRequired, {}, u"terra"_s).contains(u"terra"_s));
+    QVERIFY(!failureReason(PkExitKeyRequired, {}, {}).isEmpty());
+    QVERIFY(!failureReason(PkExitNeedUntrusted, {}, {}).isEmpty());
+    QVERIFY(!failureReason(PkExitCancelledPriority, {}, {}).isEmpty());
 }
 
 void OfficeInstallerTest::reportsCancelOnlyWhenCanceled() {
-    // PkExitEnum: 2 failed, 3 cancelled, 9 cancelled priority. PkErrorEnum: 17 transaction cancelled, 30 cannot cancel
-    TransactionFailure failure = transactionFailure(3, 0, {}, {});
+    TransactionFailure failure = transactionFailure(PkExitCancelled, 0, {}, {});
     QVERIFY(failure.canceled);
     QVERIFY(failure.error.isEmpty());
 
-    failure = transactionFailure(2, 17, u"Cancelled"_s, {});
+    failure = transactionFailure(PkExitFailed, PkErrorTransactionCancelled, u"Cancelled"_s, {});
     QVERIFY(failure.canceled);
     QVERIFY(failure.error.isEmpty());
 
-    // the cancel was refused and the transaction failed for another reason
-    failure = transactionFailure(2, 13, u"Nothing provides libfoo"_s, {});
+    failure = transactionFailure(PkExitFailed, UnrelatedPkError, u"Nothing provides libfoo"_s, {});
     QVERIFY(!failure.canceled);
     QCOMPARE(failure.error, u"Nothing provides libfoo"_s);
 
-    failure = transactionFailure(2, 30, u"Cannot cancel"_s, {});
+    failure = transactionFailure(PkExitFailed, PkErrorCannotCancel, u"Cannot cancel"_s, {});
     QVERIFY(!failure.canceled);
     QCOMPARE(failure.error, u"Cannot cancel"_s);
 
-    failure = transactionFailure(4, 0, {}, u"terra"_s);
+    failure = transactionFailure(PkExitKeyRequired, 0, {}, u"terra"_s);
     QVERIFY(!failure.canceled);
     QVERIFY(failure.error.contains(u"terra"_s));
 
-    // another transaction took priority, which isn't the user canceling
-    failure = transactionFailure(9, 17, {}, {});
+    failure = transactionFailure(PkExitCancelledPriority, PkErrorTransactionCancelled, {}, {});
     QVERIFY(!failure.canceled);
-    QCOMPARE(failure.error, failureReason(9, {}, {}));
+    QCOMPARE(failure.error, failureReason(PkExitCancelledPriority, {}, {}));
 }
 
 QTEST_GUILESS_MAIN(OfficeInstallerTest)

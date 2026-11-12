@@ -21,6 +21,16 @@ namespace UltramarineUpdates {
 
     namespace {
         constexpr int maxInactiveMinutes = 24 * 60;
+
+        void makeDirectoryWorldReadable(const QString &directory) {
+            QFile::setPermissions(directory,
+                                  QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |
+                                      QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther);
+        }
+
+        void makeFileWorldReadable(const QString &path) {
+            QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
+        }
     } // namespace
 
     QString Settings::validate() const {
@@ -36,7 +46,6 @@ namespace UltramarineUpdates {
                              "Invalid time \"%1\", expected HH:MM.", clock);
             }
         }
-        // inWindow() treats an equal start and end as an empty window, so nothing would ever install
         if (!windowStart.isEmpty() && parseClock(windowStart) == parseClock(windowEnd)) {
             return i18nc("@info:status", "A time window's start and end must differ.");
         }
@@ -160,7 +169,6 @@ namespace UltramarineUpdates {
                     i18nc("@info:status don't translate inactive_minutes", "inactive_minutes must be a whole number");
                 return false;
             }
-            // checked before the cast, which is undefined for values outside int's range
             if (value < 0 || value > maxInactiveMinutes) {
                 *error =
                     i18nc("@info:status", "The inactive time must be between 0 and %1 minutes.", maxInactiveMinutes);
@@ -199,7 +207,6 @@ namespace UltramarineUpdates {
     Settings loadSettingsOrDefaults(QString *warning) {
         warning->clear();
         Settings settings;
-        // loadSettings() leaves the defaults on error
         loadSettings(&settings, warning);
         return settings;
     }
@@ -212,11 +219,8 @@ namespace UltramarineUpdates {
             *error = i18nc("@info:status %1 is a directory", "Could not create %1", directory);
             return false;
         }
-        // mkpath uses the caller's umask, which pkexec keeps, and users must be able to read the settings
         if (created) {
-            QFile::setPermissions(directory,
-                                  QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |
-                                      QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther);
+            makeDirectoryWorldReadable(directory);
         }
         QSaveFile file(path);
         if (!file.open(QIODevice::WriteOnly)) {
@@ -228,8 +232,7 @@ namespace UltramarineUpdates {
             *error = u"%1: %2"_s.arg(path, file.errorString());
             return false;
         }
-        // QSaveFile's temporary file is private, but the KCM and user timers must read it
-        QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
+        makeFileWorldReadable(path);
         return true;
     }
 

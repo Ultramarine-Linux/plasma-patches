@@ -14,8 +14,7 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// options that take a value
-        const QSet<QString> &valueOptions() {
+        const QSet<QString> &optionsTakingValue() {
             static const QSet<QString> options{u"automatic"_s, u"offline"_s, u"inactive-minutes"_s, u"window"_s};
             return options;
         }
@@ -70,7 +69,6 @@ namespace UltramarineUpdates {
                 return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", name, command);
             }
         }
-        // --json only changes how --status prints, and scheduling or canceling print nothing to parse
         if (command == "schedule"_L1 && parser.isSet(u"status"_s)) {
             if (parser.isSet(u"cancel"_s)) {
                 return i18nc("@info:shell %1 is an option, %2 a command", "--%1 can't be used with %2.", u"cancel"_s,
@@ -86,7 +84,7 @@ namespace UltramarineUpdates {
     QStringList escalatedCommandLine(const QString &command, const QCommandLineParser &parser) {
         QStringList arguments{command};
         for (const QStringList names = parser.optionNames(); const QString &name: names) {
-            if (valueOptions().contains(name)) {
+            if (optionsTakingValue().contains(name)) {
                 arguments << u"--%1=%2"_s.arg(name, parser.value(name));
             } else {
                 arguments << (name == "y"_L1 ? u"--yes"_s : u"--"_s + name);

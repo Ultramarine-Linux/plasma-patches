@@ -30,15 +30,14 @@ KCMUtils.ScrollViewKCM {
         case "beta": return i18nc("@info tweak stability", "Beta");
         case "":
         case "stable": return "";
-        // levels added to um later still get a label, just untranslated
         default: return stability;
         }
     }
 
-    // ask before anything that cannot be cleanly undone or that um flags as risky
-    function request(tweakId, description, type, stability, warning, enable) {
+    function confirmIfNeededThenChange(tweakId, description, type, stability, warning, enable) {
         const risky = warning.length > 0 || (stability.length > 0 && stability !== "stable");
-        if (enable && (risky || type !== "toggle")) {
+        const irreversible = type !== "toggle";
+        if (enable && (risky || irreversible)) {
             confirmDialog.tweakId = tweakId;
             confirmDialog.type = type;
             confirmDialog.title = description;
@@ -58,12 +57,12 @@ KCMUtils.ScrollViewKCM {
             position: Kirigami.InlineMessage.Position.Header
             type: Kirigami.MessageType.Error
             text: kcm.errorMessage
-            // not a binding: the close button sets visible = false, which would break it
+            // not a binding, the close button assigns visible
             visible: false
             showCloseButton: true
             onTextChanged: visible = text.length > 0
-            // only when the banner itself was closed, not when the page around it is hidden
-            onVisibleChanged: if (!visible && parent && parent.visible) kcm.clearError()
+            readonly property bool closedByUser: !visible && parent && parent.visible
+            onVisibleChanged: if (closedByUser) kcm.clearError()
             Component.onCompleted: visible = text.length > 0
             actions: Kirigami.Action {
                 text: i18nc("@action:button", "Show Output")
@@ -80,7 +79,6 @@ KCMUtils.ScrollViewKCM {
             icon.source: "view-refresh"
             text: kcm.status
             visible: kcm.running
-            // no Cancel: tweaks run as root, where this KCM can't stop them
             actions: Kirigami.Action {
                 text: i18nc("@action:button", "Show Output")
                 icon.name: "utilities-terminal"
@@ -118,14 +116,11 @@ KCMUtils.ScrollViewKCM {
             required property bool tweakEnabled
             required property bool busy
 
-            // um couldn't tell whether it's on, so its state isn't shown or changed from here
             readonly property bool stateUnknown: stateError.length > 0
 
             width: ListView.view.width
-            // read by screen readers. The content item below shows it.
             text: delegate.description
             Accessible.description: details.subtitle
-            // toggling happens through the controls only. The row itself is not a button or a tab stop.
             down: false
             hoverEnabled: false
             focusPolicy: Qt.NoFocus
@@ -146,7 +141,6 @@ KCMUtils.ScrollViewKCM {
                     HoverHandler {
                         id: titleHover
                     }
-                    // the error is often longer than the row
                     QQC2.ToolTip.visible: delegate.stateUnknown && titleHover.hovered
                     QQC2.ToolTip.text: delegate.stateError
                 }
@@ -157,8 +151,6 @@ KCMUtils.ScrollViewKCM {
                     closable: false
                     checkable: false
                     icon.name: "data-warning"
-                    // the chip's default is a 16px icon, taller than its text, and only half the
-                    // padding on its side that the text gets on the other
                     icon.width: Kirigami.Units.iconSizes.sizeForLabels
                     icon.height: Kirigami.Units.iconSizes.sizeForLabels
                     leftPadding: rightPadding
@@ -169,7 +161,6 @@ KCMUtils.ScrollViewKCM {
                     toolTipText: delegate.warning
                 }
 
-                // a tweak type added to um after this KCM was written: list it, but don't guess how to apply it
                 QQC2.Label {
                     visible: !root.knownTypes.includes(delegate.type)
                     text: i18nc("@info", "Use “um tweaks” in a terminal")
@@ -189,11 +180,10 @@ KCMUtils.ScrollViewKCM {
                     checked: delegate.tweakEnabled
                     Accessible.name: delegate.description
                     onToggled: {
-                        const wanted = checked;
-                        // keep showing the real state until um reports the change succeeded
+                        const requestedState = checked;
                         checked = Qt.binding(() => delegate.tweakEnabled);
-                        root.request(delegate.tweakId, delegate.description, delegate.type,
-                                     delegate.stability, delegate.warning, wanted);
+                        root.confirmIfNeededThenChange(delegate.tweakId, delegate.description, delegate.type,
+                                                         delegate.stability, delegate.warning, requestedState);
                     }
                     QQC2.ToolTip.visible: hovered
                     QQC2.ToolTip.text: delegate.tweakEnabled ? i18nc("@info:tooltip", "Disable this tweak")
@@ -209,8 +199,8 @@ KCMUtils.ScrollViewKCM {
                     Accessible.name: delegate.tweakEnabled
                         ? i18nc("@action:button accessible name, %1 is a tweak", "“%1” applied", delegate.description)
                         : i18nc("@action:button accessible name, %1 is a tweak", "Apply “%1”", delegate.description)
-                    onClicked: root.request(delegate.tweakId, delegate.description, delegate.type,
-                                            delegate.stability, delegate.warning, true)
+                    onClicked: root.confirmIfNeededThenChange(delegate.tweakId, delegate.description, delegate.type,
+                                                                delegate.stability, delegate.warning, true)
                 }
 
                 QQC2.Button {
@@ -219,19 +209,17 @@ KCMUtils.ScrollViewKCM {
                     text: i18nc("@action:button", "Run")
                     icon.name: "media-playback-start"
                     Accessible.name: i18nc("@action:button accessible name, %1 is a tweak", "Run “%1”", delegate.description)
-                    onClicked: root.request(delegate.tweakId, delegate.description, delegate.type,
-                                            delegate.stability, delegate.warning, true)
+                    onClicked: root.confirmIfNeededThenChange(delegate.tweakId, delegate.description, delegate.type,
+                                                                delegate.stability, delegate.warning, true)
                 }
             }
         }
 
-        // also before the first load, when there's nothing to show yet
         Kirigami.LoadingPlaceholder {
             anchors.centerIn: parent
             visible: list.count === 0 && (kcm.loading || (!kcm.loaded && !kcm.listFailed))
         }
 
-        // only once um answered, not before the first load or when loading failed
         Kirigami.PlaceholderMessage {
             anchors.centerIn: parent
             width: parent.width - Kirigami.Units.gridUnit * 4
@@ -245,7 +233,6 @@ KCMUtils.ScrollViewKCM {
             }
         }
 
-        // the banner says why, and stays reachable here once it's dismissed
         Kirigami.PlaceholderMessage {
             anchors.centerIn: parent
             width: parent.width - Kirigami.Units.gridUnit * 4
@@ -322,11 +309,9 @@ KCMUtils.ScrollViewKCM {
         QQC2.ScrollView {
             QQC2.TextArea {
                 readOnly: true
-                // only while it's shown, so the output isn't laid out again on every update while it's closed
                 text: outputDialog.visible ? kcm.output : ""
                 font.family: "monospace"
                 wrapMode: TextEdit.Wrap
-                // follow the output while an operation is running
                 onTextChanged: cursorPosition = length
             }
         }

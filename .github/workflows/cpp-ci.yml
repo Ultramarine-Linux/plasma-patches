@@ -45,7 +45,7 @@ name: Plasma KCM CI
       - "discover/**"
       - "powerdevil/**"
       - ".github/workflows/cpp-ci.yml"
-  # weekly, so the patch check notices upstream branches moving under the patches
+  # catches upstream branches moving under the patches
   schedule:
     - cron: "17 4 * * 1"
 
@@ -56,7 +56,6 @@ permissions:
 
 jobs:
   ci:
-    # the weekly schedule only exists for the patches job
     if: github.event_name != 'schedule'
     permissions:
       contents: read
@@ -67,19 +66,12 @@ jobs:
       configure-command: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-Werror
       build-command: cmake --build build --parallel
       test-command: ctest --test-dir build --output-on-failure
-      # Cppcheck treats CMake's generated Qt moc files as normal C++, which
-      # emits false #error diagnostics from Qt's intentional QObject checks.
-      # --inline-suppr honors `// cppcheck-suppress` comments for other false positives.
-      # The qt and KF6 libraries teach it Q_SLOTS, K_PLUGIN_CLASS_WITH_JSON and friends,
-      # otherwise it reports unknownMacro and skips analyzing those files entirely.
-      # cppcheck writes SARIF to stderr, but the reusable workflow only redirects stdout to
-      # build/cppcheck.sarif. --output-file puts the report there. With --quiet nothing else
-      # goes to stdout, so the redirect only truncates the file first.
+      # moc output trips false #error diagnostics from Qt's QObject checks
+      # without the qt and KF6 libraries cppcheck skips files with unknownMacro
+      # SARIF goes to stderr but the reusable workflow only redirects stdout to build/cppcheck.sarif
       cppcheck-extra-args: -j2 --inline-suppr --suppress=preprocessorErrorDirective:*_autogen* --library=qt --library=cppcheck-kf6.cfg --output-file=build/cppcheck.sarif
       packages: cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtquickcontrols2-devel kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kcmutils-devel kf6-ki18n-devel kf6-kirigami-devel kf6-kio-devel kf6-kservice-devel kf6-kwidgetsaddons-devel kf6-knewstuff-devel flatpak-devel gettext polkit-devel python3 lld
 
-  # fails when po/ultramarine-plasma-settings.pot is missing strings, so Weblate
-  # never lags behind the source. Run `just translations` and commit the result
   translations:
     name: Translation template
     if: github.event_name != 'schedule'
@@ -109,9 +101,7 @@ jobs:
             exit 1
           fi
 
-  # the Discover and PowerDevil patches still apply to the upstream branches they target
-  # (see docs/discover.md and docs/powerdevil.md). Fedora's own patches aren't applied
-  # first, so this doesn't replace the check in the packages' update.rhai
+  # Fedora's own patches aren't applied first, so this doesn't replace update.rhai's check
   patches:
     name: Patch ${{ matrix.patch }} on ${{ matrix.repo }} ${{ matrix.ref }}
     runs-on: ubuntu-26.04

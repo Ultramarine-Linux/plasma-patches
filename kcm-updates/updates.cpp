@@ -129,42 +129,34 @@ bool UpdatesPreviewModel::filterAcceptsRow(const int sourceRow, const QModelInde
 }
 
 namespace {
-    /// number of updates listed under "Software to Be Updated" on the main page
     constexpr int previewCount = 5;
-
-    /// dynamic property set on helper processes that change the system
     constexpr auto changesSystemProperty = "ultramarineChangesSystem";
+
+    void letFinishAfterModuleCloses(QProcess *process) {
+        process->setParent(nullptr);
+        QObject::connect(process, &QProcess::finished, process, &QObject::deleteLater);
+        QObject::connect(process, &QProcess::errorOccurred, process, [process](const QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart) {
+                process->deleteLater();
+            }
+        });
+    }
 } // namespace
 
 Updates::Updates(QObject *parent, const KPluginMetaData &metaData) :
     KQuickManagedConfigModule(parent, metaData), m_updates(this), m_previewUpdates(&m_updates, previewCount, this) {
-    // Apply/Reset save the Automatic Updates and offline update settings through
-    // the update helper. Updates themselves are installed with the page's own Apply button.
     setButtons(Apply);
     connect(&m_updates, &UpdatesModel::countChanged, this, &Updates::updateCountChanged);
     refresh();
 }
 
 Updates::~Updates() {
-    // every helper process is a child of this module. Without this, they would only be
-    // destroyed (killed and waited for) after the members are gone, and their finished()
-    // would reach a half-destroyed module.
+    // killing a process that changes the system would strand the root part pkexec started
     for (QProcess *process: findChildren<QProcess *>(Qt::FindDirectChildrenOnly)) {
         process->disconnect(this);
         if (process->property(changesSystemProperty).toBool() && process->state() != QProcess::NotRunning) {
-            // killing apply would stop the user part of the update and strand the root
-            // part pkexec started. Schedule and settings changes would be cut off halfway.
-            // So these keep running on their own and clean up once they exit. The helper
-            // ignores SIGPIPE, so it's fine that no one reads its output anymore.
-            process->setParent(nullptr);
-            connect(process, &QProcess::finished, process, &QObject::deleteLater);
-            connect(process, &QProcess::errorOccurred, process, [process](const QProcess::ProcessError error) {
-                if (error == QProcess::FailedToStart) {
-                    process->deleteLater();
-                }
-            });
+            letFinishAfterModuleCloses(process);
         } else {
-            // read-only calls (list, status) can simply stop
             delete process;
         }
     }
@@ -174,8 +166,6 @@ Updates::~Updates() {
 QProcess *Updates::createProcess(const bool changesSystem) {
     auto *process = new QProcess(this);
     process->setProperty(changesSystemProperty, changesSystem);
-    // nothing is ever written to it, so a helper (or a tool it runs) asking for input gets
-    // EOF instead of waiting forever
     process->setStandardInputFile(QProcess::nullDevice());
     return process;
 }
@@ -207,17 +197,16 @@ QString Updates::distributionVersion() {
 }
 
 namespace {
-    /// the release's default wallpaper (default.png or default-dark.png), linked by ultramarine-backgrounds-compat
-    QUrl backgroundImage(const QString &name) {
+    QUrl releaseBackground(const QString &name) {
         const QString path = QStringLiteral("/usr/share/backgrounds/") + name;
         return QFileInfo::exists(path) ? QUrl::fromLocalFile(path) : QUrl();
     }
 } // namespace
 
-QUrl Updates::wallpaper() { return backgroundImage(QStringLiteral("default.png")); }
+QUrl Updates::wallpaper() { return releaseBackground(QStringLiteral("default.png")); }
 
 QUrl Updates::darkWallpaper() {
-    const QUrl dark = backgroundImage(QStringLiteral("default-dark.png"));
+    const QUrl dark = releaseBackground(QStringLiteral("default-dark.png"));
     return dark.isEmpty() ? wallpaper() : dark;
 }
 
@@ -311,7 +300,6 @@ bool Updates::scheduledTonight() const { return m_scheduledTonight; }
 bool Updates::tonightPartial() const { return m_tonightPartial; }
 
 bool Updates::isSaveNeeded() const {
-    // the helper rejects an empty window, and AdvancedSettings.qml points it out
     return m_upgradeSettings.isValid() && m_upgradeSettings != m_savedUpgradeSettings;
 }
 
@@ -340,8 +328,6 @@ void Updates::runHelper(const QStringList &arguments, const bool changesSystem,
 }
 
 void Updates::load() {
-    // reading now could return the settings from before the save and undo it in the UI.
-    // Reset after saving shows what was saved.
     if (m_saving) {
         m_loadAfterSave = true;
         return;
@@ -351,18 +337,16 @@ void Updates::load() {
 }
 
 void Updates::loadSettings(const bool keepEdits) {
-    const quint64 request = ++m_settingsRequest;
-    m_loading = true;
+    const quint64 request = ++m_latestSettingsRequest;
+    m_settingsReadInFlight = true;
     runHelper({QStringLiteral("settings"), QStringLiteral("--json")}, false,
               [this, request, keepEdits](const int exitCode, const QByteArray &out, const QByteArray &err) {
-                  // a later load or a save made this reply stale
-                  if (request != m_settingsRequest) {
+                  if (request != m_latestSettingsRequest) {
                       return;
                   }
-                  m_loading = false;
+                  m_settingsReadInFlight = false;
                   UpgradeSettings loaded;
                   if (exitCode != 0 || !parseUpgradeSettings(out, &loaded)) {
-                      // unreadable settings: show the defaults, and say so
                       loaded = UpgradeSettings{};
                       const QString detail = helperText(err);
                       setActionError(
@@ -380,14 +364,13 @@ void Updates::loadSettings(const bool keepEdits) {
 }
 
 void Updates::save() {
-    // one authentication prompt at a time. Apply stays enabled afterwards if there is more to save.
     if (m_saving) {
         return;
     }
     m_saving = true;
-    // a settings read still in flight may predate this save, so read again afterwards
-    if (std::exchange(m_loading, false)) {
-        ++m_settingsRequest;
+    const bool inFlightReadPredatesSave = std::exchange(m_settingsReadInFlight, false);
+    if (inFlightReadPredatesSave) {
+        ++m_latestSettingsRequest;
         m_reloadSavedAfterSave = true;
     }
     const UpgradeSettings wanted = m_upgradeSettings;
@@ -405,14 +388,11 @@ void Updates::save() {
                   }
                   const bool reloadSaved = std::exchange(m_reloadSavedAfterSave, false);
                   if (std::exchange(m_loadAfterSave, false)) {
-                      // Reset was pressed during the save, so it replaces any edits
                       load();
                   } else if (reloadSaved) {
-                      // the edits stay if they weren't saved or changed during the prompt.
-                      // Otherwise they're what was just saved anyway.
-                      loadSettings(exitCode != 0 || m_upgradeSettings != wanted);
+                      const bool editsDifferFromSaved = exitCode != 0 || m_upgradeSettings != wanted;
+                      loadSettings(editsDifferFromSaved);
                   }
-                  // keeps Apply enabled if saving failed
                   settingsChanged();
               });
 }
@@ -435,20 +415,19 @@ void Updates::setRefreshError(const QString &message) {
 
 void Updates::updateErrorMessage() {
     const QString message = composeErrorMessage(m_actionError, m_refreshError);
-    // Try Again would only check again, which doesn't fix an install, save or schedule error
-    const bool retryable = m_actionError.isEmpty() && !m_refreshError.isEmpty();
-    if (m_errorMessage == message && m_errorRetryable == retryable) {
+    const bool onlyCheckingFailed = m_actionError.isEmpty() && !m_refreshError.isEmpty();
+    if (m_errorMessage == message && m_errorRetryable == onlyCheckingFailed) {
         return;
     }
     m_errorMessage = message;
-    m_errorRetryable = retryable;
+    m_errorRetryable = onlyCheckingFailed;
     Q_EMIT errorMessageChanged();
 }
 
 void Updates::clearSuccess() { setSuccessMessage({}); }
 
 void Updates::showPendingSuccess() {
-    if (std::exchange(m_successPending, false)) {
+    if (std::exchange(m_showSuccessAfterNextCheck, false)) {
         setSuccessMessage(i18n("Updates installed."));
     }
 }
@@ -468,11 +447,10 @@ void Updates::defaults() {
 }
 
 void Updates::refreshSchedule() {
-    const quint64 request = ++m_scheduleRequest;
+    const quint64 request = ++m_latestScheduleRequest;
     runHelper({QStringLiteral("schedule"), QStringLiteral("--status"), QStringLiteral("--json")}, false,
               [this, request](const int exitCode, const QByteArray &out, const QByteArray &) {
-                  // a later request (like after Apply Tonight) is newer than this reply
-                  if (request != m_scheduleRequest) {
+                  if (request != m_latestScheduleRequest) {
                       return;
                   }
                   bool scheduled = false;
@@ -485,7 +463,7 @@ void Updates::refreshSchedule() {
                       m_tonightPartial = partial;
                       Q_EMIT scheduleChanged();
                   }
-                  if (!m_scheduleChanging) {
+                  if (!m_scheduleChangeInFlight) {
                       setScheduling(false);
                   }
               });
@@ -503,13 +481,11 @@ void Updates::applyTonight() {
     if (m_running || m_scheduling) {
         return;
     }
-    // stays set until the status read afterwards arrives, so the button can't be
-    // pressed again (another authentication prompt) while it still shows the old state
-    m_scheduleChanging = true;
+    m_scheduleChangeInFlight = true;
     setScheduling(true);
     runHelper({QStringLiteral("schedule")}, true,
               [this](const int exitCode, const QByteArray &, const QByteArray &err) {
-                  m_scheduleChanging = false;
+                  m_scheduleChangeInFlight = false;
                   if (Pkexec::isAuthenticationFailure(exitCode)) {
                       setActionError(i18n("Authentication was canceled or failed. Updates were not scheduled."));
                   } else if (exitCode != 0) {
@@ -525,11 +501,11 @@ void Updates::cancelTonight() {
     if (m_running || m_scheduling) {
         return;
     }
-    m_scheduleChanging = true;
+    m_scheduleChangeInFlight = true;
     setScheduling(true);
     runHelper({QStringLiteral("schedule"), QStringLiteral("--cancel")}, true,
               [this](const int exitCode, const QByteArray &, const QByteArray &err) {
-                  m_scheduleChanging = false;
+                  m_scheduleChangeInFlight = false;
                   if (Pkexec::isAuthenticationFailure(exitCode)) {
                       setActionError(
                           i18n("Authentication was canceled or failed. Tonight's updates are still scheduled."));
@@ -546,10 +522,7 @@ qint64 Updates::downloadSize() const { return m_updates.totalDownloadSize(); }
 
 qint64 Updates::installedSizeChange() const { return m_updates.totalInstalledSizeChange(); }
 
-bool Updates::imageMode() {
-    // the update helper decides the same way
-    return QFile::exists(QStringLiteral("/run/ostree-booted"));
-}
+bool Updates::imageMode() { return QFile::exists(QStringLiteral("/run/ostree-booted")); }
 
 bool Updates::restartRequired() const { return m_restartState.required; }
 
@@ -577,11 +550,6 @@ void Updates::refresh() {
 
     m_updates.clear();
     setTechnicalInformation({});
-    // the restart state stays until the new listing replaces it, so the restart message
-    // doesn't disappear for the whole check and come back
-
-    // settings, schedule and install errors stay until they're dismissed, since checking
-    // again doesn't fix them
     setRefreshError({});
     setStatus(i18n("Checking for updates…"));
 
@@ -607,7 +575,7 @@ void Updates::applyUpdates() {
     m_running = true;
     Q_EMIT runningChanged();
     clearError();
-    m_successPending = false;
+    m_showSuccessAfterNextCheck = false;
     setSuccessMessage({});
     setStatus(i18n("Applying updates…"));
 
@@ -618,9 +586,6 @@ void Updates::applyUpdates() {
         finishOperation(message);
         return;
     }
-    // the helper runs the system part through pkexec first and only then updates the
-    // user's Flatpaks, Nix profile and widgets as us. Once it runs as root, it can't be
-    // stopped from here, so there is no Cancel.
     startProcess(helper, {QStringLiteral("apply"), QStringLiteral("--yes")}, Operation::Install);
 }
 
@@ -644,43 +609,34 @@ void Updates::processFinished(const int exitCode, const QProcess::ExitStatus exi
     const QByteArray stdErr = std::exchange(m_processStderr, {});
     const bool normalExit = exitStatus == QProcess::NormalExit;
 
-    // only stderr is logged, since stdout is the (large) update listing or progress output
     if (const QString errors = helperText(stdErr); !errors.isEmpty()) {
         qWarning().noquote() << "kcm-updates: ultramarine-updates:" << errors;
     }
 
     switch (operation) {
     case Operation::Refresh: {
-        // `list` still prints a listing when it fails (exit code 1 if no source worked)
         m_updates.clear();
         parseListing(QString::fromUtf8(stdOut));
         const QString error = refreshErrorMessage(normalExit ? exitCode : -1, stdOut, stdErr);
-        // empty if every source was checked. Some may have failed with the others still listed.
         setRefreshError(error);
         finishOperation(normalExit && exitCode == 0
                             ? i18np("%1 update available.", "%1 updates available.", updateCount())
                             : error);
-        // after parseListing(), so a restart it says is needed hides the message (see main.qml)
         showPendingSuccess();
         break;
     }
     case Operation::Install: {
         if (normalExit && exitCode == 0) {
             finishOperation(i18n("Updates installed."));
-            // the status is replaced by the check below, so the message stays until it's
-            // dismissed. It waits for that check, which says whether a restart finishes them.
-            m_successPending = true;
+            m_showSuccessAfterNextCheck = true;
         } else {
             const QString message = installErrorMessage(exitCode, exitStatus, stdErr);
-            // the check below only replaces its own error, so this stays
             setActionError(message);
             finishOperation(message);
         }
-        // re-check so the page reflects what is still pending. Apply installs what it can
-        // even if one part fails. Nothing changed if authentication was refused.
-        if (!normalExit || !Pkexec::isAuthenticationFailure(exitCode)) {
+        const bool systemMayHaveChanged = !normalExit || !Pkexec::isAuthenticationFailure(exitCode);
+        if (systemMayHaveChanged) {
             refresh();
-            // an install makes tonight's run a no-op, so Apply Tonight may be offered again
             refreshSchedule();
         }
         break;
@@ -715,11 +671,10 @@ void Updates::readProcessOutput() {
     const QByteArray stdErr = m_process->readAllStandardError();
     m_processStdout += stdOut;
     m_processStderr += stdErr;
-    // a refresh's listing is parsed once the process exits, while installs show their latest line
-    if (m_operation != Operation::Install || (stdOut.isEmpty() && stdErr.isEmpty())) {
+    const bool showsProgress = m_operation == Operation::Install;
+    if (!showsProgress || (stdOut.isEmpty() && stdErr.isEmpty())) {
         return;
     }
-    // the line is taken from the whole buffer so a character split across reads isn't garbled
     if (const QString line = lastOutputLine(stdErr.isEmpty() ? m_processStdout : m_processStderr); !line.isEmpty()) {
         setStatus(line);
     }
@@ -736,7 +691,6 @@ void Updates::parseListing(const QString &output) {
     if (restartState != m_restartState) {
         m_restartState = restartState;
         Q_EMIT restartStateChanged();
-        // installableCount depends on offlinePending
         Q_EMIT updateCountChanged();
     }
 }
@@ -774,15 +728,13 @@ QString installErrorMessage(const int exitCode, const QProcess::ExitStatus exitS
     if (exitStatus != QProcess::NormalExit) {
         return i18n("Updating failed: the update helper stopped unexpectedly.");
     }
-    // the helper asks for authentication before changing anything
     if (Pkexec::isAuthenticationFailure(exitCode)) {
         return i18n("Authentication was canceled or failed. No updates were installed.");
     }
-    // the last lines say why. The whole log goes to the journal (see processFinished()).
-    constexpr qsizetype maxLines = 10;
+    constexpr qsizetype shownStderrLines = 10;
     QStringList lines = helperText(stdErr).split(QLatin1Char('\n'));
-    if (lines.size() > maxLines) {
-        lines = lines.sliced(lines.size() - maxLines);
+    if (lines.size() > shownStderrLines) {
+        lines = lines.sliced(lines.size() - shownStderrLines);
     }
     const QString detail = lines.join(QLatin1Char('\n')).trimmed();
     return detail.isEmpty() ? i18n("Updating failed (exit code %1).", exitCode)
@@ -799,10 +751,9 @@ QString composeErrorMessage(const QString &actionError, const QString &refreshEr
 QString helperText(const QByteArray &output) { return QString::fromUtf8(output).trimmed(); }
 
 QString lastOutputLine(const QByteArray &output) {
-    // the same whitespace QByteArray::trimmed() drops
-    const auto isSpace = [](const char c) { return c == ' ' || (c >= '\t' && c <= '\r'); };
+    const auto isAsciiWhitespace = [](const char c) { return c == ' ' || (c >= '\t' && c <= '\r'); };
     qsizetype end = output.size();
-    while (end > 0 && isSpace(output.at(end - 1))) {
+    while (end > 0 && isAsciiWhitespace(output.at(end - 1))) {
         --end;
     }
     if (end == 0) {
@@ -834,16 +785,13 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         item.appId = object.value(QStringLiteral("app_id")).toString();
         item.downloadSize = object.value(QStringLiteral("download_size")).toInteger();
         item.installedSizeChange = object.value(QStringLiteral("installed_size_change")).toInteger();
-        // runtimes have no meaningful icon of their own, and anything without
-        // an icon gets the generic one too
         if (item.icon.isEmpty() || item.kind == QLatin1String("runtime")) {
             item.icon = QStringLiteral("package-x-generic");
         }
         result.append(std::move(item));
     }
 
-    // show what people recognize first: desktop apps and widgets, then packages, then runtimes
-    const auto rank = [](const UpdateItem &item) {
+    const auto mostRecognizableFirst = [](const UpdateItem &item) {
         if (item.kind == QLatin1String("app")) {
             return 0;
         }
@@ -855,7 +803,7 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
         }
         return 2;
     };
-    std::ranges::stable_sort(result, [&rank](const UpdateItem &a, const UpdateItem &b) { return rank(a) < rank(b); });
+    std::ranges::stable_sort(result, {}, mostRecognizableFirst);
 
     QString technical;
     for (const UpdateItem &item: std::as_const(result)) {
@@ -876,7 +824,6 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
     }
     if (restart) {
         restart->offlinePending = document.object().value(QStringLiteral("offline_pending")).toBool();
-        // offline updates always need a restart, even if an older helper didn't say so
         restart->required =
             restart->offlinePending || document.object().value(QStringLiteral("restart_required")).toBool();
         restart->stagedVersion =
@@ -888,10 +835,10 @@ QList<UpdateItem> parseUpdateListing(const QString &output, QString *technicalIn
 bool UpgradeSettings::isValid() const { return !windowEnabled || windowStart != windowEnd; }
 
 bool UpgradeSettings::operator==(const UpgradeSettings &other) const {
-    // the helper only stores the window times while the window is used
+    const bool windowTimesStored = windowEnabled;
     return automatic == other.automatic && offline == other.offline && inactiveMinutes == other.inactiveMinutes &&
         windowEnabled == other.windowEnabled &&
-        (!windowEnabled || (windowStart == other.windowStart && windowEnd == other.windowEnd));
+        (!windowTimesStored || (windowStart == other.windowStart && windowEnd == other.windowEnd));
 }
 
 bool parseUpgradeSettings(const QByteArray &json, UpgradeSettings *settings) {
@@ -956,7 +903,6 @@ QString updateSourceLabel(const UpdateItem &item) {
         item.backend == QLatin1String("rpm-ostree")) {
         return i18nc("@info update source, the operating system", "System");
     }
-    // product names, so they aren't translated
     if (item.backend == QLatin1String("flatpak")) {
         return QStringLiteral("Flatpak");
     }

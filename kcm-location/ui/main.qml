@@ -17,7 +17,6 @@ KCMUtils.SimpleKCM {
     implicitWidth: Kirigami.Units.gridUnit * 32
     implicitHeight: Kirigami.Units.gridUnit * 30
 
-    // the window shade behind the cards, like a FormCard.FormCardPage
     Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
@@ -26,12 +25,12 @@ KCMUtils.SimpleKCM {
         position: Kirigami.InlineMessage.Position.Header
         type: Kirigami.MessageType.Error
         text: kcm.errorMessage
-        // not a binding: the close button sets visible = false, which would break it
+        // not a binding, the close button assigns visible
         visible: false
         showCloseButton: true
         onTextChanged: visible = text.length > 0
-        // only when the banner itself was closed, not when the page around it is hidden
-        onVisibleChanged: if (!visible && parent && parent.visible) kcm.clearError()
+        readonly property bool closedByUser: !visible && parent && parent.visible
+        onVisibleChanged: if (closedByUser) kcm.clearError()
         Component.onCompleted: visible = text.length > 0
     }
 
@@ -39,10 +38,10 @@ KCMUtils.SimpleKCM {
         visible: kcm.available
         spacing: 0
 
-        // the big icon and a line on what this is for, like the top of a Plasma welcome page
         ColumnLayout {
+            id: intro
+
             Layout.fillWidth: true
-            // its width is capped by the heading's, so center the column itself too
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Kirigami.Units.gridUnit * 2
             Layout.bottomMargin: Kirigami.Units.gridUnit
@@ -75,8 +74,6 @@ KCMUtils.SimpleKCM {
             FormCard.FormSwitchDelegate {
                 id: toggle
 
-                // as the only row in its card, the hover tint lights up the whole card, which reads as
-                // a different card rather than feedback. Pressing and keyboard focus still show.
                 hoverEnabled: false
                 icon.name: "find-location"
                 text: i18nc("@option:check", "Location Services")
@@ -85,16 +82,14 @@ KCMUtils.SimpleKCM {
                 enabled: !kcm.busy && !kcm.loading
                 checked: kcm.locationEnabled
                 onToggled: {
-                    const wanted = checked;
-                    // keep showing the real state until systemd reports the change
+                    const requestedState = checked;
                     checked = Qt.binding(() => kcm.locationEnabled);
-                    kcm.setLocationEnabled(wanted);
+                    kcm.setLocationEnabled(requestedState);
                 }
             }
         }
 
         FormCard.FormHeader {
-            // the default sits right on top of the card above, so give the section room to breathe
             topPadding: Kirigami.Units.gridUnit
             bottomPadding: Kirigami.Units.largeSpacing
             title: i18nc("@title:group", "Privacy")
@@ -135,13 +130,12 @@ KCMUtils.SimpleKCM {
         }
     }
 
-    // ScrollablePage anchors each child to its sides, which conflicts with centerIn. So the
-    // placeholders share one child, as tall as the page, and are centered inside it.
     Item {
+        id: centeredPlaceholderArea
+
         visible: !kcm.available
         height: parent ? parent.height : 0
 
-        // also before the first read, when there's no state to show yet
         Kirigami.LoadingPlaceholder {
             anchors.centerIn: parent
             visible: kcm.loading || (!kcm.notInstalled && !kcm.readFailed)
@@ -156,7 +150,6 @@ KCMUtils.SimpleKCM {
             explanation: i18nc("@info:placeholder", "Install the geoclue2 package to let apps request your location.")
         }
 
-        // systemd couldn't be asked. The banner says why.
         Kirigami.PlaceholderMessage {
             anchors.centerIn: parent
             width: parent.width - Kirigami.Units.gridUnit * 4

@@ -5,7 +5,7 @@
 Type=Service
 X-KDE-System-Settings-Category=ultramarine
 X-KDE-System-Settings-Parent-Category=
-# below every stock top-level category (the lowest is Connected Devices at 20), so it's listed first
+# lower than every stock category so it's listed first
 X-KDE-Weight=10
 Icon=ultramarine
 Name=Ultramarine

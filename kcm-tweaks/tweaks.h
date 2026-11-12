@@ -17,46 +17,26 @@
 struct TweakItem {
     QString id;
     QString description;
-    /// one of "toggle", "oneshot" or "script", as reported by um
     QString type;
     QString stability;
     QString warning;
-    /// set when um couldn't tell whether the tweak is on, in which case enabled isn't meaningful
     QString stateError;
     bool enabled = false;
 };
 
-/// the `version` of `um tweaks list --json` output this KCM understands
 constexpr int SupportedTweaksOutputVersion = 1;
 
-/// returned by tweaksOutputVersion() when `version` isn't a positive whole number
 constexpr int UnrecognizedTweaksOutputVersion = -1;
 
-/**
- * returns the `version` of `um tweaks list --json` output: 1 when it has none, 0 if it isn't a
- * JSON object, or UnrecognizedTweaksOutputVersion if `version` isn't a positive whole number
- */
 [[nodiscard]] int tweaksOutputVersion(const QString &output);
 
-/**
- * parses the JSON emitted by `um tweaks list --json`. Tweaks are grouped by type
- * (toggles, then one-time tweaks, then scripts) and sorted by description.
- * Returns false and leaves @p tweaks untouched if the output is not valid or has an unsupported
- * version.
- */
 bool parseTweaksOutput(const QString &output, QList<TweakItem> *tweaks);
 
-/// removes the "YYYY/MM/DD HH:MM:SS " prefix Go's log package puts on um's error lines
 [[nodiscard]] QString stripGoLogTimestamp(const QString &line);
 
-/**
- * returns the message to show after `um tweaks` finished, or an empty string if it succeeded.
- * @p script is whether it ran a script tweak, and @p output is everything it printed.
- */
 [[nodiscard]] QString changeErrorMessage(bool script, int exitCode, QProcess::ExitStatus exitStatus,
                                          const QString &output);
 
-/// returns the error banner text: the error from changing a tweak above the error from loading the list
 [[nodiscard]] QString composeTweaksError(const QString &changeError, const QString &listError);
 
 class TweaksModel final : public QAbstractListModel {
@@ -64,7 +44,6 @@ class TweaksModel final : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    // model roles start at Qt::UserRole (256), so 16 bits are enough
     enum Roles : std::uint16_t {
         IdRole = Qt::UserRole + 1,
         DescriptionRole,
@@ -76,27 +55,21 @@ public:
         BusyRole,
     };
 
-    /// creates the model that exposes the available tweaks to QML
     explicit TweaksModel(QObject *parent = nullptr);
 
     [[nodiscard]] int rowCount(const QModelIndex &parent) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
-    /// returns the number of tweaks in the model
     [[nodiscard]] int count() const;
 
-    /// replaces every tweak in the model
     void setTweaks(QList<TweakItem> tweaks);
 
-    /// returns the tweak with @p id, or nullptr if there is none
     [[nodiscard]] const TweakItem *find(const QString &id) const;
 
-    /// marks the tweak with @p id as the one being changed, clearing any other
     void setBusyId(const QString &id);
 
 Q_SIGNALS:
-    /// emitted when the number of tweaks changes
     void countChanged();
 
 private:
@@ -116,7 +89,6 @@ class Tweaks : public KQuickConfigModule {
     Q_PROPERTY(QString output READ output NOTIFY outputChanged)
 
 public:
-    /// creates the Ultramarine tweaks configuration module
     explicit Tweaks(QObject *parent, const KPluginMetaData &metaData);
     ~Tweaks() override;
 
@@ -125,43 +97,30 @@ public:
     Tweaks(Tweaks &&) = delete;
     Tweaks &operator=(Tweaks &&) = delete;
 
-    /// reloads the tweak list, called when the page is shown
     void load() override;
 
-    /// returns the model containing the available tweaks
     TweaksModel *tweaks();
 
-    /// returns whether the tweak list is being loaded
     [[nodiscard]] bool loading() const;
 
-    /// returns whether the tweak list was loaded at least once
     [[nodiscard]] bool loaded() const;
 
-    /// returns whether the last attempt to load the tweak list failed
     [[nodiscard]] bool listFailed() const;
 
-    /// returns whether a tweak is being enabled, disabled or run
     [[nodiscard]] bool running() const;
 
-    /// returns the latest progress line from the running operation
     [[nodiscard]] const QString &status() const;
 
-    /// returns the current error shown in the UI banner
     [[nodiscard]] const QString &errorMessage() const;
 
-    /// returns the full output of the last tweak operation
     [[nodiscard]] const QString &output() const;
 
-    /// reloads the tweak list from um
     Q_INVOKABLE void refresh();
 
-    /// enables or disables a toggle tweak, or applies a oneshot tweak
     Q_INVOKABLE void setTweakEnabled(const QString &id, bool enabled);
 
-    /// runs a script tweak
     Q_INVOKABLE void runTweak(const QString &id);
 
-    /// clears the error message, for example when the user dismisses it
     Q_INVOKABLE void clearError();
 
 Q_SIGNALS:
@@ -173,48 +132,32 @@ Q_SIGNALS:
     void outputChanged();
 
 private:
-    /// starts a privileged um invocation for tweak @p id
     void startChange(const QString &id, const QStringList &arguments, const QString &progressMessage);
 
     void listFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void changeFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void readChangeOutput();
-    /// stops reading the change's output and closes the file
     void closeChangeOutput();
-    /// shows the last complete line of @p lines as the status
-    void updateStatus(const QString &lines);
+    void showLastMeaningfulLineAsStatus(const QString &completeLines);
 
     void setLoading(bool value);
     void setRunning(bool value);
     void setStatus(const QString &value);
-    /// sets the error from loading the list, which the next successful load clears
     void setListError(const QString &message);
-    /// sets the error from changing a tweak, which stays until it's dismissed or the next change
     void setChangeError(const QString &message);
-    /// composes errorMessage() from both errors
     void updateErrorMessage();
     void setListState(bool wasLoaded, bool failed);
+    void killListProcessGroup();
+    void detachRunningChange();
 
     TweaksModel m_tweaks;
     QProcess m_listProcess;
-    /**
-     * a pointer, so ~Tweaks can let a running change finish instead of having ~QProcess kill
-     * it and wait (see ~Tweaks)
-     */
     QProcess *m_changeProcess;
-    /**
-     * the change's output. um writes it to a file in $XDG_RUNTIME_DIR rather than a pipe, so
-     * it keeps running if System Settings quits (a write to a closed pipe would kill it). The
-     * file is unlinked once um has started, and read through this handle.
-     */
-    QFile m_outputFile;
-    /// polls m_outputFile for new output while a change runs
-    QTimer m_outputTimer;
+    QFile m_changeOutputFile;
+    QTimer m_changeOutputPollTimer;
     QStringDecoder m_changeDecoder{QStringDecoder::Utf8};
-    /// change output after the last newline, not yet shown as the status
-    QString m_partialLine;
+    QString m_unfinishedChangeLine;
     QString m_status;
-    /// shown in the banner, see composeTweaksError()
     QString m_errorMessage;
     QString m_listError;
     QString m_changeError;
@@ -223,8 +166,6 @@ private:
     bool m_loaded = false;
     bool m_listFailed = false;
     bool m_running = false;
-    /// the running change is a script tweak
-    bool m_runningScript = false;
-    /// refresh() was called while loading, so reload once the current load finishes
-    bool m_reloadPending = false;
+    bool m_changeIsScript = false;
+    bool m_reloadAfterCurrentLoad = false;
 };

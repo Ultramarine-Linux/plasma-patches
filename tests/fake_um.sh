@@ -3,9 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# a stand-in for um that test_tweaks runs instead of the real one. FAKE_UM_LIST and
-# FAKE_UM_CHANGE pick what `um tweaks list --json` and `um tweaks enable|disable|run` do.
-# FAKE_UM_DIR is where it leaves files for the test to look at.
 set -euo pipefail
 
 dir=${FAKE_UM_DIR:?}
@@ -17,7 +14,6 @@ if [[ $* == "tweaks list --json" ]]; then
         echo '{"id":"cleanup","description":"Clean up","type":"script","enabled":false}]}'
         ;;
     too-old)
-        # Go's flag package, from um releases without --json
         echo 'flag provided but not defined: -json' >&2
         exit 2
         ;;
@@ -32,7 +28,6 @@ if [[ $* == "tweaks list --json" ]]; then
         exit 1
         ;;
     hang)
-        # like um waiting on a slow check.sh
         sleep 30 &
         echo $! >"$dir/check.pid"
         wait

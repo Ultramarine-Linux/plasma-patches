@@ -10,13 +10,10 @@
 
 #include <chrono>
 
-/// small helpers for running the package managers the updater drives
 namespace UltramarineUpdates {
 
     struct CommandResult {
-        /// false if the program couldn't be started at all
         bool started = false;
-        /// the exit code, or -1 if the program crashed or didn't start
         int exitCode = -1;
         QByteArray out;
         QByteArray err;
@@ -24,44 +21,21 @@ namespace UltramarineUpdates {
         [[nodiscard]] bool succeeded() const { return started && exitCode == 0; }
     };
 
-    /// runs @p program to completion and captures its output
     CommandResult capture(const QString &program, const QStringList &arguments,
                           const QProcessEnvironment &environment = QProcessEnvironment::systemEnvironment());
 
-    /**
-     * like capture(), but kills @p program if it runs longer than @p timeout.
-     * It then counts as crashed (exit code -1).
-     */
     CommandResult captureWithTimeout(const QString &program, const QStringList &arguments,
                                      std::chrono::milliseconds timeout);
 
-    /**
-     * runs @p program and returns its trimmed stdout. Exit codes in
-     * @p allowedExitCodes count as success (`dnf check-update` exits with 100
-     * when updates are available). On failure, returns false and sets @p error
-     * to the program's stderr.
-     */
     bool commandOutput(const QString &program, const QStringList &arguments, QString *output, QString *error,
                        const QList<int> &allowedExitCodes = {});
 
-    /**
-     * runs a command with the C locale, so sizes and numbers aren't localized
-     * (e.g. "1,1 GB"). Partial output is still useful (rpm -q with some packages
-     * missing), so the exit code is ignored.
-     */
     QString localeIndependentOutput(const QString &program, const QStringList &arguments);
 
-    /**
-     * runs a command with our stdin, stdout and stderr, so download progress is
-     * visible (in a terminal, or in the KCM's status line). Returns the exit
-     * code, or -1 if it couldn't start or crashed.
-     */
     int runForwarded(const QString &program, const QStringList &arguments);
 
-    /// returns the first executable among @p paths, falling back to PATH. Empty if none.
     QString findExecutable(const QString &name, const QStringList &paths = {});
 
-    /// returns the last non-empty line of @p text (nix puts the error last)
     QString lastLine(const QString &text);
 
 } // namespace UltramarineUpdates

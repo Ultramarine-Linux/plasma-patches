@@ -18,14 +18,12 @@ namespace {
 } // namespace
 
 void LocationTest::parsesUnitFileStates() {
-    // GeoClue is D-Bus activated, so it's normally static
     QCOMPARE(parseUnitFileState(QStringLiteral("static")), LocationState::Enabled);
     QCOMPARE(parseUnitFileState(QStringLiteral("enabled")), LocationState::Enabled);
     QCOMPARE(parseUnitFileState(QStringLiteral("disabled")), LocationState::Enabled);
     QCOMPARE(parseUnitFileState(QStringLiteral("masked")), LocationState::Disabled);
     QCOMPARE(parseUnitFileState(QStringLiteral("masked-runtime")), LocationState::DisabledRuntime);
     QCOMPARE(parseUnitFileState(QStringLiteral("not-found")), LocationState::Unavailable);
-    // a unit file systemd can't parse means GeoClue is installed, so it isn't "not installed"
     QCOMPARE(parseUnitFileState(QStringLiteral("bad")), LocationState::ReadFailed);
     QCOMPARE(parseUnitFileState(QString()), LocationState::Unavailable);
 }
@@ -36,7 +34,6 @@ void LocationTest::parsesUnitFileStateErrors() {
              LocationState::Unavailable);
     QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.systemd1.NoSuchUnit")),
              LocationState::Unavailable);
-    // anything else doesn't say whether GeoClue is installed
     QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.DBus.Error.NoReply")), LocationState::ReadFailed);
     QCOMPARE(parseUnitFileStateError(QStringLiteral("org.freedesktop.DBus.Error.AccessDenied")),
              LocationState::ReadFailed);
@@ -46,20 +43,21 @@ void LocationTest::parsesUnitFileStateErrors() {
 void LocationTest::reportsHelperResults() {
     QVERIFY(helperErrorMessage(0, QProcess::NormalExit, QStringLiteral("Created symlink")).isEmpty());
 
-    // pkexec's dismissed and not authorized codes
-    for (const int code: {126, 127}) {
+    constexpr int PkexecDismissed = 126;
+    constexpr int PkexecNotAuthorized = 127;
+    for (const int code: {PkexecDismissed, PkexecNotAuthorized}) {
         const QString message = helperErrorMessage(code, QProcess::NormalExit, {});
         QVERIFY(message.contains(QLatin1String("No changes were made")));
     }
 
-    // a failure after authentication may have changed something
-    const QString failed = helperErrorMessage(1, QProcess::NormalExit, QStringLiteral("  Failed to stop\n"));
-    QVERIFY(!failed.contains(QLatin1String("No changes were made")));
-    QVERIFY(failed.contains(QLatin1String("partly applied")));
-    QVERIFY(failed.endsWith(QLatin1String("Failed to stop")));
+    const QString failedAfterAuthentication =
+        helperErrorMessage(1, QProcess::NormalExit, QStringLiteral("  Failed to stop\n"));
+    QVERIFY(!failedAfterAuthentication.contains(QLatin1String("No changes were made")));
+    QVERIFY(failedAfterAuthentication.contains(QLatin1String("partly applied")));
+    QVERIFY(failedAfterAuthentication.endsWith(QLatin1String("Failed to stop")));
 
-    // a crash is never an authentication failure, whatever the exit code
-    QVERIFY(!helperErrorMessage(126, QProcess::CrashExit, {}).contains(QLatin1String("No changes were made")));
+    QVERIFY(
+        !helperErrorMessage(PkexecDismissed, QProcess::CrashExit, {}).contains(QLatin1String("No changes were made")));
     QVERIFY(helperErrorMessage(1, QProcess::NormalExit, {}).contains(QLatin1String("partly applied")));
 }
 

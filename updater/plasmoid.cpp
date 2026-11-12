@@ -39,38 +39,30 @@ using namespace std::chrono_literals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// the configuration of Plasma's "Get New Widgets" dialog. Its registry is named after it.
         constexpr auto knsrc = "plasmoids.knsrc";
+        constexpr auto knsrcSuffix = ".knsrc"_L1;
 
-        /// how long to wait for the KDE Store before giving up
         constexpr auto listTimeout = 2min;
-        /// per widget: downloading and installing a widget is quick
-        constexpr auto installTimeout = 10min;
+        constexpr auto installTimeoutPerWidget = 10min;
 
-        /**
-         * sets up KNewStuff for a command line program.
-         *
-         * KNewStuff's jobs hold QEventLoopLockers, and QCoreApplication quits all
-         * event loops when the last one is released, ending our waits early.
-         *
-         * KNewStuff's questions are declined. We run unattended (or behind the
-         * KCM), so nothing can answer them, and Question::ask() would wait forever.
-         * The ones that come up while updating ("which file is the update?") fail
-         * that widget's update instead of guessing.
-         */
-        void prepareKNewStuff() {
-            static bool prepared = false;
-            if (prepared) {
-                return;
-            }
-            prepared = true;
-            QCoreApplication::setQuitLockEnabled(false);
+        void keepEventLoopsRunningWhenKNewStuffJobsFinish() { QCoreApplication::setQuitLockEnabled(false); }
+
+        void declineKNewStuffQuestionsSinceNobodyCanAnswer() {
             QObject::connect(
                 KNSCore::QuestionManager::instance(), &KNSCore::QuestionManager::askQuestion,
                 [](KNSCore::Question *question) { question->setResponse(KNSCore::Question::CancelResponse); });
         }
 
-        /// runs @p loop until it quits or @p timeout passes. Returns false on timeout.
+        void prepareKNewStuffForCommandLine() {
+            static bool prepared = false;
+            if (prepared) {
+                return;
+            }
+            prepared = true;
+            keepEventLoopsRunningWhenKNewStuffJobsFinish();
+            declineKNewStuffQuestionsSinceNobodyCanAnswer();
+        }
+
         bool runLoop(QEventLoop &loop, const std::chrono::milliseconds timeout) {
             bool timedOut = false;
             QTimer timer;
@@ -84,9 +76,8 @@ namespace UltramarineUpdates {
             return !timedOut;
         }
 
-        /// loads the KDE Store providers. KNewStuff only searches providers it has loaded.
         bool initEngine(KNSCore::EngineBase &engine, QString *error) {
-            prepareKNewStuff();
+            prepareKNewStuffForCommandLine();
             QEventLoop loop;
             QString failure;
             QObject::connect(&engine, &KNSCore::EngineBase::signalProvidersLoaded, &loop, &QEventLoop::quit);
@@ -112,7 +103,6 @@ namespace UltramarineUpdates {
             return true;
         }
 
-        /// searches for updateable widgets. KNewStuff compares the registry with the store.
         std::optional<KNSCore::Entry::List> updateableEntries(KNSCore::EngineBase &engine, QString *error) {
             QEventLoop loop;
             QString failure;
@@ -163,7 +153,7 @@ namespace UltramarineUpdates {
 
     QString plasmoidRegistryPath() {
         return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/knewstuff3/"_L1 +
-            QString::fromLatin1(knsrc).chopped(6) + ".knsregistry"_L1;
+            QString::fromLatin1(knsrc).chopped(knsrcSuffix.size()) + ".knsregistry"_L1;
     }
 
     bool registryHasInstalledEntries(const QByteArray &registry) {
@@ -196,14 +186,11 @@ namespace UltramarineUpdates {
         update.kind = QString::fromLatin1(Kind::Addon);
         update.oldVersion = entry.version;
         update.newVersion = entry.updateVersion;
-        // the store has no icon names, only screenshots. The widget's own icon is
-        // in its package. "plasma" stands in for widgets without one.
         update.icon = u"plasma"_s;
         for (const QString &file: entry.installedFiles) {
-            // KNewStuff may record directories as "path/*"
             QString directory = file;
-            if (directory.endsWith("/*"_L1)) {
-                directory.chop(2);
+            if (constexpr auto directoryWildcard = "/*"_L1; directory.endsWith(directoryWildcard)) {
+                directory.chop(directoryWildcard.size());
             }
             if (const std::optional<QByteArray> json = read(QDir::cleanPath(directory) + "/metadata.json"_L1)) {
                 if (const PlasmoidMetadata metadata = parsePlasmoidMetadata(*json); !metadata.icon.isEmpty()) {
@@ -241,7 +228,6 @@ namespace UltramarineUpdates {
     }
 
     bool upgradePlasmoids(QString *error) {
-        // destroying the engine writes the registry, so the updates aren't listed again
         KNSCore::EngineBase engine;
         if (!initEngine(engine, error)) {
             return false;
@@ -265,8 +251,8 @@ namespace UltramarineUpdates {
                                  }
                              });
             QObject::connect(transaction, &KNSCore::Transaction::finished, &loop, &QEventLoop::quit);
-            const bool timedOut = !runLoop(loop, installTimeout);
-            if (timedOut) {
+            const bool transactionStillRunning = !runLoop(loop, installTimeoutPerWidget);
+            if (transactionStillRunning) {
                 failure = i18nc("@info:status", "timed out");
             }
             if (!failure.isEmpty()) {
@@ -275,8 +261,7 @@ namespace UltramarineUpdates {
                                               "Warning: could not update %1: %2", entry.name(), failure)));
                 failed.append(entry.name());
             }
-            // KNewStuff can't cancel the transaction, so don't start more next to it
-            if (timedOut) {
+            if (transactionStillRunning) {
                 for (qsizetype i = index + 1; i < entries->size(); ++i) {
                     failed.append(entries->at(i).name());
                 }

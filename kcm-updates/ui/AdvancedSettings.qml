@@ -9,24 +9,23 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kcmutils as KCMUtils
 
-// saved together with the main page through System Settings' Apply button
 KCMUtils.SimpleKCM {
     id: page
 
     title: i18nc("@title", "Advanced Update Settings")
 
-    // errors from saving show here too, since this is where the settings are
     headerPaddingEnabled: false
     header: ErrorMessage {}
+
+    readonly property int applyTonightDefaultStart: 22 * 60
+    readonly property int applyTonightDefaultEnd: 6 * 60
 
     function timeChoice(minutes) {
         const time = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
         return { minutes: minutes, text: time.toLocaleTimeString(Qt.locale(), Locale.ShortFormat) };
     }
 
-    // half-hour steps, shown in the locale's time format. A saved time that isn't on
-    // the grid (like 01:15 set elsewhere) is listed too, so it isn't changed by opening this page.
-    function timeChoices(current) {
+    function halfHourChoicesIncluding(current) {
         const choices = [];
         for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
             if (current > minutes - 30 && current < minutes && current % 30 !== 0) {
@@ -79,15 +78,13 @@ KCMUtils.SimpleKCM {
             onToggled: kcm.windowEnabled = checked
         }
 
-        // one labeled row each, so no sentence is split around the combo boxes
         QQC2.ComboBox {
             Kirigami.FormData.label: i18nc("@label:listbox the start of the update time range", "Starting at:")
             Accessible.name: i18nc("@label:listbox", "Start time")
             enabled: kcm.windowEnabled
-            model: page.timeChoices(kcm.windowStart)
+            model: page.halfHourChoicesIncluding(kcm.windowStart)
             textRole: "text"
             valueRole: "minutes"
-            // depends on model too, so it follows when an off-grid time leaves the list
             currentIndex: page.timeIndex(model, kcm.windowStart)
             onActivated: kcm.windowStart = currentValue
         }
@@ -96,14 +93,13 @@ KCMUtils.SimpleKCM {
             Kirigami.FormData.label: i18nc("@label:listbox the end of the update time range", "Ending at:")
             Accessible.name: i18nc("@label:listbox", "End time")
             enabled: kcm.windowEnabled
-            model: page.timeChoices(kcm.windowEnd)
+            model: page.halfHourChoicesIncluding(kcm.windowEnd)
             textRole: "text"
             valueRole: "minutes"
             currentIndex: page.timeIndex(model, kcm.windowEnd)
             onActivated: kcm.windowEnd = currentValue
         }
 
-        // the helper rejects an empty window, so it can't be saved (see isSaveNeeded())
         Kirigami.InlineMessage {
             Layout.fillWidth: true
             Layout.maximumWidth: Kirigami.Units.gridUnit * 20
@@ -117,9 +113,8 @@ KCMUtils.SimpleKCM {
             Layout.maximumWidth: Kirigami.Units.gridUnit * 20
             text: kcm.windowEnabled
                 ? i18nc("@info", "Also used for Apply Tonight.")
-                // the helper's default for Apply Tonight, 22:00-06:00 (see schedule.cpp)
                 : i18nc("@info %1 and %2 are times of day", "Updates install whenever the device isn’t in use. Apply Tonight installs between %1 and %2.",
-                        page.timeChoice(22 * 60).text, page.timeChoice(6 * 60).text)
+                        page.timeChoice(page.applyTonightDefaultStart).text, page.timeChoice(page.applyTonightDefaultEnd).text)
             font: Kirigami.Theme.smallFont
             wrapMode: Text.Wrap
         }
@@ -131,7 +126,6 @@ KCMUtils.SimpleKCM {
         QQC2.CheckBox {
             Kirigami.FormData.label: i18nc("@label", "System updates:")
             text: i18nc("@option:check", "Install while restarting")
-            // system images always take effect when restarting
             enabled: !kcm.imageMode
             checked: kcm.imageMode || kcm.offlineUpdates
             onToggled: kcm.offlineUpdates = checked

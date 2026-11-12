@@ -96,7 +96,6 @@ namespace UltramarineUpdates {
         const bool imageMode = isImageMode();
         ImageState image;
         if (imageMode) {
-            // dnf exists in bootc images, but can't update the image
             pending.push_back(
                 querySourceAsync(i18nc("@item an update source", "system image"), [&image](QString *error) {
                     image = imageState(error);
@@ -124,10 +123,10 @@ namespace UltramarineUpdates {
             }
         }
 
-        // KNewStuff runs event loops and answers questions on the main thread
-        std::optional<SourceResult> plasmoids;
+        std::optional<SourceResult> plasmoidsQueriedOnMainThread;
         if (canManagePlasmoids()) {
-            plasmoids = querySource(i18nc("@item an update source", "Plasma widgets"), plasmoidUpdates);
+            plasmoidsQueriedOnMainThread =
+                querySource(i18nc("@item an update source", "Plasma widgets"), plasmoidUpdates);
         }
 
         const auto collect = [&response](const SourceResult &result) {
@@ -142,8 +141,8 @@ namespace UltramarineUpdates {
         for (std::future<SourceResult> &source: pending) {
             collect(source.get());
         }
-        if (plasmoids) {
-            collect(*plasmoids);
+        if (plasmoidsQueriedOnMainThread) {
+            collect(*plasmoidsQueriedOnMainThread);
         }
         if (imageMode) {
             response.restartRequired = image.staged;
@@ -158,31 +157,39 @@ namespace UltramarineUpdates {
     }
 
     namespace {
-        /// "dnf upgrade" (or its --downloadonly part), false with @p error if it can't or didn't work
+        QString reasonOfflineUpdateIsImpossible() {
+            if (packageKitClient().isEmpty()) {
+                return i18nc("@info:status",
+                             "Installing updates while restarting needs PackageKit, which isn't installed.");
+            }
+            switch (systemUpdateTrigger()) {
+            case SystemUpdateTrigger::PackageKitUpgrade:
+                return i18nc("@info:status", "A system upgrade is already scheduled to install while restarting.");
+            case SystemUpdateTrigger::Other:
+                return i18nc("@info:status %1 is a file path",
+                             "Another offline update is already scheduled (%1 exists).", PackageKitPaths().trigger);
+            case SystemUpdateTrigger::None:
+            case SystemUpdateTrigger::PackageKitUpdate:
+                break;
+            }
+            return {};
+        }
+
+        QStringList downloadIntoPackageKitCacheArguments() {
+            QStringList arguments{u"--downloadonly"_s};
+            if (const QString cacheDir = packageKitCacheDir(); !cacheDir.isEmpty()) {
+                arguments.append(u"--setopt=cachedir="_s + cacheDir);
+            }
+            return arguments;
+        }
+
         bool upgradeRpms(const QString &dnf, const bool assumeYes, const bool offline, QString *error) {
             QStringList arguments{u"upgrade"_s, u"--refresh"_s};
             if (offline) {
-                // checked first, so nothing is downloaded for nothing
-                if (packageKitClient().isEmpty()) {
-                    *error = i18nc("@info:status",
-                                   "Installing updates while restarting needs PackageKit, which isn't installed.");
+                if (*error = reasonOfflineUpdateIsImpossible(); !error->isEmpty()) {
                     return false;
                 }
-                // PackageKit would replace it
-                if (const SystemUpdateTrigger trigger = systemUpdateTrigger();
-                    trigger == SystemUpdateTrigger::PackageKitUpgrade || trigger == SystemUpdateTrigger::Other) {
-                    *error = trigger == SystemUpdateTrigger::PackageKitUpgrade
-                        ? i18nc("@info:status", "A system upgrade is already scheduled to install while restarting.")
-                        : i18nc("@info:status %1 is a file path",
-                                "Another offline update is already scheduled (%1 exists).", PackageKitPaths().trigger);
-                    return false;
-                }
-                // download into PackageKit's cache, which then prepares the update from
-                // the same metadata and packages. dnf (as root) uses cachedir.
-                arguments.append(u"--downloadonly"_s);
-                if (const QString cacheDir = packageKitCacheDir(); !cacheDir.isEmpty()) {
-                    arguments.append(u"--setopt=cachedir="_s + cacheDir);
-                }
+                arguments.append(downloadIntoPackageKitCacheArguments());
             }
             if (assumeYes) {
                 arguments.append(u"-y"_s);
@@ -191,8 +198,6 @@ namespace UltramarineUpdates {
                 *error = i18nc("@info:status", "Updating RPM packages failed (exit code %1).", exitCode);
                 return false;
             }
-            // dnf has finished (and released its locks) before PackageKit starts.
-            // Only prepared if the download worked, so it never installs a partial download.
             return !offline || prepareOfflineUpdate(error);
         }
     } // namespace
@@ -211,7 +216,6 @@ namespace UltramarineUpdates {
                 result.succeed();
             }
         }
-        // `nix profile upgrade` doesn't prompt
         if (canManageNixProfile()) {
             result.updated = true;
             if (const int exitCode = upgradeNixProfile(); exitCode != 0) {
@@ -235,7 +239,6 @@ namespace UltramarineUpdates {
     ApplyResult applySystem(const bool assumeYes, const bool offline) {
         ApplyResult result;
         if (isImageMode()) {
-            // the new image is always staged for the next boot, so offline doesn't apply
             result.updated = true;
             if (QString imageError; !upgradeImage(&imageError)) {
                 result.fail(imageError, true);
@@ -251,8 +254,6 @@ namespace UltramarineUpdates {
             }
         }
         if (!determinateNixdBinary().isEmpty()) {
-            // Nix itself, installed system-wide by the nix tweak. Only upgrades
-            // when Determinate Systems advises a newer version.
             result.updated = true;
             if (const int exitCode = upgradeDeterminateNix(); exitCode != 0) {
                 result.fail(i18nc("@info:status", "Updating Determinate Nix failed (exit code %1).", exitCode));

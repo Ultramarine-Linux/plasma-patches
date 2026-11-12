@@ -7,42 +7,30 @@
 #include "rpm.h"
 #include "updates.h"
 
-/// Flatpak updates, from the system and the user installation
 namespace UltramarineUpdates {
 
-    /// a single pending update parsed from `flatpak remote-ls --updates`
     struct FlatpakUpdate {
         QString appId;
         QString name;
         QString version;
         QString branch;
         QString origin;
-        /// e.g. "app/org.kde.haruna/x86_64/stable" or "runtime/..."
         QString ref;
 
         bool operator==(const FlatpakUpdate &) const = default;
     };
 
-    /// the installations queried separately, so updates are attributed to (and
-    /// applied in) the right one
     QStringList flatpakInstallations();
 
-    /// parses `flatpak remote-ls --updates --columns=application,name,version,branch,origin,ref`
     QList<FlatpakUpdate> parseFlatpakRemoteLs(const QString &output);
 
-    /// turns a parsed update into a PackageUpdate. @p installed maps
-    /// "appID/branch" to the installed version.
     PackageUpdate flatpakPackageUpdate(const FlatpakUpdate &update, const QString &installation,
                                        const QHash<QString, QString> &installed);
 
-    /// parses GLib's formatted sizes as printed by flatpak with the C locale:
-    /// "512 bytes", "12.0 kB", "418.7 MB", "1.1 GB" (powers of 1000). 0 if unknown.
     qint64 parseSISize(QString size);
 
-    /// parses "application\tbranch\tsize[\tsize]" lines into "application/branch" -> sizes
     QHash<QString, UpgradeSize> parseFlatpakSizes(const QString &output);
 
-    /// lists pending updates of one installation ("system" or "user")
     QList<PackageUpdate> flatpakPackageUpdates(const QString &installation, QString *error);
 
 } // namespace UltramarineUpdates

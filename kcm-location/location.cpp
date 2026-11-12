@@ -41,17 +41,14 @@ LocationState parseUnitFileState(const QString &state) {
     if (state.isEmpty() || state == QLatin1String("not-found")) {
         return LocationState::Unavailable;
     }
-    // the unit file exists but systemd couldn't parse it, so GeoClue is installed but broken
     if (state == QLatin1String("bad")) {
         return LocationState::ReadFailed;
     }
-    // static (the usual, as GeoClue is D-Bus activated), enabled, disabled, …
     return LocationState::Enabled;
 }
 
 LocationState parseUnitFileStateError(const QString &errorName) {
-    // GetUnitFileState looks the unit file up on disk, and systemd 259 says FileNotFound when
-    // there's none. NoSuchUnit is what other manager calls (and older systemd) say.
+    // systemd 259 says FileNotFound here, older systemd says NoSuchUnit
     if (errorName == QLatin1String("org.freedesktop.DBus.Error.FileNotFound") ||
         errorName == QLatin1String("org.freedesktop.systemd1.NoSuchUnit")) {
         return LocationState::Unavailable;
@@ -63,11 +60,9 @@ QString helperErrorMessage(const int exitCode, const QProcess::ExitStatus exitSt
     if (exitStatus == QProcess::NormalExit && exitCode == 0) {
         return {};
     }
-    // the helper never exits with these itself, so they're pkexec's, from before it ran
     if (exitStatus == QProcess::NormalExit && Pkexec::isAuthenticationFailure(exitCode)) {
         return i18n("Authentication was canceled or failed. No changes were made.");
     }
-    // systemctl may have gotten partway, for example masking GeoClue but failing to stop it
     const QString details = output.trimmed();
     if (details.isEmpty()) {
         return i18n("Could not change location services. The change may have been partly applied.");
@@ -76,19 +71,17 @@ QString helperErrorMessage(const int exitCode, const QProcess::ExitStatus exitSt
 }
 
 Location::Location(QObject *parent, const KPluginMetaData &metaData) : KQuickConfigModule(parent, metaData) {
-    // the switch applies right away, like the Tweaks KCM
     setButtons(NoAdditionalButton);
 }
 
-Location::~Location() {
-    // ~QProcess would kill pkexec and wait up to 30 seconds for it, freezing System Settings.
-    // Once pkexec runs the helper as root it can't be killed from here anyway, and the
-    // helper finishes by itself, so let it. SIGPIPE is ignored in it, so writing to the
-    // pipe after System Settings quits doesn't kill it.
-    if (m_helper && m_helper->state() != QProcess::NotRunning) {
-        m_helper->disconnect(this);
-        m_helper->setParent(nullptr);
-        connect(m_helper, &QProcess::finished, m_helper, &QObject::deleteLater);
+Location::~Location() { detachRunningPkexec(); }
+
+// ~QProcess would block System Settings for up to 30 seconds trying to kill a root process it can't kill
+void Location::detachRunningPkexec() {
+    if (m_runningPkexec && m_runningPkexec->state() != QProcess::NotRunning) {
+        m_runningPkexec->disconnect(this);
+        m_runningPkexec->setParent(nullptr);
+        connect(m_runningPkexec, &QProcess::finished, m_runningPkexec, &QObject::deleteLater);
     }
 }
 
@@ -111,8 +104,7 @@ const QString &Location::errorMessage() const { return m_errorMessage; }
 
 void Location::load() {
     if (m_loading) {
-        // the state being read may predate a change
-        m_reloadPending = true;
+        m_reloadAfterCurrentRead = true;
         return;
     }
     setLoading(true);
@@ -123,7 +115,7 @@ void Location::load() {
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call) {
         call->deleteLater();
         setLoading(false);
-        if (std::exchange(m_reloadPending, false)) {
+        if (std::exchange(m_reloadAfterCurrentRead, false)) {
             load();
             return;
         }
@@ -131,14 +123,13 @@ void Location::load() {
         const LocationState state =
             reply.isError() ? parseUnitFileStateError(reply.error().name()) : parseUnitFileState(reply.value());
         if (state == LocationState::ReadFailed) {
-            m_readError = reply.isError()
+            m_lastReadError = reply.isError()
                 ? i18n("Could not read the state of location services: %1", reply.error().message())
                 : i18n("Could not read the state of location services: systemd reports geoclue.service as “%1”.",
                        reply.value());
-            setErrorMessage(m_readError);
-        } else if (const QString readError = std::exchange(m_readError, {});
+            setErrorMessage(m_lastReadError);
+        } else if (const QString readError = std::exchange(m_lastReadError, {});
                    !readError.isEmpty() && m_errorMessage == readError) {
-            // a helper error shown since then stays
             setErrorMessage({});
         }
         setState(state);
@@ -164,12 +155,8 @@ void Location::setLocationEnabled(const bool enabled) {
 
     setBusy(true);
     auto *process = new QProcess(this);
-    m_helper = process;
+    m_runningPkexec = process;
     process->setProcessChannelMode(QProcess::MergedChannels);
-    // keep pkexec off System Settings' terminal, if it has one, so it asks through the
-    // polkit agent instead of falling back to a text prompt. SIGPIPE is ignored too, so if
-    // System Settings quits mid-change, systemctl printing "Created symlink" to the closed
-    // pipe can't kill it before it stops GeoClue.
     DetachedProcess::detachFromTerminal(process);
     connect(process, &QProcess::finished, this, &Location::helperFinished);
     connect(process, &QProcess::errorOccurred, this, [this, process](const QProcess::ProcessError error) {
@@ -185,13 +172,12 @@ void Location::setLocationEnabled(const bool enabled) {
 
 void Location::helperFinished(const int exitCode, const QProcess::ExitStatus exitStatus) {
     QString output;
-    if (m_helper) {
-        output = QString::fromLocal8Bit(m_helper->readAll());
-        m_helper->deleteLater();
+    if (m_runningPkexec) {
+        output = QString::fromLocal8Bit(m_runningPkexec->readAll());
+        m_runningPkexec->deleteLater();
     }
     setErrorMessage(helperErrorMessage(exitCode, exitStatus, output));
     setBusy(false);
-    // show what's actually set, even after a failure
     load();
 }
 

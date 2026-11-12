@@ -75,7 +75,7 @@ rpm-ostree) systems, where `/run/ostree-booted` exists.
   it starts opening the documents or closes, so later launches open their own dialog
   instead of handing over documents that would never be opened.
 - **Related refs:** errors libflatpak marks non-fatal (translations, GL extensions) are
-  skipped and shown as progress, so they don't abort the install.
+  shown as progress and don't abort the install.
 - **PackageKit version:** the D-Bus enum numbers are PackageKit 1.x's (its main branch
   renumbers them), so the installer checks the daemon's `VersionMajor` and refuses anything else.
 

@@ -2,19 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# a stand-in until Plasma ships its own location KCM (plasma-workspace!5434 only sets a manual
-# position, it has no on/off switch yet)
+# a stand-in until Plasma ships a location on/off switch (plasma-workspace!5434 only sets a manual position)
 kcmutils_add_qml_kcm(kcm_ultramarine_location
         SOURCES
         location.cpp
         DISABLE_DESKTOP_FILE_GENERATION
 )
-# translated metadata, desktop file and catalog
 um_translate_kcm_metadata(kcm_ultramarine_location)
 
-# the root helper that masks or unmasks geoclue.service, run through pkexec. Its polkit
-# action matches this exact path. Like the paths in the top-level CMakeLists.txt, it
-# follows the install prefix unless set with -D.
 if (NOT DEFINED ULTRAMARINE_LOCATION_HELPER)
     set(ULTRAMARINE_LOCATION_HELPER "${CMAKE_INSTALL_PREFIX}/libexec/ultramarine-location-helper")
 endif ()
@@ -42,9 +37,6 @@ um_translate_policy(${_data}/org.ultramarine.location.policy.in ${_generated}/or
 
 cmake_path(GET ULTRAMARINE_LOCATION_HELPER PARENT_PATH _helper_dir)
 install(PROGRAMS ${_generated}/ultramarine-location-helper DESTINATION ${_helper_dir})
-# installed under the prefix like everything else, but polkit only reads actions from
-# /usr/share/polkit-1/actions, so with another prefix the action has to be copied or linked
-# there by hand (see docs/location.md)
 if (NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr")
     message(WARNING "polkit only reads actions from /usr/share/polkit-1/actions, so the location "
             "helper's action installed under ${CMAKE_INSTALL_PREFIX} won't be used until it's copied there")

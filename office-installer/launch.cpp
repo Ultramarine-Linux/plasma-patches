@@ -19,11 +19,11 @@ using namespace Qt::StringLiterals;
 namespace OfficeInstaller {
 
     namespace {
-        KService::Ptr installedHandler(const QMimeType &mimeType) {
+        KService::Ptr handlerListingExactMimeType(const QMimeType &mimeType) {
             const QMimeDatabase db;
             const KService::List services =
                 KApplicationTrader::queryByMimeType(mimeType.name(), [&](const KService::Ptr &service) {
-                    if (service->storageId() == QLatin1StringView(DesktopFileId)) {
+                    if (service->storageId() == QLatin1StringView(OwnDesktopFileId)) {
                         return false;
                     }
                     const QStringList types = service->mimeTypes();
@@ -40,8 +40,7 @@ namespace OfficeInstaller {
         };
     } // namespace
 
-    bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context,
-                               const std::function<void(const QString &error, const QList<QUrl> &failed)> &done) {
+    bool openWithInstalledApps(const QList<QUrl> &urls, const QObject *context, const LaunchesFinished &done) {
         if (urls.isEmpty()) {
             return false;
         }
@@ -51,7 +50,7 @@ namespace OfficeInstaller {
             const QMimeDatabase db;
             const QMimeType mimeType =
                 url.isLocalFile() ? db.mimeTypeForFile(url.toLocalFile()) : db.mimeTypeForUrl(url);
-            const KService::Ptr service = installedHandler(mimeType);
+            const KService::Ptr service = handlerListingExactMimeType(mimeType);
             if (!service) {
                 return false;
             }
@@ -65,8 +64,7 @@ namespace OfficeInstaller {
             const QList<QUrl> serviceUrls = urlsByService.value(it.key());
             auto *job = new KIO::ApplicationLauncherJob(it.value());
             job->setUrls(serviceUrls);
-            // asks before running untrusted desktop files. Errors are reported through done(), not
-            // by the delegate: its message box would be queued after the installer has quit
+            // the delegate's message box would only show after the installer quit, so errors go through done()
             job->setUiDelegate(KIO::createDefaultJobUiDelegate(KJobUiDelegate::AutoHandlingDisabled, nullptr));
             QObject::connect(job, &KJob::result, context, [pending, done, serviceUrls](KJob *job) {
                 if (job->error() != 0 && job->error() != KJob::KilledJobError) {
@@ -90,7 +88,7 @@ namespace OfficeInstaller {
                                "application/vnd.oasis.opendocument.spreadsheet"_L1,
                                "application/vnd.openxmlformats-officedocument.presentationml.presentation"_L1,
                                "application/vnd.oasis.opendocument.presentation"_L1}) {
-            if (KService::Ptr service = installedHandler(db.mimeTypeForName(type))) {
+            if (KService::Ptr service = handlerListingExactMimeType(db.mimeTypeForName(type))) {
                 return service;
             }
         }

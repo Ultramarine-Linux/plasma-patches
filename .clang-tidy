@@ -14,7 +14,6 @@ Checks: >-
   -readability-identifier-length
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*'
-# CI passes --header-filter=^$GITHUB_WORKSPACE/, which also matches Qt's generated
-# moc files in build/. Those aren't ours to fix.
+# CI's --header-filter=^$GITHUB_WORKSPACE/ also matches Qt's generated moc files in build/
 ExcludeHeaderFilterRegex: '.*_autogen/.*'
 FormatStyle: file

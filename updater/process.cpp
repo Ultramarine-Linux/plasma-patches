@@ -23,7 +23,6 @@ namespace UltramarineUpdates {
             }
             QProcess process;
             process.setProcessEnvironment(environment);
-            // nothing is ever written to it, so a program asking for input gets EOF instead of hanging
             process.setStandardInputFile(QProcess::nullDevice());
             process.start(program, arguments);
             if (!process.waitForStarted(-1)) {
@@ -87,8 +86,6 @@ namespace UltramarineUpdates {
         QProcess process;
         process.setProcessChannelMode(QProcess::ForwardedChannels);
         process.setInputChannelMode(QProcess::ForwardedInputChannel);
-        // QProcess resets SIGPIPE to the default in children. Keep main()'s SIG_IGN, so dnf or
-        // flatpak keep installing (with failing writes) if the KCM closes our output.
         QProcess::UnixProcessParameters parameters;
         parameters.flags = QProcess::UnixProcessFlag::IgnoreSigPipe;
         process.setUnixProcessParameters(parameters);

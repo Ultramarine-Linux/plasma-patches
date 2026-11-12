@@ -12,7 +12,7 @@ using namespace Qt::StringLiterals;
 
 namespace OfficeInstaller {
 
-    QList<Suite> suites() {
+    QList<Suite> offeredSuites() {
         return {
             {
                 .name = i18nc("@option:radio office suite", "Collabora Office"),
@@ -41,7 +41,7 @@ namespace OfficeInstaller {
         };
     }
 
-    QList<Source> sources(const Suite &suite, const bool imageBased) {
+    QList<Source> installSources(const Suite &suite, const bool imageBased) {
         QList<Source> result;
         if (!suite.flatpakId.isEmpty()) {
             result.append(Source::Flatpak);
@@ -52,36 +52,40 @@ namespace OfficeInstaller {
         return result;
     }
 
+    namespace {
+        bool isDesktopFileOfFlatpak(const QString &desktopEntryName, const QString &flatpakId) {
+            const bool isMainDesktopFile = desktopEntryName.compare(flatpakId, Qt::CaseInsensitive) == 0;
+            const bool isSubAppDesktopFile = desktopEntryName.startsWith(flatpakId + u'.', Qt::CaseInsensitive);
+            return isMainDesktopFile || isSubAppDesktopFile;
+        }
+    } // namespace
+
     bool isSuite(const Suite &suite, const QString &desktopEntryName, const QString &executable) {
-        // LibreOffice's Flatpak has org.libreoffice.LibreOffice.writer and so on
-        if (!suite.flatpakId.isEmpty() &&
-            (desktopEntryName.compare(suite.flatpakId, Qt::CaseInsensitive) == 0 ||
-             desktopEntryName.startsWith(suite.flatpakId + u'.', Qt::CaseInsensitive))) {
+        if (!suite.flatpakId.isEmpty() && isDesktopFileOfFlatpak(desktopEntryName, suite.flatpakId)) {
             return true;
         }
         return !suite.rpmExecutable.isEmpty() && executable == suite.rpmExecutable;
     }
 
-    QString flatpakRef(const Suite &suite, const QString &arch) {
-        return u"app/%1/%2/stable"_s.arg(suite.flatpakId, arch);
+    QString flatpakRef(const Suite &suite, const QString &flatpakArch) {
+        return u"app/%1/%2/stable"_s.arg(suite.flatpakId, flatpakArch);
     }
 
-    Command launchCommand(const Suite &suite, const Source source, const QStringList &files) {
+    Command openFilesCommand(const Suite &suite, const Source source, const QStringList &localPaths) {
         switch (source) {
         case Source::Flatpak:
-            if (files.isEmpty()) {
+            if (localPaths.isEmpty()) {
                 return {u"flatpak"_s, {u"run"_s, suite.flatpakId}};
             }
-            // gives the sandbox access to the files through the document portal
             return {.program = u"flatpak"_s,
-                    .arguments = QStringList{u"run"_s, u"--file-forwarding"_s, suite.flatpakId, u"@@"_s} + files +
+                    .arguments = QStringList{u"run"_s, u"--file-forwarding"_s, suite.flatpakId, u"@@"_s} + localPaths +
                         QStringList{u"@@"_s}};
         case Source::Rpm:
-            return {.program = suite.rpmExecutable, .arguments = files};
+            return {.program = suite.rpmExecutable, .arguments = localPaths};
         }
         Q_UNREACHABLE();
     }
 
-    bool isImageBased() { return QFileInfo::exists(u"/run/ostree-booted"_s); }
+    bool isBootedFromOstree() { return QFileInfo::exists(u"/run/ostree-booted"_s); }
 
 } // namespace OfficeInstaller

@@ -47,8 +47,6 @@ namespace UltramarineUpdates {
         if (!system) {
             result.source += u" [%1]"_s.arg(installation);
         }
-        // the same app ID can appear for several branches (runtime extensions)
-        // and in both installations, so qualify the ID
         result.id = update.appId + "//"_L1 + update.branch;
         if (!system) {
             result.id += u'@' + installation;
@@ -59,21 +57,19 @@ namespace UltramarineUpdates {
         result.backend = u"flatpak"_s;
         result.oldVersion = installed.value(update.appId + u'/' + update.branch);
         result.newVersion = update.version;
-        // Flatpak apps export their icon under their application ID
         result.icon = update.appId;
         return result;
     }
 
     qint64 parseSISize(QString size) {
-        // GLib separates the number and unit with a non-breaking space
-        size.replace(QChar(0x00a0), u' ');
+        constexpr QChar glibUnitSeparator(0x00a0);
+        size.replace(glibUnitSeparator, u' ');
         size = size.trimmed();
         const qsizetype space = size.indexOf(u' ');
         if (space < 0) {
             return 0;
         }
         bool ok = false;
-        // QString::toDouble always uses the C locale, so "1,1" fails as it should
         const double value = size.left(space).toDouble(&ok);
         if (!ok) {
             return 0;
@@ -106,7 +102,6 @@ namespace UltramarineUpdates {
     }
 
     namespace {
-        /// maps "appID/branch" to the installed version for one installation
         QHash<QString, QString> installedFlatpakVersions(const QString &installation) {
             QString output;
             if (!commandOutput(u"flatpak"_s,
@@ -127,24 +122,24 @@ namespace UltramarineUpdates {
 
         struct FlatpakSizes {
             QHash<QString, UpgradeSize> remote;
-            /// the installed size of each ref, in UpgradeSize::download
-            QHash<QString, UpgradeSize> local;
+            QHash<QString, UpgradeSize> localSizeColumns;
+
+            [[nodiscard]] qint64 installedSize(const QString &key) const {
+                return localSizeColumns.value(key).download;
+            }
         };
 
-        /// C locale output, so the sizes parse. A separate call from the listing, which
-        /// keeps the user's locale for app names.
         FlatpakSizes flatpakSizes(const QString &installation) {
             return {
                 .remote = parseFlatpakSizes(
                     localeIndependentOutput(u"flatpak"_s,
                                             {u"remote-ls"_s, u"--"_s + installation, u"--updates"_s,
                                              u"--columns=application,branch,download-size,installed-size"_s})),
-                .local = parseFlatpakSizes(localeIndependentOutput(
+                .localSizeColumns = parseFlatpakSizes(localeIndependentOutput(
                     u"flatpak"_s, {u"list"_s, u"--"_s + installation, u"--columns=application,branch,size"_s})),
             };
         }
 
-        /// Flatpak reports the full download size, but with static deltas the actual download can be smaller
         void applyFlatpakSizes(QList<PackageUpdate> &updates, const QList<FlatpakUpdate> &refs,
                                const FlatpakSizes &sizes) {
             for (qsizetype i = 0; i < updates.size(); ++i) {
@@ -155,7 +150,7 @@ namespace UltramarineUpdates {
                 }
                 updates[i].downloadSize = size->download;
                 if (size->installed > 0) {
-                    updates[i].installedSizeChange = size->installed - sizes.local.value(key).download;
+                    updates[i].installedSizeChange = size->installed - sizes.installedSize(key);
                 }
             }
         }

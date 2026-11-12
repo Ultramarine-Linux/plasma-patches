@@ -1,8 +1,7 @@
 # Discover integration
 
-Ultramarine's Updates KCM (and its `ultramarine-updates` helper) handles updates. The Discover patch removes
-Discover's own Updates page and directs users to
-`kcm_ultramarine_updates` instead.
+The Discover patch removes Discover's own Updates page and sends users to the
+Ultramarine Updates KCM (`kcm_ultramarine_updates`) instead.
 
 ## Patch versions
 
@@ -19,8 +18,8 @@ Both patches apply with `--fuzz=0`. They:
 - remove the Updates mode and replace the sidebar/tab entry with a link to
   System Settings > Updates;
 - make `plasma-discover --mode update` (case-insensitive) open System Settings >
-  Updates and show Discover's Home page. Fedora's DiscoverNotifier and scripts use
-  it; without this the window stayed on the loading page;
+  Updates and show Discover's Home page (Fedora's DiscoverNotifier and scripts use
+  it, and without this the window stayed on the loading page);
 - retarget "Configure Updates…";
 - make `--headless-update` exit with an error directing users to System Settings > Updates;
 - drop the "*Distro* N is now available" message with **Upgrade Now** from the
@@ -48,9 +47,9 @@ don't edit it by hand:
 The release follows Fedora's, and goes up by one when only the patch changes.
 Ultramarine's `.umNN` dist tag sorts above Fedora's `.fcNN`, so ties go our way.
 
-So a patch change reaches the package once it's on `main` here. A new Plasma minor
+A patch change reaches the package once it's on `main` here. A new Plasma minor
 version that the current patch doesn't apply to needs a `discover/<major.minor>/`
-directory (or a rebase of `discover/`).
+directory or a rebase of `discover/`.
 
 Neither patch touches Discover's QML autotests. `discover/autotests/toplevels.qml`
 (`test_navigateThenUpdate`) and `updateandinstall.qml` still expect the Updates page,

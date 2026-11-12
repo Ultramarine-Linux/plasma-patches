@@ -2,7 +2,7 @@
 
 On hybrid GPU systems, the app launchers (Kickoff, Kicker, Application
 Dashboard) show **Launch Using Dedicated Graphics Card** in each app's context
-menu. That includes laptops with an eGPU plugged in.
+menu, including laptops with an eGPU plugged in.
 
 ## How it works
 
@@ -33,7 +33,7 @@ menu. That includes laptops with an eGPU plugged in.
   activation.
 - **Task manager:** Plasma only reads drop-ins in the launchers, so the task
   manager doesn't show the action. That's waiting on an upstream plasma-desktop
-  change; Ultramarine ships Fedora's plasma-desktop unpatched.
+  change, since Ultramarine ships Fedora's plasma-desktop unpatched.
 - **Only on hybrid systems:** `/usr/share/plasma/kickeractions/ultramarine-dgpu-launch.desktop`
   is a symlink to `/run/ultramarine-dgpu-launch/ultramarine-dgpu-launch.desktop`.
   `ultramarine-dgpu-detect` creates that link only when the default (`boot_vga`)
@@ -76,11 +76,10 @@ systemctl start ultramarine-dgpu-detect.service >/dev/null 2>&1 || :
 because it replays the rule for every card. It also re-runs other packages' DRM
 rules, so starting the service is the safer choice.
 
-Runtime dependencies:
-
-- `switcheroo-control`: `switcheroo-control.service`, which the launcher asks for the
-  GPUs' environment over D-Bus (Fedora's presets enable it), and the
-  `switcheroo-discrete-gpu` udev tag (detection). `switcherooctl` isn't used.
+The only runtime dependency is `switcheroo-control`: the launcher asks
+`switcheroo-control.service` for the GPUs' environment over D-Bus (Fedora's presets
+enable it), and detection uses its `switcheroo-discrete-gpu` udev tag.
+`switcherooctl` isn't used.
 
 Build dependencies are the KF6 KIO, KService, Config, I18n and WidgetsAddons development
 packages the rest of the tree already needs.
@@ -118,5 +117,5 @@ tr '\0' '\n' < /proc/$(pgrep -n kwrite)/environ | grep -E 'DRI_PRIME|NV_PRIME|VK
 
 `tests/test_dgpu_launch.cpp` covers picking the GPU from switcheroo-control's list.
 
-Plasma looks up `share/plasma/kickeractions` the first time a launcher menu opens.
-After the first install, restart plasmashell once.
+Plasma looks up the `kickeractions` directories the first time a launcher menu opens,
+so restart plasmashell once after the first install.

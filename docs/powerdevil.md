@@ -19,7 +19,7 @@ The PowerDevil patch backports upstream
   ConsoleKit as well as logind, and sends it again if logind restarts.
 
 The MR's other commit (`7831b2f7`, "policyagent: also inhibit the logind idle
-action") is deliberately left out. It adds `idle` to the logind block inhibitor
+action") is left out. It adds `idle` to the logind block inhibitor
 PowerDevil holds for its whole lifetime. PowerDevil also mirrors every other
 block inhibitor in logind's `ListInhibitors` into its own inhibitions
 (`checkLogindInhibitions()`), skipping only its own PID, with no user or session
@@ -64,8 +64,8 @@ busctl --user call org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement 
 Check the hint with
 `loginctl show-session "$XDG_SESSION_ID" -p IdleHint -p IdleSinceHint`.
 
-Since the update helper waits for its own `inactive_minutes` on top of that, the
-device counts as unused after `SessionIdleTimeoutSec` plus `inactive_minutes`.
+The update helper waits its own `inactive_minutes` on top of that, so the device
+counts as unused after `SessionIdleTimeoutSec` plus `inactive_minutes`.
 
 ## Patch versions
 
@@ -98,12 +98,9 @@ don't edit it by hand:
    "downstream patches" section, so the patch goes right after the `Source` lines.
    If it doesn't apply, nothing changes until it's rebased here.
 
-The release follows Fedora's, and goes up by one when only the patch changes.
-Ultramarine's `.umNN` dist tag sorts above Fedora's `.fcNN`, so ties go our way.
-
-So a patch change reaches the package once it's on `main` here. A new Plasma minor
-version that the current patch doesn't apply to needs a `powerdevil/<major.minor>/`
-directory (or a rebase of `powerdevil/`).
+Releases, dist tags and new Plasma minor versions work the same as for Discover: a
+new minor version the patch doesn't apply to needs a `powerdevil/<major.minor>/`
+directory or a rebase of `powerdevil/`.
 
 CI (`.github/workflows/cpp-ci.yml`) checks weekly, and on changes here, that
 `powerdevil/` applies with `--fuzz=0` to upstream's `Plasma/6.8` branch.

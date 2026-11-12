@@ -30,7 +30,6 @@ namespace UltramarineUpdates {
         QDBusMessage call = QDBusMessage::createMethodCall(u"org.freedesktop.login1"_s, u"/org/freedesktop/login1"_s,
                                                            u"org.freedesktop.login1.Manager"_s, u"Inhibit"_s);
         call << u"shutdown:sleep"_s << QString::fromLatin1(inhibitorName) << why << u"block"_s;
-        // a polkit prompt would wait for someone at the screen, so ask without one
         call.setInteractiveAuthorizationAllowed(false);
         const QDBusReply<QDBusUnixFileDescriptor> reply = bus.call(call);
         if (!reply.isValid() || !reply.value().isValid()) {
@@ -40,7 +39,6 @@ namespace UltramarineUpdates {
                                           reply.error().message())));
             return;
         }
-        // the reply's descriptor closes with it. The inhibitor lasts until our copy is closed.
         m_fd = fcntl(reply.value().fileDescriptor(), F_DUPFD_CLOEXEC, 0);
     }
 

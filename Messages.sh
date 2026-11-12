@@ -3,17 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-# extract every translatable string into po/ultramarine-plasma-settings.pot, the template
-# of the one Weblate component. Weblate writes translations to po/<lang>.po and the build
-# compiles and merges them (cmake/UltramarineTranslations.cmake).
-#
-# sources are the tracked files, found by type:
-# - i18n*() calls in C++ and QML (tests excluded)
-# - Name, GenericName, Comment and Keywords in *.desktop.in
-# - descriptions and messages in polkit *.policy.in
-# - Name, Description and keywords in KCM *.json.in metadata
-#
-# needs git, gettext, python3 and polkit's ITS rules (polkit-devel)
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -45,12 +34,10 @@ keywords=(
     --keyword=i18np:1,2
     --keyword=i18ncp:1c,2,3
 )
-# file-only references, so moving code around doesn't change the template
+# file-only locations so moving code doesn't churn the template
 common=(--from-code=UTF-8 --add-comments=i18n: --add-location=file)
 
-# --kde marks the i18n strings as kde-format, so msgfmt --check and Weblate catch a
-# translation that drops a %1. It only works for C++, and QML parses well enough as
-# C++ (KDE's own extraction does the same).
+# --kde only works for C++, and QML parses well enough as C++ like in KDE's own extraction
 xgettext --language=C++ --kde "${common[@]}" "${keywords[@]}" \
     --output="$workdir/cpp.pot" "${cpp_sources[@]}"
 xgettext --language=C++ --kde "${common[@]}" "${keywords[@]}" \
@@ -61,9 +48,8 @@ xgettext --its="$polkit_its" "${common[@]}" \
     --output="$workdir/policy.pot" "${policy_sources[@]}"
 python3 -I cmake/kcm-json-l10n.py extract "$workdir/json.pot" "${json_sources[@]}"
 
-# msgcat skips catalogs with no messages, and drops the header if it starts with one
-# of them, so put a header first. xgettext dates it from its input's mtime, so use a new
-# empty file rather than /dev/null (whose mtime is the last boot)
+# msgcat drops the header when the first catalog is empty, so put a header first.
+# xgettext dates it from its input's mtime, and /dev/null's mtime is the last boot
 : >"$workdir/empty.c"
 xgettext --language=C --force-po --package-name="$domain" \
     --msgid-bugs-address=https://github.com/Ultramarine-Linux/plasma-patches/issues \
@@ -74,8 +60,7 @@ msgcat --use-first --sort-output --add-location=file \
     "$workdir/header.pot" "$workdir"/{cpp,qml,desktop,policy,json}.pot \
     --output="$workdir/new.pot"
 
-# keep the old POT-Creation-Date when nothing else changed, so the template only
-# changes (and CI's freshness check only fails) when the strings do
+# keep the old POT-Creation-Date so CI's freshness check only fails when strings change
 mkdir -p po
 if [ -f "$pot" ] && diff -q -I '^"POT-Creation-Date:' "$pot" "$workdir/new.pot" >/dev/null; then
     echo "$pot is up to date"

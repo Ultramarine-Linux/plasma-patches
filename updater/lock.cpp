@@ -31,9 +31,9 @@ namespace UltramarineUpdates {
         if (m_fd >= 0) {
             return Result::Acquired;
         }
-        // private, so other users can't hold the system's lock to stop its updates
-        // close-on-exec, so package managers we start don't keep it after we exit
-        const int fd = open(QFile::encodeName(m_path).constData(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
+        constexpr mode_t ownerOnly = 0600;
+        const int fd =
+            open(QFile::encodeName(m_path).constData(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, ownerOnly);
         if (fd < 0) {
             if (error) {
                 *error = u"%1: %2"_s.arg(m_path, QString::fromLocal8Bit(std::strerror(errno)));

@@ -20,10 +20,8 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// the group pk_offline_auth_set_results() writes
         constexpr auto resultsGroup = "[PackageKit Offline Update Results]";
 
-        /// undoes GKeyFile's escaping of string values (g_key_file_parse_value_as_string())
         QString unescapeKeyFileValue(const QByteArray &value) {
             QByteArray result;
             result.reserve(value.size());
@@ -52,7 +50,6 @@ namespace UltramarineUpdates {
             return QString::fromUtf8(result);
         }
 
-        /// like dnf5_releasever_is_valid(): never empty, an option, a hidden directory or a path
         bool isSafePathComponent(const QString &value) {
             if (value.isEmpty() || !value.front().isLetterOrNumber() || value.contains(".."_L1)) {
                 return false;
@@ -62,7 +59,6 @@ namespace UltramarineUpdates {
             });
         }
 
-        /// the value of an os-release line, unquoted like g_shell_unquote()
         QString unquoteShellValue(const QString &value) {
             if (value.size() >= 2 && value.front() == u'\'' && value.back() == u'\'') {
                 return value.mid(1, value.size() - 2);
@@ -108,7 +104,6 @@ namespace UltramarineUpdates {
     }
 
     QString parseOfflineResultsError(const QByteArray &keyFile) {
-        // carries over between lines, so it can't move into the loop
         // cppcheck-suppress variableScope
         bool inGroup = false;
         std::optional<bool> success;
@@ -152,13 +147,10 @@ namespace UltramarineUpdates {
             return {};
         }
         QString error = parseOfflineResultsError(results.read(qint64{64} * 1024));
-        // packages were installed (or removed) since, by PackageKit or anything
-        // else, so the failure is probably no longer relevant
-        if (const QFileInfo rpmDatabase(paths.rpmDatabase); !error.isEmpty() && rpmDatabase.exists() &&
-            rpmDatabase.lastModified() > results.fileTime(QFileDevice::FileModificationTime)) {
-            return {};
-        }
-        return error;
+        const QFileInfo rpmDatabase(paths.rpmDatabase);
+        const bool packagesChangedSinceFailure =
+            rpmDatabase.exists() && rpmDatabase.lastModified() > results.fileTime(QFileDevice::FileModificationTime);
+        return packagesChangedSinceFailure ? QString() : error;
     }
 
     QString parseOsReleaseVersionId(const QByteArray &osRelease) {
@@ -174,7 +166,6 @@ namespace UltramarineUpdates {
     }
 
     QString packageKitCacheDir(const PackageKitPaths &paths) {
-        // PackageKit falls back to /usr/lib/os-release, like systemd
         QFile osRelease(paths.osRelease);
         if (!osRelease.exists()) {
             osRelease.setFileName(u"/usr/lib/os-release"_s);
@@ -190,7 +181,8 @@ namespace UltramarineUpdates {
 
     QString pkgcliError(const QByteArray &output) {
         const QString line = lastLine(QString::fromUtf8(output));
-        return line.startsWith("Error: "_L1) ? line.mid(7) : line;
+        constexpr auto errorPrefix = "Error: "_L1;
+        return line.startsWith(errorPrefix) ? line.mid(errorPrefix.size()) : line;
     }
 
     bool prepareOfflineUpdate(QString *error) {
@@ -218,13 +210,9 @@ namespace UltramarineUpdates {
 
         std::puts(qPrintable(i18nc("@info:progress", "Preparing the updates to install while restarting…")));
         std::fflush(stdout);
-        // a running packagekitd keeps the repository metadata it loaded, so a
-        // (not forced) refresh rereads it from the cache dnf just updated,
-        // without downloading anything. Then PackageKit finds the packages dnf
-        // downloaded, records them and links /system-update to them, and it doesn't
-        // trigger anything if it finds no updates.
-        return run({u"--no-color"_s, u"refresh"_s}) &&
-            run({u"--yes"_s, u"--no-color"_s, u"offline-update"_s, u"prepare"_s});
+        const QStringList rereadMetadataFromDnfCache{u"--no-color"_s, u"refresh"_s};
+        const QStringList prepareDownloadedPackages{u"--yes"_s, u"--no-color"_s, u"offline-update"_s, u"prepare"_s};
+        return run(rereadMetadataFromDnfCache) && run(prepareDownloadedPackages);
     }
 
 } // namespace UltramarineUpdates

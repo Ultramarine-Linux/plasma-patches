@@ -24,21 +24,15 @@ using namespace Qt::StringLiterals;
 namespace UltramarineUpdates {
 
     namespace {
-        /// where the Determinate installer puts nix. It isn't always on PATH: GUI
-        /// sessions may not source /etc/profile.d/nix.sh, and pkexec resets the environment.
         const auto nixDefaultProfileBin = u"/nix/var/nix/profiles/default/bin/nix"_s;
-        /// where the Determinate installer puts determinate-nixd
         const auto determinateNixdPath = u"/usr/local/bin/determinate-nixd"_s;
+        const auto resolveUnlockedFlakeReferences = u"--impure"_s;
 
-        /**
-         * evaluates the packages `nix profile upgrade` would install, without
-         * building or changing anything. Elements are passed through the
-         * environment so nothing has to be escaped into Nix syntax.
-         */
-        const auto nixUpdatesExpr = uR"nix(
+        const auto nixElementsEnvironmentVariable = u"ULTRAMARINE_UPDATES_NIX_ELEMENTS"_s;
+
+        const auto nixUpgradesExpression = uR"nix(
 let
   elements = builtins.fromJSON (builtins.getEnv "ULTRAMARINE_UPDATES_NIX_ELEMENTS");
-  # missing attributes can't be caught with tryEval, so walk the path safely
   getPath = root: path: builtins.foldl' (a: k: if a != null && builtins.isAttrs a && a ? ${k} then a.${k} else null) root path;
   resolve = e:
     let
@@ -49,11 +43,9 @@ let
         error = false;
         name = pkg.name or "";
         version = pkg.version or "";
-        # outputs the package doesn't have (anymore) are skipped
         outPaths = map (o: pkg.${o}.outPath) (builtins.filter (o: pkg ? ${o}) outputs);
       };
-      # tryEval only evaluates as far as it has to, so the result is forced inside it.
-      # An unfree or insecure package throws there, and only its own entry fails.
+      # tryEval is lazy, so force the result inside it to catch unfree or insecure packages
       forced = builtins.tryEval (builtins.deepSeq result result);
     in
     if pkg == null || !forced.success then { error = true; } else forced.value;
@@ -111,7 +103,6 @@ map resolve elements
         } else if (value.isArray()) {
             for (const QJsonArray array = value.toArray(); const auto &item: array) {
                 NixProfileElement element = parseElement(item.toObject());
-                // older profiles have no names, so nix named them after the attribute
                 element.name = element.attrPath.split(u'.').constLast();
                 elements.append(element);
             }
@@ -122,10 +113,11 @@ map resolve elements
             return std::nullopt;
         }
 
-        // packages installed from a store path have no flake to upgrade from
-        elements.removeIf([](const NixProfileElement &e) {
-            return e.originalUrl.isEmpty() || e.attrPath.isEmpty() || (e.active.has_value() && !*e.active);
-        });
+        const auto notUpgradable = [](const NixProfileElement &e) {
+            const bool installedFromStorePath = e.originalUrl.isEmpty() || e.attrPath.isEmpty();
+            return installedFromStorePath || (e.active.has_value() && !*e.active);
+        };
+        elements.removeIf(notUpgradable);
         std::ranges::sort(elements,
                           [](const NixProfileElement &a, const NixProfileElement &b) { return a.name < b.name; });
         return elements;
@@ -231,13 +223,12 @@ map resolve elements
             });
         }
 
-        // --impure is needed to resolve unlocked flake references, and nix's
-        // tarball-ttl decides when they are fetched again, like dnf's metadata expiry
         QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-        environment.insert(u"ULTRAMARINE_UPDATES_NIX_ELEMENTS"_s,
+        environment.insert(nixElementsEnvironmentVariable,
                            QString::fromUtf8(QJsonDocument(inputs).toJson(QJsonDocument::Compact)));
-        const CommandResult eval =
-            capture(nixBinary(), {u"eval"_s, u"--json"_s, u"--impure"_s, u"--expr"_s, nixUpdatesExpr}, environment);
+        const CommandResult eval = capture(
+            nixBinary(), {u"eval"_s, u"--json"_s, resolveUnlockedFlakeReferences, u"--expr"_s, nixUpgradesExpression},
+            environment);
         if (!eval.succeeded()) {
             *error = i18nc("@info:status %1 is an error message", "Evaluating Nix profile upgrades failed: %1",
                            lastLine(QString::fromUtf8(eval.err)));
@@ -306,7 +297,6 @@ map resolve elements
             return {};
         }
         const auto [installed, latest] = determinateNixVersions(QString::fromUtf8(result.out));
-        // the advised version can lag behind a newer install (or a prerelease)
         if (!determinateNixUpgradable(installed, latest)) {
             return {};
         }
@@ -323,10 +313,7 @@ map resolve elements
     }
 
     int upgradeNixProfile() {
-        // --impure like the listing, so unlocked flake references resolve the same
-        // way (topgrade does the same since Nix 2.21). Flake nixConfig (such as
-        // extra substituters) is not accepted automatically, same as nix itself.
-        return runForwarded(nixBinary(), {u"profile"_s, u"upgrade"_s, u"--all"_s, u"--impure"_s});
+        return runForwarded(nixBinary(), {u"profile"_s, u"upgrade"_s, u"--all"_s, resolveUnlockedFlakeReferences});
     }
 
     int upgradeDeterminateNix() {

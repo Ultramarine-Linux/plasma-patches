@@ -21,51 +21,29 @@ namespace OfficeInstaller {
 
     class Installer;
 
-    /// asks which office suite to install, installs it and opens the documents with it
     class InstallerDialog : public QDialog {
         Q_OBJECT
         Q_CLASSINFO("D-Bus Interface", "org.ultramarine.OfficeInstaller")
 
     public:
-        /**
-         * offers @p offered to open @p urls with. @p installedSuite is the name of
-         * an office suite that's installed but can't open them, or empty if there's none.
-         */
-        InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered, const QString &installedSuite,
+        InstallerDialog(const QList<QUrl> &urls, const QList<Suite> &offered, const QString &incapableInstalledSuite,
                         QWidget *parent = nullptr);
 
-        /**
-         * cancels the install while installing. While the documents are opening, only
-         * hides the dialog until their apps have started.
-         */
         void reject() override;
 
     public Q_SLOTS:
-        /// documents from another launch of the installer, opened too once a suite is installed
         Q_SCRIPTABLE void addDocuments(const QStringList &urls);
 
     public:
-        /// the session bus name that makes the dialog unique, and the interface addDocuments() is on
         static constexpr auto DBusService = "org.ultramarine.OfficeInstaller";
 
-        /**
-         * exports addDocuments() and takes DBusService. Returns false if another
-         * installer has the name. The object is exported first, so a launch that
-         * sees the name can always reach addDocuments().
-         */
         bool registerOnBus();
-        /**
-         * gives up the name once the documents are being opened or the dialog is
-         * closing, so later launches open their own dialog instead of handing
-         * over documents that would never be opened
-         */
         static void unregisterFromBus();
 
     private:
         QWidget *createChoicePage();
         QWidget *createProgressPage();
-        /// downloads Flathub's AppStream data and swaps in the suites' icons once it's there
-        void fetchIcons();
+        void fetchFlathubIcons();
 
         void updateSources() const;
         void install();
@@ -77,7 +55,7 @@ namespace OfficeInstaller {
         [[nodiscard]] Source selectedSource() const;
 
         QList<QUrl> m_urls;
-        QString m_installedSuite;
+        QString m_incapableInstalledSuite;
         QList<Suite> m_suites;
         bool m_imageBased;
 
@@ -94,8 +72,7 @@ namespace OfficeInstaller {
         QDialogButtonBox *m_buttons;
 
         QPointer<Installer> m_installer;
-        /// waiting for the documents' apps to start
-        bool m_opening = false;
+        bool m_waitingForAppsToStart = false;
     };
 
 } // namespace OfficeInstaller

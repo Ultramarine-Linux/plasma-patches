@@ -18,7 +18,6 @@ function(add_kcm_test name source kcm_dir kcm_source)
             KF6::I18n
             KF6::KCMUtilsQuick
     )
-    # moc embeds the KCM's generated JSON metadata
     string(REPLACE "kcm-" "kcm_ultramarine_" kcm_target ${kcm_dir})
     target_include_directories(${name} PRIVATE ${CMAKE_BINARY_DIR}/${kcm_dir})
     um_depend_on_kcm_metadata(${name} ${kcm_target})
@@ -26,12 +25,10 @@ function(add_kcm_test name source kcm_dir kcm_source)
 endfunction()
 
 add_kcm_test(test_updates test_updates.cpp kcm-updates updates.cpp)
-# checks what the KCM sends against the helper's own parsing
 target_link_libraries(test_updates PRIVATE ultramarine_updates_core)
 
 add_kcm_test(test_tweaks test_tweaks.cpp kcm-tweaks tweaks.cpp)
-# runs a fake um rather than whatever is installed, see umcli.h. It's copied with the
-# executable bit set, since UmCli::executable() needs it and git may not keep the mode.
+# git may not keep the executable bit that UmCli::executable() requires
 configure_file(fake_um.sh ${CMAKE_CURRENT_BINARY_DIR}/fake_um.sh COPYONLY
     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 target_compile_definitions(test_tweaks PRIVATE UM_TEST_EXECUTABLE="${CMAKE_CURRENT_BINARY_DIR}/fake_um.sh")

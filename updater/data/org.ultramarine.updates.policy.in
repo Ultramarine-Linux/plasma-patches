@@ -4,12 +4,7 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <!-- SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com> -->
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
-<!--
-  pkexec uses the first action, in polkitd's (unordered) hash table order, whose
-  exec.path matches and whose exec.argv1 matches if it has one; an action
-  without exec.argv1 would match every command, so every action names the
-  helper command it allows
--->
+<!-- an action without exec.argv1 matches every helper command, so every action needs one -->
 <policyconfig>
   <vendor>Ultramarine Linux</vendor>
   <vendor_url>https://ultramarine-linux.org</vendor_url>

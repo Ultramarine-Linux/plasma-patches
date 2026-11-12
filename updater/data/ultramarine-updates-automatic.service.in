@@ -5,18 +5,12 @@ Description=Install updates automatically when the device isn't in use
 Documentation=https://github.com/Ultramarine-Linux/plasma-patches
 Wants=network-online.target
 After=network-online.target
-# the helper checks AC power itself, so tonight's timers behave the same
 
 [Service]
 Type=oneshot
 ExecStart=@ULTRAMARINE_UPDATES_EXECUTABLE@ run-scheduled
 Nice=19
 IOSchedulingClass=idle
-# rpm finishes a running transaction before it handles SIGTERM, which can take
-# longer than the default 90 seconds. Don't SIGKILL it halfway when it's stopped
-# anyway (e.g. `systemctl poweroff` as root, which ignores the logind inhibitor).
+# rpm finishes its transaction before handling SIGTERM, so don't SIGKILL it halfway
 TimeoutStopSec=30min
-# a run that hangs (e.g. on a stalled download) would keep the timer from ever
-# starting it again. Installs take far less, and rpm still finishes a running
-# transaction when it's stopped.
 TimeoutStartSec=6h

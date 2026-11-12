@@ -10,23 +10,16 @@
 #include "installer.h"
 
 class QThread;
-// GLib's own typedef. Including gio.h here would clash with Qt's "signals" keyword
+// gio.h can't be included here because it clashes with Qt's signals keyword
 using GCancellable = struct _GCancellable; // NOLINT(bugprone-reserved-identifier)
 
 namespace OfficeInstaller {
 
-    /**
-     * installs an app into the system installation with libflatpak, on a worker
-     * thread: a transaction blocks until it's done. Flatpak's system helper asks
-     * polkit with interaction allowed, so non-admin users get a password prompt.
-     */
     class FlatpakInstaller : public Installer {
         Q_OBJECT
 
     public:
-        /// @p ref is a full ref, like app/org.example.App/x86_64/stable
-        FlatpakInstaller(const QString &remote, const QString &ref, QObject *parent = nullptr);
-        /// cancels a running install and waits for it to stop
+        FlatpakInstaller(const QString &remote, const QString &fullRef, QObject *parent = nullptr);
         ~FlatpakInstaller() override;
 
         FlatpakInstaller(const FlatpakInstaller &) = delete;
@@ -37,7 +30,6 @@ namespace OfficeInstaller {
         void start() override;
         void cancel() override;
 
-        /// Flatpak's name for this machine's architecture
         static QString defaultArch();
 
     private:
@@ -47,18 +39,11 @@ namespace OfficeInstaller {
         GCancellable *m_cancellable = nullptr;
     };
 
-    /**
-     * downloads a remote's AppStream data on a worker thread, which also brings
-     * its app icons. Flatpak only fetches it when something refreshes it, like
-     * Discover, so a fresh system has none. Flatpak's polkit policy lets anyone
-     * do this without a password, since the data is signed.
-     */
     class AppstreamUpdater : public QObject {
         Q_OBJECT
 
     public:
         explicit AppstreamUpdater(const QString &remote, QObject *parent = nullptr);
-        /// cancels a running download and waits for it to stop
         ~AppstreamUpdater() override;
 
         AppstreamUpdater(const AppstreamUpdater &) = delete;

@@ -4,10 +4,6 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <!-- SPDX-FileCopyrightText: 2026 Cypress Reed <cypress@fyralabs.com> -->
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
-<!--
-  the helper only accepts "enable" and "disable", so one action covers both and
-  turning location on or off asks for the password once
--->
 <policyconfig>
   <vendor>Ultramarine Linux</vendor>
   <vendor_url>https://ultramarine-linux.org</vendor_url>
