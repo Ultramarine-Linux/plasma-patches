@@ -60,8 +60,7 @@ KCMUtils.ScrollViewKCM {
             visible: false
             showCloseButton: true
             onTextChanged: visible = text.length > 0
-            readonly property bool closedByUser: !visible && parent && parent.visible
-            onVisibleChanged: if (closedByUser) kcm.clearError()
+            onVisibleChanged: if (!visible && parent && parent.visible) kcm.clearError()
             Component.onCompleted: visible = text.length > 0
             actions: Kirigami.Action {
                 text: i18nc("@action:button", "Show Output")

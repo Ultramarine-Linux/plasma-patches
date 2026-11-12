@@ -718,10 +718,10 @@ QString composeErrorMessage(const QString &actionError, const QString &refreshEr
     return actionError + QLatin1Char('\n') + refreshError;
 }
 
-QString helperText(const QByteArray &output) { return QString::fromUtf8(output).trimmed(); }
+QString helperText(const QByteArrayView output) { return QString::fromUtf8(output).trimmed(); }
 
-QString lastOutputLine(const QByteArray &output) {
-    const QByteArray trimmed = output.trimmed();
+QString lastOutputLine(const QByteArrayView output) {
+    const QByteArrayView trimmed = output.trimmed();
     return helperText(trimmed.sliced(trimmed.lastIndexOf('\n') + 1));
 }
 

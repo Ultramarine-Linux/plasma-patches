@@ -29,6 +29,11 @@ namespace DetachedProcess {
         process->disconnect(module);
         process->setParent(nullptr);
         QObject::connect(process, &QProcess::finished, process, &QObject::deleteLater);
+        QObject::connect(process, &QProcess::errorOccurred, process, [process](const QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart) {
+                process->deleteLater();
+            }
+        });
     }
 
 } // namespace DetachedProcess

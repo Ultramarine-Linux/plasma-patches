@@ -62,9 +62,9 @@ QString installErrorMessage(int exitCode, QProcess::ExitStatus exitStatus, const
 
 QString composeErrorMessage(const QString &actionError, const QString &refreshError);
 
-QString helperText(const QByteArray &output);
+QString helperText(QByteArrayView output);
 
-QString lastOutputLine(const QByteArray &output);
+QString lastOutputLine(QByteArrayView output);
 
 class UpdatesModel final : public QAbstractListModel {
     Q_OBJECT
