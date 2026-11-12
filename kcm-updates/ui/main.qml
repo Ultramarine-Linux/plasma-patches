@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Effects
 import QtQuick.Layouts
 
 import org.kde.kirigami as Kirigami
@@ -90,24 +91,29 @@ KCMUtils.SimpleKCM {
         onActivated: kcm.refresh()
     }
 
+    actions: Kirigami.Action {
+        text: i18nc("@action:button check for updates again", "Refresh")
+        icon.name: "view-refresh"
+        enabled: !kcm.running
+        onTriggered: kcm.refresh()
+    }
+
     headerPaddingEnabled: false
     header: ErrorMessage {}
 
     // SimpleKCM stretches its content to the page width, so keep the design's
     // narrow, centered column inside it
     Item {
-        implicitHeight: content.implicitHeight
+        // the same room above and below, so the last row doesn't touch the bottom when scrolled
+        implicitHeight: content.implicitHeight + content.y * 2
 
         ColumnLayout {
             id: content
 
             anchors.horizontalCenter: parent.horizontalCenter
+            y: Kirigami.Units.gridUnit * 2
             width: Math.min(parent.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 28)
             spacing: Kirigami.Units.largeSpacing * 2
-
-            Item {
-                implicitHeight: Kirigami.Units.gridUnit
-            }
 
             // stays after the check that follows installing, until it's dismissed. The
             // restart message below says the same when restarting finishes the updates.
@@ -160,19 +166,71 @@ KCMUtils.SimpleKCM {
                     RowLayout {
                         spacing: Kirigami.Units.largeSpacing
 
-                        // release badge, e.g. "45"
-                        Rectangle {
+                        // release badge, e.g. "45", on the release's wallpaper. A plain circle
+                        // until it's loaded, or if it isn't installed.
+                        Item {
+                            id: badge
+
+                            readonly property bool dark: Kirigami.ColorUtils.brightnessForColor(Kirigami.Theme.backgroundColor)
+                                                         === Kirigami.ColorUtils.Dark
+                            readonly property bool showsWallpaper: wallpaper.status === Image.Ready
+                            // the text is white on a dark crop of the wallpaper and dark on a light one
+                            readonly property bool darkWallpaper: wallpaperColors.analyzed
+                                ? Kirigami.ColorUtils.brightnessForColor(wallpaperColors.average) === Kirigami.ColorUtils.Dark
+                                : dark
+
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 3
                             Layout.preferredHeight: Kirigami.Units.gridUnit * 3
-                            radius: width / 2
-                            color: Qt.alpha(Kirigami.Theme.textColor, 0.75)
+
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: !badge.showsWallpaper
+                                radius: width / 2
+                                color: Qt.alpha(Kirigami.Theme.textColor, 0.75)
+                            }
+
+                            Kirigami.ShadowedImage {
+                                id: wallpaper
+
+                                anchors.fill: parent
+                                radius: width / 2
+                                source: badge.dark ? kcm.darkWallpaper : kcm.wallpaper
+                                // a square from the middle, where the artwork is
+                                fillMode: Image.PreserveAspectCrop
+                                // decoded at the badge's size, not the wallpaper's 4K
+                                sourceSize.height: height * Screen.devicePixelRatio
+                                asynchronous: true
+                                border.width: 1
+                                border.color: Qt.alpha(Kirigami.Theme.textColor, 0.2)
+                                onStatusChanged: if (status === Image.Ready) wallpaperColors.update()
+                            }
+
+                            // reads the circle as drawn, so only the part of the wallpaper behind the text counts
+                            Kirigami.ImageColors {
+                                id: wallpaperColors
+
+                                property bool analyzed: false
+
+                                source: wallpaper
+                                onPaletteChanged: analyzed = true
+                            }
 
                             QQC2.Label {
                                 anchors.centerIn: parent
                                 text: kcm.distributionVersion
-                                color: Kirigami.Theme.backgroundColor
+                                color: !badge.showsWallpaper ? Kirigami.Theme.backgroundColor
+                                     : badge.darkWallpaper ? "white" : "#1b1e20"
                                 font.bold: true
                                 font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6
+                                // a soft shadow in the other tone, for busy parts of the wallpaper
+                                layer.enabled: badge.showsWallpaper
+                                layer.effect: MultiEffect {
+                                    shadowEnabled: true
+                                    shadowColor: badge.darkWallpaper ? Qt.alpha("black", 0.8) : Qt.alpha("white", 0.9)
+                                    shadowBlur: 0.5
+                                    shadowHorizontalOffset: 0
+                                    shadowVerticalOffset: 0
+                                }
                             }
                         }
 
@@ -354,6 +412,8 @@ KCMUtils.SimpleKCM {
                     }
 
                     QQC2.Label {
+                        Layout.topMargin: Kirigami.Units.largeSpacing
+                        Layout.bottomMargin: Kirigami.Units.smallSpacing
                         // hidden with opacity so the space stays reserved
                         opacity: kcm.updateCount > root.shownUpdates ? 1 : 0
                         text: i18ncp("@info %1 is the number of updates not listed above", "and <b>%1</b> more update",
@@ -365,7 +425,9 @@ KCMUtils.SimpleKCM {
                         id: technicalButton
 
                         Layout.fillWidth: true
+                        // the text and the arrow line up with the list, not the highlight
                         Layout.leftMargin: -leftPadding
+                        Layout.rightMargin: -rightPadding
                         opacity: root.hasUpdates ? 1 : 0
                         enabled: root.hasUpdates && !kcm.running
                         text: i18nc("@action:button opens a list of all updates", "Technical Information")
@@ -392,6 +454,8 @@ KCMUtils.SimpleKCM {
 
             Kirigami.Separator {
                 Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.largeSpacing
+                Layout.bottomMargin: Kirigami.Units.largeSpacing
             }
 
             // --- settings (saved with System Settings' Apply button) -------------

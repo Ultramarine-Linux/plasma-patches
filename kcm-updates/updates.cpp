@@ -13,6 +13,7 @@
 #include <QDBusPendingCallWatcher>
 #include <QDebug>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QStringList>
@@ -203,6 +204,21 @@ QString Updates::distributionVersion() {
         }
     }
     return {};
+}
+
+namespace {
+    /// the release's default wallpaper (default.png or default-dark.png), linked by ultramarine-backgrounds-compat
+    QUrl backgroundImage(const QString &name) {
+        const QString path = QStringLiteral("/usr/share/backgrounds/") + name;
+        return QFileInfo::exists(path) ? QUrl::fromLocalFile(path) : QUrl();
+    }
+} // namespace
+
+QUrl Updates::wallpaper() { return backgroundImage(QStringLiteral("default.png")); }
+
+QUrl Updates::darkWallpaper() {
+    const QUrl dark = backgroundImage(QStringLiteral("default-dark.png"));
+    return dark.isEmpty() ? wallpaper() : dark;
 }
 
 int Updates::updateCount() const { return m_updates.count(); }

@@ -157,6 +157,11 @@ KCMUtils.ScrollViewKCM {
                     closable: false
                     checkable: false
                     icon.name: "data-warning"
+                    // the chip's default is a 16px icon, taller than its text, and only half the
+                    // padding on its side that the text gets on the other
+                    icon.width: Kirigami.Units.iconSizes.sizeForLabels
+                    icon.height: Kirigami.Units.iconSizes.sizeForLabels
+                    leftPadding: rightPadding
                 }
 
                 Kirigami.ContextualHelpButton {

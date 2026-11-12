@@ -8,6 +8,7 @@
 
 #include <QAbstractListModel>
 #include <QSortFilterProxyModel>
+#include <QUrl>
 
 #include <QProcess>
 #include <cstdint>
@@ -206,6 +207,8 @@ class Updates : public KQuickManagedConfigModule {
     Q_PROPERTY(bool errorRetryable READ errorRetryable NOTIFY errorMessageChanged)
     Q_PROPERTY(QString successMessage READ successMessage NOTIFY successMessageChanged)
     Q_PROPERTY(QString distributionVersion READ distributionVersion CONSTANT)
+    Q_PROPERTY(QUrl wallpaper READ wallpaper CONSTANT)
+    Q_PROPERTY(QUrl darkWallpaper READ darkWallpaper CONSTANT)
     Q_PROPERTY(int updateCount READ updateCount NOTIFY updateCountChanged)
     Q_PROPERTY(int installableCount READ installableCount NOTIFY updateCountChanged)
     Q_PROPERTY(UpdatesModel *updates READ updates CONSTANT)
@@ -262,6 +265,14 @@ public:
 
     /// returns the distribution version (VERSION_ID in os-release)
     [[nodiscard]] static QString distributionVersion();
+
+    /**
+     * returns the release's default wallpaper, so the version badge looks like the
+     * release. Empty if it isn't installed. darkWallpaper() is its dark variant, or
+     * the light one if there's no dark one.
+     */
+    [[nodiscard]] static QUrl wallpaper();
+    [[nodiscard]] static QUrl darkWallpaper();
 
     /// returns the number of available updates
     [[nodiscard]] int updateCount() const;
