@@ -1,97 +1,78 @@
-# Office suite installer
+# Office app installer
 
-Ultramarine doesn't install an office suite by default. When no suite is installed,
-opening an office document (ODF, OOXML, legacy Microsoft Office, iWork, WordPerfect)
-shows a dialog that offers to install one:
+since we decided to remove the default office suite, we wanted a popup that tells users which office suites are available and offers to install one. i was able to do this in a way i think is pretty elegant.
 
-- **Collabora Office** (recommended): Flathub, or Terra's RPM (`collabora-office`).
-- **LibreOffice**: Flathub, or Fedora's RPMs (`libreoffice-writer`, `-calc`, `-impress`).
-- **ONLYOFFICE**: Flathub only.
+the `.desktop` file lists all of the office file MIME types and runs the installer. it's `NoDisplay`, so it doesn't show up in launchers. office apps *should* take precedence over the installer for those MIME types once they're installed, but even if they don't, the installer looks for other apps that handle the MIME type and passes the file along to those.
 
-Each suite shows its Flathub icon, from the AppStream data Flatpak keeps in
-`/var/lib/flatpak/appstream` (or the user installation's), so nothing is downloaded
-to show the dialog. Without AppStream data, it falls back to a document icon.
+here's what it looks like:
 
-Flathub is always the default. RPMs aren't offered on image based (bootc or
-rpm-ostree) systems, where `/run/ostree-booted` exists.
+![the office suite installer](images/office-installer.png)
 
-## How it works
+it offers:
 
-- **The handler:** [`../office-installer/data/org.ultramarine.OfficeInstaller.desktop.in`](../office-installer/data/org.ultramarine.OfficeInstaller.desktop.in)
-  lists the office MIME types and runs `/usr/libexec/ultramarine-office-installer %U`.
-  It's `NoDisplay`, so it isn't in the app launchers. File managers' **Open With** menus
-  list every handler, `NoDisplay` or not, so it shows up there as **Office Suite
-  Installer** even with a suite installed. Formats that are also plain text (CSV, RTF,
-  flat ODF) are left out, so they still open in a text editor. The desktop file's `Name`
-  and `Comment` are translated through the gettext catalog like the rest of the strings.
-- **Once a suite is installed:** KF6 ignores `InitialPreference`. Handlers that aren't
-  in a `mimeapps.list` all have the same preference, and KService sorts them by desktop
-  file name, so `org.ultramarine.OfficeInstaller` comes after `com.collaboraoffice.*`,
-  `libreoffice-*`, `org.libreoffice.*` and `org.onlyoffice.*`. Fedora's `mimeapps.list`
-  also makes `libreoffice-*.desktop` the default. When the installer still gets picked
-  (a suite that sorts later, like WPS, or GIO, which doesn't rank handlers), it looks
-  for another app that lists the document's MIME type itself. If it finds one, it opens
-  the document there without showing anything. Parent types don't count: a `.docx` is a
-  zip, but Ark isn't an office suite.
-- **A suite that can't open the file:** ONLYOFFICE doesn't open every format the
-  installer claims (Microsoft Works, WordPerfect, ODF charts, master documents and
-  HTML templates). If something opens DOCX, ODT, XLSX, ODS, PPTX or ODP, a suite is
-  installed, so the dialog says that suite can't open the file and offers the
-  other suites instead of saying none is installed.
-- **Installing:** Flatpaks install from the `flathub` system remote with libflatpak
-  (`app/<id>/<arch>/stable`, like `flatpak install --system flathub <id>`), and RPMs through
-  PackageKit's D-Bus API (`Resolve`, then `InstallPackages` with only trusted packages).
-  Both authorize through polkit, which asks non-admin users for an admin password in the
-  session. The command line tools can't do that from a GUI: `flatpak install -y` and
-  `--noninteractive`, `pkcon -y` and `pkgcli -y` all mark the transaction non-interactive,
-  so polkit refuses with "Not authorized" instead of asking. Without `-y` they ask their
-  own questions on a terminal (flatpak answers "no" when stdin isn't one). Wheel users
-  install Flatpaks without a prompt (Fedora's `org.freedesktop.Flatpak.rules`).
-- **Canceling:** **Cancel** stays available while installing. It cancels the libflatpak
-  transaction or the PackageKit transaction (PackageKit's `Cancel`), and the dialog goes
-  back to the suite list. Before PackageKit's transaction has started (while the installer
-  checks the daemon's version, creates the transaction and sets its hints, all without
-  blocking the dialog), it stops right away. The dialog only says the install was canceled
-  when it was: if PackageKit or libflatpak refuses and then fails for another reason, that
-  reason is shown. Flatpak deploys an app only once it's fully downloaded, so a
-  canceled install leaves at most downloaded data behind. PackageKit refuses to cancel
-  once it's installing the RPMs, so then the install finishes and the documents open.
-- **Afterwards:** the installer refreshes KSycoca and opens the documents with the new
-  suite. If KSycoca doesn't know about the suite yet, it runs the suite directly
-  (`flatpak run --file-forwarding`, `coda-qt` or `libreoffice`). If an app fails to
-  start, the error is shown instead of quitting silently, and trying again only opens the
-  documents that didn't open. The installer only quits once
-  the apps have started: closing the dialog while it says "Opening…" hides it until then
-  (and shows it again if an app failed), and closing KIO's prompt for an untrusted desktop
-  file doesn't stop the launch either.
-- **Errors:** an install failure shows PackageKit's or libflatpak's reason. PackageKit
-  sometimes only gives an exit code, so those are explained by the installer: a repository
-  whose signing key isn't trusted yet (named from `RepoSignatureRequired`), packages that
-  aren't signed with a trusted key, or another transaction that took priority.
-- **One at a time:** the dialog exports its `addDocuments` method, then takes
-  `org.ultramarine.OfficeInstaller` on the session bus, so a launch that sees the name can
-  always reach it. Opening more documents while it's open hands them to it, so they open
-  with the suite it installs, and two installs can't run at once. It gives the name up once
-  it starts opening the documents or closes, so later launches open their own dialog
-  instead of handing over documents that would never be opened.
-- **Related refs:** errors libflatpak marks non-fatal (translations, GL extensions) are
-  shown as progress and don't abort the install.
-- **PackageKit version:** the D-Bus enum numbers are PackageKit 1.x's (its main branch
-  renumbers them), so the installer checks the daemon's `VersionMajor` and refuses anything else.
+- **Collabora Office** (recommended): flathub, or Terra's RPM (`collabora-office`)
+- **LibreOffice**: flathub, or fedora's RPMs (`libreoffice-writer`, `-calc`, `-impress`)
+- **ONLYOFFICE**: flathub only
 
-## Packaging
+flathub is always the default. RPMs aren't offered on image-based (bootc or rpm-ostree) systems, where `/run/ostree-booted` exists. each suite's icon comes from the appstream data flatpak already keeps in `/var/lib/flatpak/appstream` (or the user installation's), so nothing gets downloaded just to show the dialog. without appstream data it falls back to a document icon.
 
-Everything is in the `ultramarine-office-installer` CMake component. Building needs
-`flatpak-devel` (libflatpak, found with pkg-config). At runtime the package needs
-`flatpak-libs` (pulled in by the soname) and `PackageKit` (the daemon, not `pkcon`), and
-Flathub has to be configured as the `flathub` system remote.
+## how it works
 
-## Testing
+### the handler
+
+[`office-installer/data/org.ultramarine.OfficeInstaller.desktop.in`](../office-installer/data/org.ultramarine.OfficeInstaller.desktop.in) handles ODF, OOXML, legacy microsoft office, iWork and WordPerfect files and runs `/usr/libexec/ultramarine-office-installer %U`. formats that are also plain text (CSV, RTF, flat ODF) are left out, so they still open in a text editor.
+
+file managers' **Open With** menus list every handler, `NoDisplay` or not, so it shows up there as **Office Suite Installer** even with a suite installed.
+
+### once a suite is installed
+
+KF6 ignores `InitialPreference`. handlers that aren't in a `mimeapps.list` all have the same preference and KService sorts them by desktop file name, so `org.ultramarine.OfficeInstaller` comes after `com.collaboraoffice.*`, `libreoffice-*`, `org.libreoffice.*` and `org.onlyoffice.*`. fedora's `mimeapps.list` also makes `libreoffice-*.desktop` the default.
+
+when the installer still gets picked (a suite that sorts later, like WPS, or GIO, which doesn't rank handlers), it looks for another app that lists the document's MIME type itself and quietly opens the document there. parent types don't count: a `.docx` is a zip, but ark isn't an office suite.
+
+### a suite that can't open the file
+
+ONLYOFFICE doesn't open everything the installer claims (microsoft works, WordPerfect, ODF charts, master documents and HTML templates). if something opens DOCX, ODT, XLSX, ODS, PPTX or ODP, a suite is installed, so the dialog says that suite can't open this file and offers the others.
+
+### installing
+
+flatpaks install from the `flathub` system remote with libflatpak (`app/<id>/<arch>/stable`), and RPMs go through packagekit's D-Bus API (`Resolve`, then `InstallPackages` with only trusted packages). both authorize through polkit, which asks non-admins for an admin password in the session. wheel users install flatpaks without a prompt (fedora's `org.freedesktop.Flatpak.rules`).
+
+why not just shell out to the CLIs? `flatpak install -y`, `--noninteractive`, `pkcon -y` and `pkgcli -y` all mark the transaction non-interactive, so polkit refuses with "Not authorized" instead of asking. without `-y` they ask their own questions on a terminal, which a GUI doesn't have.
+
+the D-Bus enum numbers are packagekit 1.x's (its main branch renumbers them), so the installer checks the daemon's `VersionMajor` and refuses anything else.
+
+### canceling
+
+**Cancel** stays available while installing. it cancels the libflatpak or packagekit transaction and the dialog goes back to the suite list. before packagekit's transaction starts, it stops right away. the dialog only says the install was canceled when it actually was: if packagekit or libflatpak refuses and then fails for another reason, you see that reason.
+
+flatpak only deploys an app once it's fully downloaded, so a canceled install leaves at most some downloaded data behind. packagekit refuses to cancel once it's installing the RPMs, so then the install finishes and the documents open.
+
+### afterwards
+
+the installer refreshes KSycoca and opens the documents with the new suite. if KSycoca doesn't know about the suite yet, it runs it directly (`flatpak run --file-forwarding`, `coda-qt` or `libreoffice`). if an app fails to start, you see the error instead of the installer quietly quitting, and trying again only reopens the documents that didn't open.
+
+it only quits once the apps have started. closing the dialog while it says "Opening…" just hides it until then (and brings it back if an app failed).
+
+### errors
+
+install failures show packagekit's or libflatpak's reason. packagekit sometimes only gives an exit code, so the installer explains those itself: a repo whose signing key isn't trusted yet (named from `RepoSignatureRequired`), packages that aren't signed with a trusted key, or another transaction that took priority.
+
+errors libflatpak marks non-fatal (translations, GL extensions) show up as progress and don't abort the install.
+
+### one at a time
+
+the dialog exports its `addDocuments` method, then takes `org.ultramarine.OfficeInstaller` on the session bus. opening more documents while it's open hands them over, so they open with whatever suite it installs and two installs can't run at once. it gives the name up once it starts opening documents or closes, so later launches get their own dialog instead of handing documents to one that'll never open them.
+
+## packaging
+
+everything is in the `ultramarine-office-installer` CMake component. building needs `flatpak-devel`. at runtime it needs `flatpak-libs` (pulled in by the soname) and `PackageKit` (the daemon, not `pkcon`), and flathub has to be set up as the `flathub` system remote.
+
+## testing
 
 ```bash
 just build
 build/bin/ultramarine-office-installer ~/Documents/report.docx
 ```
 
-With an office suite installed, that opens the document in the suite. Run it without
-a file to always see the dialog.
+with a suite installed, that opens the document in it. run it without a file to always get the dialog.

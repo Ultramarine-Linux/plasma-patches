@@ -1,8 +1,8 @@
-# Build and test
+# Building and testing
 
-## Dependencies
+## dependencies
 
-The project needs Qt 6.6 and KDE Frameworks 6.0 or newer. On Fedora or Ultramarine:
+you need qt 6.6 and KDE frameworks 6.0 or newer. on fedora or ultramarine:
 
 ```bash
 sudo dnf install \
@@ -13,19 +13,12 @@ sudo dnf install \
     kf6-kirigami-addons lld
 ```
 
-- `flatpak-devel` (libflatpak) lets the office suite installer install from Flathub
-  with a polkit prompt. KIO and KService start apps from the office suite installer
-  and the dGPU launcher.
-- `gettext` and `python3` merge translations into the desktop files, polkit policies
-  and KCM metadata at build time. `polkit-devel` ships the gettext ITS rules that tell
-  `msgfmt` and `xgettext` which strings in a polkit policy are translatable.
-- `kf6-kirigami-addons` is only needed at runtime. KCM pages built with
-  `org.kde.kirigamiaddons.formcard` (Location Services) fail to load without it.
-- `lld` is optional. CMake links with it when it finds `ld.lld` and falls back to
-  the compiler's default linker otherwise. Pick one explicitly with
-  `-DCMAKE_LINKER_TYPE=` (for example `BFD` or `MOLD`).
+- `flatpak-devel` (libflatpak) is for the office installer, so it can install from flathub with a polkit prompt. KIO and KService start apps from the office installer and the dGPU launcher
+- `gettext`, `python3` and `polkit-devel` merge translations into the desktop files, polkit policies and KCM metadata at build time (`polkit-devel` ships the gettext ITS rules for polkit policies)
+- `kf6-kirigami-addons` is only needed at runtime. the location KCM uses `org.kde.kirigamiaddons.formcard` and won't load without it
+- `lld` is optional. CMake links with it when it finds `ld.lld` and uses the compiler's default linker otherwise. pick one yourself with `-DCMAKE_LINKER_TYPE=` (like `BFD` or `MOLD`)
 
-## Configure, build and test
+## configure, build and test
 
 ```bash
 cmake -S . -B build \
@@ -37,42 +30,13 @@ ctest --test-dir build --output-on-failure
 just cppcheck
 ```
 
-The install paths of the update helper, its systemd units, the dGPU launcher,
-the location helper and the office suite installer follow `CMAKE_INSTALL_PREFIX`.
-The systemd unit and udev rules directories come from `systemd.pc` and `udev.pc`
-with `/usr` swapped for the prefix (falling back to `lib/systemd/{system,user}` and
-`lib/udev/rules.d` under it), and can be set with `-DSYSTEMD_SYSTEM_UNIT_DIR=`,
-`-DSYSTEMD_USER_UNIT_DIR=` and `-DUDEV_RULES_DIR=`. These paths are cached, so
-reconfigure with `cmake --fresh` (or `just clean`) before changing the prefix of an
-existing build directory.
+or just use the `justfile`: `just build`, `just test`, `just install` and `just install-user`. `just configure` generates `compile_commands.json` for clangd and passes extra arguments on to CMake (`just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror`).
 
-The `justfile` wraps these as `just build`, `just test`, `just install` and
-`just install-user`. `just configure` generates `compile_commands.json` for clangd
-and passes extra arguments to CMake
-(`just configure Debug /usr -DCMAKE_CXX_FLAGS=-Werror`).
+the install paths of the update helper, its systemd units, the dGPU launcher, the location helper and the office installer all follow `CMAKE_INSTALL_PREFIX`. the systemd unit and udev rules directories come from `systemd.pc` and `udev.pc` with `/usr` swapped for the prefix (falling back to `lib/systemd/{system,user}` and `lib/udev/rules.d` under it). you can set them with `-DSYSTEMD_SYSTEM_UNIT_DIR=`, `-DSYSTEMD_USER_UNIT_DIR=` and `-DUDEV_RULES_DIR=`. these paths are cached, so reconfigure with `cmake --fresh` (or `just clean`) before changing the prefix of an existing build directory.
 
-`just install-user` builds the Updates and Tweaks KCMs in `build-user` and installs
-only them under `~/.local`. The helpers, their polkit actions, the systemd units, the
-udev rule and the autostart entry are only read from system locations, and polkit only
-matches the helpers' system paths, so the Updates KCM is built to run
-`/usr/libexec/ultramarine-updates`. Install that with
-`just dev-updates-install` (or the RPM). The Location Services KCM isn't installed:
-its switch needs `/usr/libexec/ultramarine-location-helper` and its polkit policy
-installed system-wide, so use `just install` for it.
+## running the KCMs
 
-Qt doesn't look for plugins under `~/.local`, so System Settings only finds the
-KCMs with `QT_PLUGIN_PATH` set (the desktop files and translations in
-`~/.local/share` are found without it):
-
-```bash
-QT_PLUGIN_PATH="$HOME/.local/lib64/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" \
-    systemsettings kcm_ultramarine_updates
-```
-
-To have the whole Plasma session pick them up, export it from a script in
-`~/.config/plasma-workspace/env/` and log in again.
-
-To open the modules from the build without installing them:
+to open the modules straight from the build without installing them:
 
 ```bash
 just run updates
@@ -80,17 +44,31 @@ just run tweaks
 just run location
 ```
 
-## Test the update helper
+### installing into `~/.local`
 
-The helper runs straight from the build:
+`just install-user` builds the updates and tweaks KCMs in `build-user` and installs only those under `~/.local`. the helpers, polkit actions, systemd units, udev rule and autostart entry are only read from system locations, and polkit only matches the helpers' system paths, so the updates KCM is built to run `/usr/libexec/ultramarine-updates`. install that with `just dev-updates-install` (or the RPM).
+
+the location KCM isn't installed this way, since its switch needs `/usr/libexec/ultramarine-location-helper` and its polkit policy installed system-wide. use `just install` for that one.
+
+qt doesn't look for plugins under `~/.local`, so system settings only finds the KCMs with `QT_PLUGIN_PATH` set (the desktop files and translations in `~/.local/share` get found without it):
+
+```bash
+QT_PLUGIN_PATH="$HOME/.local/lib64/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" \
+    systemsettings kcm_ultramarine_updates
+```
+
+to have the whole plasma session pick them up, export it from a script in `~/.config/plasma-workspace/env/` and log in again.
+
+## testing the update helper
+
+the helper runs straight from the build:
 
 ```bash
 just helper list --json
 ULTRAMARINE_UPDATES_CONFIG=/tmp/settings.json just helper settings --automatic=false
 ```
 
-The Updates KCM runs the helper from its install path, and the helper's polkit
-action matches that exact path, so install it system-wide to test the page:
+the updates KCM runs the helper from its install path, and the polkit action matches that exact path, so install it system-wide to test the page:
 
 ```bash
 just dev-updates-install
@@ -98,18 +76,13 @@ just run updates
 just dev-updates-uninstall
 ```
 
-`dev-updates-install` installs only the `ultramarine-updates` CMake component:
-the helper, its polkit action, systemd units and autostart entry. The automatic
-update timer isn't enabled. To try automatic updates, run
-`sudo systemctl enable --now ultramarine-updates-automatic.timer` (with the
-default settings, they install once the device has been unused for 5 minutes).
-The page's Apply button installs real updates. See
-[Update helper](updates-backend.md) for behavior.
+`dev-updates-install` only installs the `ultramarine-updates` CMake component: the helper, its polkit action, the systemd units and the autostart entry. the automatic update timer isn't enabled. to try automatic updates, run `sudo systemctl enable --now ultramarine-updates-automatic.timer` (with the default settings, updates install once the device has been unused for 5 minutes).
 
-## Test with a development umcli
+heads up: the page's Apply button installs real updates. see [updates KCM](updates-backend.md) for how it all behaves.
 
-The Tweaks KCM expects `um` at `/usr/bin/um`, with tweak data in `/usr/share/um`.
-From the `plasma-patches` checkout:
+## testing with a development umcli
+
+the tweaks KCM expects `um` at `/usr/bin/um`, with tweak data in `/usr/share/um`. from the `plasma-patches` checkout:
 
 ```bash
 just dev-um-install
@@ -117,9 +90,6 @@ just run tweaks
 just dev-um-uninstall
 ```
 
-`dev-um-install` builds `../umcli` and installs the CLI, its data and its polkit
-action with `sudo`, and `dev-um-uninstall` removes them. See
-[umcli backend](umcli-backend.md) for behavior and limitations.
+`dev-um-install` builds `../umcli` and installs the CLI, its data and its polkit action with `sudo`, and `dev-um-uninstall` removes them. see [tweaks KCM](umcli-backend.md) for how it behaves.
 
-Enabling or running a tweak from the page runs its Ansible playbook or script as
-root on the test machine.
+heads up again: enabling or running a tweak from the page runs its ansible playbook or script as root on your machine.

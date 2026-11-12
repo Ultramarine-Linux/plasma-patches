@@ -1,32 +1,25 @@
 # Ultramarine Plasma Settings
 
-Maintained by Cypress Reed
+maintained by Cypress Reed
 
-Plasma System Settings modules and Discover integration for Ultramarine Linux.
+this is where Ultramarine's plasma system settings modules, plasma patches and other little desktop integrations live.
 
-- **Updates** (`kcm_ultramarine_updates`): system (RPM or bootc image), Flatpak, Nix and Plasma widget updates,
-  backed by the `ultramarine-updates` helper in [`updater/`](updater).
-- **Update helper** (`ultramarine-updates`): lists and installs updates, and runs automatic updates and Apply Tonight.
-- **Tweaks** (`kcm_ultramarine_tweaks`): optional Ultramarine system tweaks, backed by
-  [`umcli`](https://github.com/Ultramarine-Linux/um).
-- **Location Services** (`kcm_ultramarine_location`): turns GeoClue on or off for the whole system, until Plasma
-  has its own switch.
-- **Discover patch** (`discover/`): routes Discover's Updates entry to the Ultramarine Updates KCM.
-- **PowerDevil patch** (`powerdevil/`): backports upstream powerdevil MR !699 so Plasma reports idle sessions to logind
-  (IdleHint), which automatic updates use to tell whether the device is in use.
-- **Launch Using Dedicated Graphics Card** (`dgpu-launch/`): app launcher
-  action that runs an app on the discrete GPU, only shown on hybrid GPU systems and with an eGPU.
-- **Office suite installer** (`office-installer/`): opening an office document with no office suite installed offers
-  to install one: Collabora Office (recommended), LibreOffice or ONLYOFFICE, from Flathub by default.
+- **Updates** (`kcm_ultramarine_updates`): system (RPM or bootc image), flatpak, nix and plasmoid updates, backed by the `ultramarine-updates` helper in [`updater/`](updater). the helper also runs automatic updates and Apply Tonight
+- **Tweaks** (`kcm_ultramarine_tweaks`): optional Ultramarine system tweaks, backed by [`umcli`](https://github.com/Ultramarine-Linux/um)
+- **Location Services** (`kcm_ultramarine_location`): turns geoclue on or off for the whole system, since plasma doesn't have a switch for it
+- **Discover patch** (`discover/`): sends discover's updates entry to our updates KCM instead
+- **PowerDevil patch** (`powerdevil/`): backports upstream powerdevil MR !699 so plasma tells logind when a session is idle (`IdleHint`), which automatic updates use to tell whether the device is in use
+- **Launch Using Dedicated Graphics Card** (`dgpu-launch/`): a launcher action that runs an app on the dGPU, only shown on hybrid GPU systems (eGPUs included)
+- **Office suite installer** (`office-installer/`): opening an office document with no office suite installed offers to install Collabora Office (recommended), LibreOffice or ONLYOFFICE, from flathub by default
 
-## Documentation
+## docs
 
-- [Build and test](docs/building.md)
-- [Update helper, automatic updates and runtime requirements](docs/updates-backend.md)
-- [umcli backend (Tweaks)](docs/umcli-backend.md)
-- [Location Services](docs/location.md)
-- [Discover patch](docs/discover.md)
-- [PowerDevil patch](docs/powerdevil.md)
-- [Launch Using Dedicated Graphics Card](docs/dgpu-launch.md)
-- [Office suite installer](docs/office-installer.md)
-- [Translations with Weblate](docs/translations.md)
+- [building and testing](docs/building.md)
+- [updates KCM and the update helper](docs/updates-backend.md)
+- [tweaks KCM](docs/umcli-backend.md)
+- [location KCM](docs/location.md)
+- [discover patches](docs/discover.md)
+- [powerdevil idle hint](docs/powerdevil.md)
+- [dGPU launch](docs/dgpu-launch.md)
+- [office app installer](docs/office-installer.md)
+- [translations](docs/translations.md)
