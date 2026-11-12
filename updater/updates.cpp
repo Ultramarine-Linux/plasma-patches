@@ -6,6 +6,10 @@
 
 #include <KLocalizedString>
 
+#include <future>
+#include <optional>
+#include <vector>
+
 #include <QJsonArray>
 #include <QStandardPaths>
 
@@ -62,59 +66,88 @@ namespace UltramarineUpdates {
 
     namespace {
         bool hasExecutable(const QString &name) { return !QStandardPaths::findExecutable(name).isEmpty(); }
+
+        struct SourceResult {
+            QString source;
+            QList<PackageUpdate> updates;
+            QString error;
+        };
+
+        template<typename Query>
+        SourceResult querySource(QString source, Query query) {
+            SourceResult result;
+            result.source = std::move(source);
+            result.updates = query(&result.error);
+            return result;
+        }
+
+        template<typename Query>
+        std::future<SourceResult> querySourceAsync(QString source, Query query) {
+            return std::async(std::launch::async, [source = std::move(source), query = std::move(query)]() mutable {
+                return querySource(std::move(source), std::move(query));
+            });
+        }
     } // namespace
 
     ListResponse listUpdates() {
+        std::vector<std::future<SourceResult>> pending;
         ListResponse response;
-        const auto collect = [&response](const QString &source, const QList<PackageUpdate> &updates,
-                                         const QString &error) {
-            ++response.queriedSources;
-            if (!error.isEmpty()) {
-                response.errors.append(
-                    i18nc("@info:status %1 is an update source, %2 its error message", "%1: %2", source, error));
-                return;
-            }
-            response.updates.append(updates);
-        };
 
-        QString error;
-        if (isImageMode()) {
+        const bool imageMode = isImageMode();
+        ImageState image;
+        if (imageMode) {
             // dnf exists in bootc images, but can't update the image
-            const ImageState image = imageState(&error);
-            collect(i18nc("@item an update source", "system image"),
-                    image.update ? QList<PackageUpdate>{*image.update} : QList<PackageUpdate>{}, error);
-            response.restartRequired = image.staged;
-            response.stagedVersion = image.stagedVersion;
+            pending.push_back(
+                querySourceAsync(i18nc("@item an update source", "system image"), [&image](QString *error) {
+                    image = imageState(error);
+                    return image.update ? QList<PackageUpdate>{*image.update} : QList<PackageUpdate>{};
+                }));
         } else if (hasExecutable(u"dnf"_s)) {
-            const QList<PackageUpdate> updates = rpmPackageUpdates(&error);
-            collect(i18nc("@item an update source", "RPM packages"), updates, error);
+            pending.push_back(querySourceAsync(i18nc("@item an update source", "RPM packages"), rpmPackageUpdates));
             response.offlinePending = offlineUpdatePending();
             response.restartRequired = response.offlinePending;
             response.offlineError = lastOfflineUpdateError();
         }
         if (!determinateNixdBinary().isEmpty()) {
-            error.clear();
-            const QList<PackageUpdate> updates = determinateNixUpdate(&error);
-            collect(i18nc("@item an update source", "Determinate Nix"), updates, error);
+            pending.push_back(
+                querySourceAsync(i18nc("@item an update source", "Determinate Nix"), determinateNixUpdate));
         }
         if (canManageNixProfile()) {
-            error.clear();
-            const QList<PackageUpdate> updates = nixPackageUpdates(&error);
-            collect(i18nc("@item an update source", "your Nix profile"), updates, error);
+            pending.push_back(querySourceAsync(i18nc("@item an update source", "your Nix profile"), nixPackageUpdates));
         }
         if (hasExecutable(u"flatpak"_s)) {
             for (const QString &installation: flatpakInstallations()) {
-                error.clear();
-                const QList<PackageUpdate> updates = flatpakPackageUpdates(installation, &error);
-                collect(i18nc("@item an update source, %1 is a Flatpak installation like user or system",
-                              "Flatpak (%1)", installation),
-                        updates, error);
+                pending.push_back(querySourceAsync(
+                    i18nc("@item an update source, %1 is a Flatpak installation like user or system", "Flatpak (%1)",
+                          installation),
+                    [installation](QString *error) { return flatpakPackageUpdates(installation, error); }));
             }
         }
+
+        // KNewStuff runs event loops and answers questions on the main thread
+        std::optional<SourceResult> plasmoids;
         if (canManagePlasmoids()) {
-            error.clear();
-            const QList<PackageUpdate> updates = plasmoidUpdates(&error);
-            collect(i18nc("@item an update source", "Plasma widgets"), updates, error);
+            plasmoids = querySource(i18nc("@item an update source", "Plasma widgets"), plasmoidUpdates);
+        }
+
+        const auto collect = [&response](const SourceResult &result) {
+            ++response.queriedSources;
+            if (!result.error.isEmpty()) {
+                response.errors.append(i18nc("@info:status %1 is an update source, %2 its error message", "%1: %2",
+                                             result.source, result.error));
+                return;
+            }
+            response.updates.append(result.updates);
+        };
+        for (std::future<SourceResult> &source: pending) {
+            collect(source.get());
+        }
+        if (plasmoids) {
+            collect(*plasmoids);
+        }
+        if (imageMode) {
+            response.restartRequired = image.staged;
+            response.stagedVersion = image.stagedVersion;
         }
         return response;
     }

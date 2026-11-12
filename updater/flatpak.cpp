@@ -5,6 +5,7 @@
 #include "flatpak.h"
 
 #include <algorithm>
+#include <future>
 #include <iterator>
 
 #include "process.h"
@@ -124,34 +125,44 @@ namespace UltramarineUpdates {
             return versions;
         }
 
-        /// fills in sizes for Flatpak updates. Flatpak reports the full download
-        /// size, but with static deltas the actual download can be smaller.
-        void annotateFlatpakSizes(QList<PackageUpdate> &updates, const QList<FlatpakUpdate> &refs,
-                                  const QString &installation) {
-            if (updates.isEmpty()) {
-                return;
-            }
-            const QHash<QString, UpgradeSize> remote = parseFlatpakSizes(
-                localeIndependentOutput(u"flatpak"_s,
-                                        {u"remote-ls"_s, u"--"_s + installation, u"--updates"_s,
-                                         u"--columns=application,branch,download-size,installed-size"_s}));
-            const QHash<QString, UpgradeSize> local = parseFlatpakSizes(localeIndependentOutput(
-                u"flatpak"_s, {u"list"_s, u"--"_s + installation, u"--columns=application,branch,size"_s}));
+        struct FlatpakSizes {
+            QHash<QString, UpgradeSize> remote;
+            /// the installed size of each ref, in UpgradeSize::download
+            QHash<QString, UpgradeSize> local;
+        };
+
+        /// C locale output, so the sizes parse. A separate call from the listing, which
+        /// keeps the user's locale for app names.
+        FlatpakSizes flatpakSizes(const QString &installation) {
+            return {
+                .remote = parseFlatpakSizes(
+                    localeIndependentOutput(u"flatpak"_s,
+                                            {u"remote-ls"_s, u"--"_s + installation, u"--updates"_s,
+                                             u"--columns=application,branch,download-size,installed-size"_s})),
+                .local = parseFlatpakSizes(localeIndependentOutput(
+                    u"flatpak"_s, {u"list"_s, u"--"_s + installation, u"--columns=application,branch,size"_s})),
+            };
+        }
+
+        /// Flatpak reports the full download size, but with static deltas the actual download can be smaller
+        void applyFlatpakSizes(QList<PackageUpdate> &updates, const QList<FlatpakUpdate> &refs,
+                               const FlatpakSizes &sizes) {
             for (qsizetype i = 0; i < updates.size(); ++i) {
                 const QString key = refs[i].appId + u'/' + refs[i].branch;
-                const auto size = remote.constFind(key);
-                if (size == remote.constEnd()) {
+                const auto size = sizes.remote.constFind(key);
+                if (size == sizes.remote.constEnd()) {
                     continue;
                 }
                 updates[i].downloadSize = size->download;
                 if (size->installed > 0) {
-                    updates[i].installedSizeChange = size->installed - local.value(key).download;
+                    updates[i].installedSizeChange = size->installed - sizes.local.value(key).download;
                 }
             }
         }
     } // namespace
 
     QList<PackageUpdate> flatpakPackageUpdates(const QString &installation, QString *error) {
+        auto sizes = std::async(std::launch::async, flatpakSizes, installation);
         QString output;
         if (!commandOutput(u"flatpak"_s,
                            {u"remote-ls"_s, u"--"_s + installation, u"--updates"_s,
@@ -169,7 +180,7 @@ namespace UltramarineUpdates {
         std::ranges::transform(updates, std::back_inserter(result), [&](const FlatpakUpdate &update) {
             return flatpakPackageUpdate(update, installation, installed);
         });
-        annotateFlatpakSizes(result, updates, installation);
+        applyFlatpakSizes(result, updates, sizes.get());
         return result;
     }
 

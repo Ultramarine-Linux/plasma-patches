@@ -78,7 +78,7 @@ KCMUtils.SimpleKCM {
             parts.push(i18nc("@info %1 is a size like 20 MB", "%1 Freed", root.formatSize(kcm.installedSizeChange)));
         }
         if (parts.length === 2) {
-            return i18nc("@info %1 is a download size, %2 an installed or freed size", "%1 - %2", parts[0], parts[1]);
+            return i18nc("@info %1 is a download size, %2 an installed or freed size", "%1 · %2", parts[0], parts[1]);
         }
         return parts.length === 1 ? parts[0]
                                   : i18ncp("@info", "%1 update available", "%1 updates available", kcm.updateCount);
@@ -249,6 +249,7 @@ KCMUtils.SimpleKCM {
                                 Layout.fillWidth: true
                                 text: root.sizeSummary()
                                 font: Kirigami.Theme.smallFont
+                                opacity: 0.7
                                 elide: Text.ElideRight
                             }
                         }
@@ -295,10 +296,10 @@ KCMUtils.SimpleKCM {
                     Layout.alignment: Qt.AlignTop
                     spacing: Kirigami.Units.smallSpacing
 
-                    QQC2.Label {
+                    Kirigami.Heading {
                         Layout.bottomMargin: Kirigami.Units.smallSpacing
+                        level: 3
                         text: i18nc("@title", "Software to Be Updated")
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.15
                     }
 
                     Item {
@@ -397,12 +398,13 @@ KCMUtils.SimpleKCM {
                                             // Flatpak doesn't always report versions, and release-only RPM
                                             // updates (1.0-1 → 1.0-2) have the same short version
                                             text: updateRow.fromVersion.length > 0 && updateRow.fromVersion !== updateRow.toVersion
-                                                ? i18nc("@info %1 source, %2 old version, %3 new version", "%1 - %2 → %3",
+                                                ? i18nc("@info %1 source, %2 old version, %3 new version", "%1 · %2 → %3",
                                                         updateRow.sourceLabel, updateRow.fromVersion, updateRow.toVersion)
                                                 : updateRow.toVersion.length > 0
-                                                    ? i18nc("@info %1 source, %2 new version", "%1 - %2", updateRow.sourceLabel, updateRow.toVersion)
+                                                    ? i18nc("@info %1 source, %2 new version", "%1 · %2", updateRow.sourceLabel, updateRow.toVersion)
                                                     : updateRow.sourceLabel
                                             font: Kirigami.Theme.smallFont
+                                            opacity: 0.7
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -468,6 +470,7 @@ KCMUtils.SimpleKCM {
                 QQC2.Label {
                     Layout.preferredWidth: root.labelColumnWidth
                     Layout.alignment: Qt.AlignTop
+                    Layout.topMargin: (automaticButton.implicitHeight - implicitHeight) / 2
                     text: i18nc("@label", "Automatic Updates")
                     wrapMode: Text.Wrap
                 }
@@ -488,6 +491,7 @@ KCMUtils.SimpleKCM {
                         leftPadding: automaticButton.indicator.width + automaticButton.spacing
                         text: i18nc("@info", "Updates automatically install when you’re not active")
                         font: Kirigami.Theme.smallFont
+                        opacity: 0.7
                         wrapMode: Text.Wrap
                     }
 
@@ -503,20 +507,21 @@ KCMUtils.SimpleKCM {
                         leftPadding: automaticButton.indicator.width + automaticButton.spacing
                         text: i18nc("@info", "You’re notified when updates are ready to go")
                         font: Kirigami.Theme.smallFont
+                        opacity: 0.7
                         wrapMode: Text.Wrap
                     }
                 }
 
                 QQC2.Label {
                     Layout.preferredWidth: root.labelColumnWidth
-                    text: i18nc("@label", "Advanced update settings")
+                    text: i18nc("@label", "Advanced")
                     wrapMode: Text.Wrap
                 }
 
                 QQC2.Button {
                     id: advancedButton
                     text: i18nc("@action:button", "Advanced Settings")
-                    icon.name: "preferences-system"
+                    icon.name: "configure"
                     onClicked: kcm.push("AdvancedSettings.qml")
                 }
             }

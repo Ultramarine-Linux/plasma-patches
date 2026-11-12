@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: ultramarine-plasma-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/Ultramarine-Linux/plasma-patches/"
 "issues\n"
-"POT-Creation-Date: 2026-11-10 20:17-0700\n"
+"POT-Creation-Date: 2026-11-11 19:49-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,24 +17,6 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-#: kcm-updates/ui/main.qml
-#, kde-format
-msgctxt "@info %1 is a download size, %2 an installed or freed size"
-msgid "%1 - %2"
-msgstr ""
-
-#: kcm-updates/ui/main.qml
-#, kde-format
-msgctxt "@info %1 source, %2 new version"
-msgid "%1 - %2"
-msgstr ""
-
-#: kcm-updates/ui/main.qml
-#, kde-format
-msgctxt "@info %1 source, %2 old version, %3 new version"
-msgid "%1 - %2 → %3"
-msgstr ""
 
 #: kcm-updates/ui/main.qml
 #, kde-format
@@ -130,13 +112,25 @@ msgctxt "@info %1 is an office suite"
 msgid "%1 was installed, but could not be started."
 msgstr ""
 
+#: kcm-updates/ui/main.qml
+#, kde-format
+msgctxt "@info %1 is a download size, %2 an installed or freed size"
+msgid "%1 · %2"
+msgstr ""
+
+#: kcm-updates/ui/main.qml
+#, kde-format
+msgctxt "@info %1 source, %2 new version"
+msgid "%1 · %2"
+msgstr ""
+
 #: kcm-updates/ui/TechnicalInformation.qml
 #, kde-format
 msgctxt "@info %1 source, %2 version"
 msgid "%1 · %2"
 msgstr ""
 
-#: kcm-updates/ui/TechnicalInformation.qml
+#: kcm-updates/ui/main.qml kcm-updates/ui/TechnicalInformation.qml
 #, kde-format
 msgctxt "@info %1 source, %2 old version, %3 new version"
 msgid "%1 · %2 → %3"
@@ -232,6 +226,12 @@ msgstr ""
 
 #: kcm-updates/ui/main.qml
 #, kde-format
+msgctxt "@label"
+msgid "Advanced"
+msgstr ""
+
+#: kcm-updates/ui/main.qml
+#, kde-format
 msgctxt "@action:button"
 msgid "Advanced Settings"
 msgstr ""
@@ -240,12 +240,6 @@ msgstr ""
 #, kde-format
 msgctxt "@title"
 msgid "Advanced Update Settings"
-msgstr ""
-
-#: kcm-updates/ui/main.qml
-#, kde-format
-msgctxt "@label"
-msgid "Advanced update settings"
 msgstr ""
 
 #. description of the page in System Settings
@@ -1090,6 +1084,12 @@ msgstr ""
 #, kde-format
 msgctxt "@info:status office suite"
 msgid "Recommended"
+msgstr ""
+
+#: kcm-updates/ui/main.qml
+#, kde-format
+msgctxt "@action:button check for updates again"
+msgid "Refresh"
 msgstr ""
 
 #: kcm-updates/ui/main.qml
